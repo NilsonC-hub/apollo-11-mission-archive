@@ -57,7 +57,7 @@ The Saturn V Printing Kit ZIP (`NASA-MODEL-SATV-STL.zip`, 3.3 MiB, hash `c041898
 
 **Non-CSM STLs** (for completeness): `S-IC bottom.stl`, `S-IC top.stl`, `S-IC joining cube.stl`, `S-II.stl`, `S-IV b.stl`, `stage 1-2 coupler.stl`, `stage 1-2 coupler v2.stl`, `fin (print 4).stl`.
 
-**Phase 0 status (remediation)**: ✅ ZIP contents fully enumerated. ✅ CM, SM, LES, SLA candidates identified. ✅ Triangle counts and bounds recorded. ✅ SHA-256 of each STL recorded.
+**Phase 0 status (remediation)**: ✅ ZIP contents fully enumerated. ✅ CM, SM, LES, SLA candidates identified. ✅ Triangle counts and bounds recorded. ✅ SHA-256 of each STL recorded. ⚠️ Visual geometry verification NOT yet done — the STL shapes have not been opened in a viewer to confirm they match the expected CSM component geometry. Path 2 is **PROVISIONALLY viable** pending visual confirmation in Phase 3.
 
 **Units inconsistency**: STL units are inconsistent across the kit — some parts are in millimeters (escape tower, S-IC sections, S-II, S-IVB), others in centimeters (command module, service module, SLA, couplers). Phase 3 normalization must scale each part individually against documented Saturn V / CSM dimensions from `NASA-A11-MR` and `NASA-CSM-NR`.
 
@@ -121,7 +121,7 @@ If Paths 2 and 3 both yield insufficient geometry, Phase 3 must self-build. Inpu
 
 **Adopt a hybrid Path 2 + Path 3 approach, fall back to Path 4 if both fail.**
 
-- **Path 2 is now confirmed viable** for CM + SM + LES + SLA as a set. All four CSM-relevant STLs are identified, inspected, and hashed. Phase 3 must normalize units, remesh, and UV-unwrap.
+- **Path 2 is now provisionally viable** for CM + SM + LES + SLA as a set. All four CSM-relevant STLs are identified, inspected, and hashed. However, visual geometry verification has NOT been performed — the STL shapes have not been opened in a viewer to confirm they match the expected CSM components (conical CM, cylindrical SM, tower LES, conical SLA). The triangle counts and bounds are consistent with these shapes, but visual confirmation is a Phase 3 action. Phase 3 must normalize units, remesh, UV-unwrap, and visually verify each part.
 - **Path 3 remains valuable** for higher-detail CM geometry — the STL `command moduel.stl` has only 3,652 triangles, which may be too low for close-up dossier views. The Saturn V GLB top extraction could provide a higher-detail CM.
 - **Recommended hybrid**: use Path 2 STLs for SM + LES + SLA (which have adequate detail: 46,582 / 16,030 / 1,162 triangles respectively), and use Path 3 (Saturn V GLB top extraction) for the CM if it yields higher detail than the STL's 3,652 triangles. If Path 3 CM extraction fails or is lower-detail, fall back to the Path 2 STL CM.
 - If both Path 2 and Path 3 yield insufficient CM detail, fall back to Path 4 (self-build the CM from `NASA-CSM-NR` dimensions).

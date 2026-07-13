@@ -42,6 +42,25 @@ interface SourceRecord {
     sha256: string
     bytes: number
   }>
+  // Content assertions — declared identity markers that go beyond kind/magic
+  // checks. These help detect cross-wiring where a file has the right magic
+  // bytes but is the WRONG file (e.g. PDF A's localPath pointing to PDF B's
+  // downloaded file).
+  ntrsCitationId?: string
+  reportNumber?: string
+  nasaTmNumber?: string
+  provenance?: string
+  provenanceGrade?: string
+  contentAssertions?: {
+    titlePageKeywords?: string[]
+    publisher?: string
+    preparingBody?: string
+    pageCount?: number
+    pdfProducer?: string
+    // HTML canonical/source marker — for web snapshots, a string that must
+    // appear in the HTML content to confirm it is the right page
+    htmlCanonicalMarker?: string
+  }
 }
 
 interface Manifest {
@@ -440,6 +459,57 @@ function validate(manifestPath: string): ValidationError[] {
             })
           }
         }
+      }
+    }
+
+    // === Content assertion checks ===
+    // These go beyond kind/magic checks to verify the file's CONTENT matches
+    // the declared source identity. This catches cross-wiring where a file
+    // has the right magic bytes but is the WRONG file (e.g. two different PDFs
+    // both having %PDF magic but one source's localPath points at the other's file).
+    if (s.contentAssertions && s.localPath) {
+      const abs = resolve(ROOT, s.localPath)
+      if (existsSync(abs)) {
+        // HTML canonical marker check: for web snapshots, verify a specific
+        // string appears in the HTML content to confirm it is the right page.
+        // This catches the case where source A's localPath points at source B's
+        // HTML snapshot — even though both are valid HTML, the canonical marker
+        // for source A would not appear in source B's page.
+        if (s.contentAssertions.htmlCanonicalMarker) {
+          const fileKind = fileKindOfPath(s.localPath)
+          if (fileKind === 'html') {
+            try {
+              const content = readFileSync(abs, 'utf8')
+              if (!content.includes(s.contentAssertions.htmlCanonicalMarker)) {
+                errors.push({
+                  sourceId: s.id,
+                  field: 'contentAssertions.htmlCanonicalMarker',
+                  message: `HTML canonical marker '${s.contentAssertions.htmlCanonicalMarker}' not found in '${s.localPath}' — this file may be cross-wired to a different source's HTML snapshot`,
+                  severity: 'error',
+                })
+              }
+            } catch {
+              // File read error already caught above
+            }
+          }
+        }
+      }
+    }
+
+    // NTRS citation ID cross-check: if a source declares an ntrsCitationId,
+    // verify it appears in the originalUrl or effectiveDownloadUrl
+    if (s.ntrsCitationId) {
+      const idInUrl =
+        s.originalUrl.includes(s.ntrsCitationId) ||
+        (s.effectiveDownloadUrl && s.effectiveDownloadUrl.includes(s.ntrsCitationId)) ||
+        (s.landingPageUrl && s.landingPageUrl.includes(s.ntrsCitationId))
+      if (!idInUrl) {
+        errors.push({
+          sourceId: s.id,
+          field: 'ntrsCitationId',
+          message: `NTRS citation ID '${s.ntrsCitationId}' not found in any URL field (originalUrl, effectiveDownloadUrl, landingPageUrl)`,
+          severity: 'warn',
+        })
       }
     }
   }

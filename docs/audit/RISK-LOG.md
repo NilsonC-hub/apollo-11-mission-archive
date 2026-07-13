@@ -192,15 +192,26 @@ Extraction recorded in `docs/audit/SP4029-extraction.txt`. Printed-page labels i
 
 **Status**: NOTED — Phase 2 work.
 
-### R-016 — Apollo 11 launch vehicle flight evaluation report not archived (MEDIUM, new in remediation)
+### R-016 — Apollo 11 launch vehicle flight evaluation report — RESOLVED
 
-**Symptom**: The S-IC/S-II and S-II/S-IVB physical-separation METs are most authoritatively recorded in the Apollo 11 launch vehicle flight evaluation report (a separate NASA publication from the Mission Report). This report is NOT in the spec §8 Source Manifest and was not archived in Phase 0.
+**Symptom**: The S-IC/S-II and S-II/S-IVB physical-separation METs are most authoritatively recorded in the Apollo 11 launch vehicle flight evaluation report (MPR-SAT-FE-69-9 / NASA-TM-X-62558 / NTRS 19900066485). This report was NOT in the spec §8 Source Manifest and was not archived in the original Phase 0 release.
 
-**Impact**: The A.3 Event IDs `a11-sic-sii-separation` and `a11-sii-sivb-separation` are currently `QUALITATIVE-ONLY` — the Mission Report body §4 references staging qualitatively but the precise separation METs require the launch vehicle flight evaluation report. Phase 2 must rely on AFJ day-1 (archived but editorial) + Mission Report body §4 (qualitative) until this report is archived.
+**Impact (original)**: The A.3 Event IDs `a11-sic-sii-separation` and `a11-sii-sivb-separation` were `QUALITATIVE-ONLY` — the Mission Report body §4 references staging qualitatively but the precise separation METs require the launch vehicle flight evaluation report.
 
-**Mitigation**: Phase 2 should search NTRS for "Apollo 11 launch vehicle flight evaluation" or "AS-506 flight evaluation" and archive the report. Until then, the staging METs remain `QUALITATIVE-ONLY` and must NOT drive `ACTUAL` precision animation.
+**Remediation (round 2)**: The report has been archived and the separation METs verified:
 
-**Status**: OPEN — Phase 2 action. This risk does not block Phase 0 exit because the A.3 Event IDs are established with `QUALITATIVE-ONLY` status per spec §A.3 (which explicitly allows retaining events in Archive narrative without `ACTUAL` precision when no reliable MET is available).
+1. **NTRS record 19900066485**: de-indexed as of 2026-07-13. API returns 404. Citation page serves SPA shell only ("Page not found"). Old archive URL serves HTML wrapper, not PDF. NTRS search for "MPR-SAT-FE-69-9" and "NASA-TM-X-62558": 0 results.
+2. **Wayback Machine**: CDX query found 10 snapshots of the old NTRS archive URL (2015-2017), but ALL are text/html HTML wrappers (5-6 KB). The actual PDF binary was never captured.
+3. **Archive.org**: advancedsearch.php found the item `saturn-v-launch-vehicle-flight-evaluation-report-as-506`. PDF downloaded from `https://ia802806.us.archive.org/24/items/...` — 11,581,879 bytes, SHA-256 `feb84bc2f6d761cc0996faf7ca74d449d83beb885b8ec67d4892f57e4ed0d212`. Title page confirms MPR-SAT-FE-69-9, NASA-TM-X-62558, AS-506, Apollo 11, Marshall Space Flight Center.
+4. **Provenance grade**: MIRROR — not NTRS-direct, but archive.org copy is a faithful reproduction of the original NASA technical memorandum. Content is U.S. government work, public domain.
+5. **Separation METs verified** via PyMuPDF extraction:
+   - S-IC/S-II physical separation: **162.3 sec** (Table 4-3 ACTUAL)
+   - S-II/S-IVB physical separation: **549.0 sec** (Table 4-3 ACTUAL)
+   - Section 12.2 confirms S-IC/S-II separation was "accomplished as planned" with "clean severance"
+   - Section 12.3 confirms S-II/S-IVB separation was "nominal"
+   - Cross-check with Mission Report Table 3-I: OECO 161.7s (MR) vs 161.63s (SATV-FE) — delta 0.07s; S-II cutoff 548.3s (MR) vs 548.22s (SATV-FE) — delta 0.08s. Consistent.
+
+**Status**: RESOLVED — PDF archived, separation METs verified, A.3 Event IDs updated to MET-CONFIRMED. See `docs/audit/SATV-FE-SEPARATION-VERIFICATION.txt` for full extraction.
 
 ## Open questions (owner input needed)
 

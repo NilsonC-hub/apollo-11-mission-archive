@@ -16,7 +16,9 @@
     "validate:sources": "node --experimental-strip-types scripts/validate-sources.ts",
     "validate:mission": "node --experimental-strip-types scripts/validate-mission.ts",
     "validate:models": "node --experimental-strip-types scripts/validate-models.ts",
-    "inspect-glb": "node --experimental-strip-types scripts/inspect-glb.ts"
+    "inspect-glb": "node --experimental-strip-types scripts/inspect-glb.ts",
+    "inspect-stls": "node --experimental-strip-types scripts/inspect-stls.ts",
+    "hydrate-assets": "node --experimental-strip-types scripts/hydrate-assets.ts"
   },
   "packageManager": "pnpm@10.6.2",
   "engines": {

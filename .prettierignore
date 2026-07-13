@@ -11,3 +11,4 @@ docs/APOLLO_11_PRODUCTION_SPEC.md
 assets/raw/*.inspection.json
 docs/audit/SP4029-extraction.txt
 docs/audit/STL-INSPECTION.txt
+docs/audit/SATV-FE-SEPARATION-VERIFICATION.txt

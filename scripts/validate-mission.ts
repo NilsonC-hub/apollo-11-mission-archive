@@ -26,10 +26,14 @@ const required = [
   'docs/audit/DECISIONS.md',
   'docs/audit/SP4029-extraction.txt',
   'docs/audit/STL-INSPECTION.txt',
+  'docs/audit/SATV-FE-SEPARATION-VERIFICATION.txt',
   'assets/raw/NASA-MODEL-SATV.inspection.json',
   'assets/raw/NASA-MODEL-LM.inspection.json',
   'assets/raw/NASA-A11-POSTTRAJ.pdf',
+  'assets/raw/NASA-A11-SATV-FE.pdf',
   'assets/raw/NASA-MODEL-SATV-STL-extracted',
+  'scripts/inspect-stls.ts',
+  'scripts/hydrate-assets.ts',
 ]
 
 let missing = 0

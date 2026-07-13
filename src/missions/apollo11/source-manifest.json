@@ -237,6 +237,42 @@
       "notes": "Remediation: original Phase 0 release incorrectly recorded this source as kind=web with localPath pointing at NASA-A11-MR.page.html (cross-wired to the Mission Report's landing-page snapshot). The NTRS API pattern /api/citations/{id}/downloads/{id}.pdf works for this record; the actual PDF is now archived. Source manifest validator upgraded to detect cross-wiring and enforce kind/localPath consistency."
     },
     {
+      "id": "NASA-A11-SATV-FE",
+      "kind": "pdf",
+      "title": "Saturn V Launch Vehicle Flight Evaluation Report, AS-506 Apollo 11 Mission, MPR-SAT-FE-69-9 / NASA-TM-X-62558",
+      "publisher": "NASA George C. Marshall Space Flight Center, Saturn Flight Evaluation Working Group",
+      "publicationDate": "1969-09-20",
+      "originalUrl": "https://ntrs.nasa.gov/citations/19900066485",
+      "effectiveDownloadUrl": "https://ia802806.us.archive.org/24/items/saturn-v-launch-vehicle-flight-evaluation-report-as-506/saturn-v-launch-vehicle-flight-evaluation-report-as-506.pdf",
+      "landingPageUrl": "https://archive.org/details/saturn-v-launch-vehicle-flight-evaluation-report-as-506",
+      "accessedAt": "2026-07-13",
+      "rightsStatus": "U.S. government work, public domain (NASA technical memorandum; archive.org mirror of de-indexed NTRS record)",
+      "purpose": "Primary source for S-IC/S-II and S-II/S-IVB physical separation METs (Table 4-3). Also provides Table 2-2 significant event times, separation evaluation narrative (Section 12), and trajectory comparison data.",
+      "localPath": "assets/raw/NASA-A11-SATV-FE.pdf",
+      "sha256": "feb84bc2f6d761cc0996faf7ca74d449d83beb885b8ec67d4892f57e4ed0d212",
+      "bytes": 11581879,
+      "status": "downloaded",
+      "provenance": "mirror",
+      "provenanceGrade": "MIRROR — NTRS record 19900066485 de-indexed as of 2026-07-13 (API 404, citation page serves SPA shell only). Wayback Machine has only HTML wrappers (never captured PDF binary). Archive.org item saturn-v-launch-vehicle-flight-evaluation-report-as-506 hosts the PDF (11,581,879 bytes, md5 fd47020f9b289335c13c37a42731880c). Title page confirms MPR-SAT-FE-69-9, NASA-TM-X-62558, AS-506, Apollo 11 Mission, Marshall Space Flight Center. Content is U.S. government work, public domain.",
+      "ntrsCitationId": "19900066485",
+      "reportNumber": "MPR-SAT-FE-69-9",
+      "nasaTmNumber": "NASA-TM-X-62558",
+      "contentAssertions": {
+        "titlePageKeywords": [
+          "MPR-SAT-FE-69-9",
+          "NASA-TM-X-62558",
+          "AS-506",
+          "Apollo 11",
+          "Saturn V Launch Vehicle Flight Evaluation Report"
+        ],
+        "publisher": "George C. Marshall Space Flight Center",
+        "preparingBody": "Saturn Flight Evaluation Working Group",
+        "pageCount": 284,
+        "pdfProducer": "Pdf.Capture version 5.2"
+      },
+      "notes": "R-016 RESOLVED. This report provides the S-IC/S-II physical separation at 162.3 sec (Table 4-3 ACTUAL) and S-II/S-IVB physical separation at 549.0 sec (Table 4-3 ACTUAL). These are the authoritative separation METs — the Mission Report (NASA-A11-MR) Table 3-I does not contain physical separation times, only engine cutoff and ignition command times. Section 12.2 confirms S-IC/S-II separation was 'accomplished as planned' with 'clean severance of the stages'. Section 12.3 confirms S-II/S-IVB separation was 'nominal'. See docs/audit/SATV-FE-SEPARATION-VERIFICATION.txt for full extraction and cross-check."
+    },
+    {
       "id": "NASA-A11-TRAJ-RECON",
       "kind": "pdf",
       "title": "Apollo trajectory reconstruction / postflight analysis (NTRS 19700014995)",
@@ -557,7 +593,7 @@
           "csmRelevance": "S-IC/S-II interstage coupler (alt version) — not CSM"
         }
       ],
-      "notes": "Remediation: ZIP contents now fully enumerated (12 STL files). All individual STLs inspected with triangle count, bounds, units heuristic, and SHA-256. CSM-relevant parts: command moduel.stl (CM, 3652 tris, note original typo), service module.stl (SM, 46582 tris), escape tower.stl (LES, 16030 tris), lem shroud.stl (SLA, 1162 tris). ADR-006 CSM reconstruction plan updated: Path 2 now confirmed viable for CM+SM+LES+SLA as a set. STL units are inconsistent across the kit (some millimeters, some centimeters) — Phase 3 normalization must scale each part individually against documented Saturn V / CSM dimensions from NASA-A11-MR and NASA-CSM-NR. See docs/audit/STL-INSPECTION.txt for full inventory."
+      "notes": "Remediation: ZIP contents now fully enumerated (12 STL files). All individual STLs inspected with triangle count, bounds, units heuristic, and SHA-256. CSM-relevant parts: command moduel.stl (CM, 3652 tris, note original typo 'moduel' — the exact spelling 'command module.stl' does NOT exist), service module.stl (SM, 46582 tris), escape tower.stl (LES, 16030 tris), lem shroud.stl (SLA, 1162 tris). ADR-006 CSM reconstruction plan updated: Path 2 is PROVISIONALLY viable for CM+SM+LES+SLA as a set — visual geometry verification is a Phase 3 action. STL units are inconsistent across the kit (some millimeters, some centimeters) — Phase 3 normalization must scale each part individually against documented Saturn V / CSM dimensions from NASA-A11-MR and NASA-CSM-NR. See docs/audit/STL-INSPECTION.txt for full inventory."
     },
     {
       "id": "NASA-MOON-CGI-KIT",

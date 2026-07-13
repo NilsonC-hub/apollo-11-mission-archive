@@ -25,8 +25,13 @@ Files of interest for ADR-006 CSM reconstruction:
 - `service module.stl` — explicitly named, SM candidate
 - `escape tower.stl` — LES, top of CSM stack
 - `lem shroud.stl` — SLA (Spacecraft/LM Adapter), the conical adapter between S-IVB and CSM
-- `command module.stl` — NOT PRESENT in this kit (the CM is not a separate STL)
+- `command moduel.stl` — CM candidate. NOTE: the exact spelling "command module.stl" does NOT
+  exist in this kit. The file is named "command moduel.stl" (note the original typo "moduel").
+  This is the CM candidate — it is present, not absent.
 
-Implication: Path 2 (STL kit) provides SM + LES + SLA but NOT CM.
-The CM must come from Path 3 (extract from Saturn V GLB top) or Path 4 (self-build).
-Recommendation: combine Path 2 (SM/LES/SLA) + Path 3 (CM from GLB) hybrid approach.
+Implication: Path 2 (STL kit) provides CM + SM + LES + SLA as a set.
+However, without visual geometry verification (opening the STL in a viewer and confirming
+the shape matches a conical Command Module), Path 2 is PROVISIONALLY viable, not confirmed viable.
+The triangle count (3,652) and bounds (33.95 x 20.09 x 33.90) are consistent with a CM shape,
+but visual confirmation is a Phase 3 action.
+Recommendation: combine Path 2 (SM/LES/SLA + provisional CM) + Path 3 (CM from GLB) hybrid approach.

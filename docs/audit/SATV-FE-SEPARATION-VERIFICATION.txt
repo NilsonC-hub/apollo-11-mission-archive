@@ -1,0 +1,114 @@
+# Saturn V Launch Vehicle Flight Evaluation Report — AS-506
+# Text Extraction & Separation MET Verification
+# Source: MPR-SAT-FE-69-9 / NASA-TM-X-62558 / NTRS 19900066485
+# Archive.org identifier: saturn-v-launch-vehicle-flight-evaluation-report-as-506
+# PDF: assets/raw/NASA-A11-SATV-FE.pdf (11,581,879 bytes, sha256 feb84bc2f6d761cc0996faf7ca74d449d83beb885b8ec67d4892f57e4ed0d212)
+# Extracted with PyMuPDF (fitz 1.28.0) on 2026-07-13 (remediation round 2)
+
+## Provenance
+
+### NTRS record 19900066485 — UNAVAILABLE
+- NTRS citation page (https://ntrs.nasa.gov/citations/19900066485): HTTP 200 but serves SPA shell only ("Page not found" in rendered content).
+- NTRS API /api/citations/19900066485: HTTP 404.
+- NTRS API /api/citations/19900066485/downloads/19900066485.pdf: HTTP 404.
+- Old NTRS archive URL /archive/nasa/casi.ntrs.nasa.gov/19900066485.pdf: HTTP 200 but serves 46,630-byte HTML wrapper (not PDF).
+- NTRS search for "MPR-SAT-FE-69-9": 0 results.
+- NTRS search for "NASA-TM-X-62558": 0 results.
+- NTRS search for "Saturn V Launch Vehicle Flight Evaluation Apollo 11": 3 results but none is this report.
+- Conclusion: NTRS record 19900066485 has been de-indexed or removed from public access as of 2026-07-13.
+
+### Wayback Machine — HTML wrappers only, no PDF
+- CDX query for ntrs.nasa.gov/19900066485: 0 snapshots.
+- CDX query for ntrs.nasa.gov/archive/nasa/casi.ntrs.nasa.gov/19900066485.pdf: 10 snapshots (2015-2017) but ALL are text/html (5-6 KB HTML wrappers, not actual PDFs).
+- CDX query for ntrs.nasa.gov/citations/19900066485: 1 snapshot (2021-03-05) but only 1,144 bytes (SPA shell).
+- Conclusion: Wayback Machine never captured the actual PDF binary for this NTRS record.
+
+### Archive.org — PDF available (provenance level: MIRROR, not NTRS-direct)
+- Archive.org advancedsearch.php for "Saturn V Launch Vehicle Flight Evaluation" AND "AS-506": 1 result.
+- Identifier: saturn-v-launch-vehicle-flight-evaluation-report-as-506
+- Item metadata: created 2022-03-06, PDF original format "Text PDF", md5 fd47020f9b289335c13c37a42731880c, sha1 de658d0583343e17142c1dfca887136fb7abb585.
+- Download URL: https://ia802806.us.archive.org/24/items/saturn-v-launch-vehicle-flight-evaluation-report-as-506/saturn-v-launch-vehicle-flight-evaluation-report-as-506.pdf
+- Downloaded: 11,581,879 bytes (matches archive.org metadata exactly).
+- SHA-256: feb84bc2f6d761cc0996faf7ca74d449d83beb885b8ec67d4892f57e4ed0d212
+- PDF magic bytes: 25 50 44 46 2D 31 2E 34 (%PDF-1.4) — confirmed.
+- PDF metadata: producer "Pdf.Capture version 5.2", 284 pages.
+- Title page (PDF page 1) confirms: "MPR-SAT-FE-69-9", "SATURN V LAUNCH VEHICLE FLIGHT EVALUATION REPORT-AS-506", "APOLLO 11 MISSION", "(NASA-TM-X-62558)".
+- PDF page 3 confirms: "GEORGE C. MARSHALL SPACE FLIGHT CENTER", "MPR-SAT-FE-69-9", "SATURN V LAUNCH VEHICLE FLIGHT EVALUATION REPORT-AS-506", "APOLLO 11 MISSION", "PREPARED BY SATURN FLIGHT EVALUATION WORKING GROUP".
+
+### Provenance grade
+- **MIRROR**: The PDF is a scan of the original NASA technical memorandum hosted on archive.org (not directly from NTRS). The file matches the known report number (MPR-SAT-FE-69-9), NASA-TM-X-62558, and the Marshall Space Flight Center / Saturn Flight Evaluation Working Group attribution. The content is U.S. government work, public domain. The archive.org copy is a faithful digital reproduction (284 pages, PDF 1.4). This is the best available provenance given that NTRS has de-indexed the record.
+
+## Separation MET Verification
+
+### Table 2-2: Significant Event Times Summary (PDF pages 40-43)
+
+Event 27: S-IC/S-II SEPARATION COMMAND TO FIRE SEPARATION DEVICES AND RETRO MOTORS
+  Range Time ACTUAL: 164.0 sec
+  (Note: this is the COMMAND time, not the physical separation time)
+
+Event 46: S-II/S-IVB SEPARATION COMMAND TO FIRE SEPARATION DEVICES AND RETRO MOTORS
+  Range Time ACTUAL: 550.4 sec
+  (Note: this is the COMMAND time, not the physical separation time)
+
+### Table 4-3: Comparison of Separation Events (PDF page 63)
+
+S-IC/S-II SEPARATION:
+  Range Time, sec: ACTUAL 162.3 | NOMINAL 161.8 | ACT-NOM +0.5
+  Altitude, km: ACTUAL 66.7 (36.0 n mi)
+  Surface Range, km: ACTUAL 95.1 (51.3 n mi)
+  Space-Fixed Velocity: ACTUAL 2,773.9 m/s (9,100.7 ft/s)
+  Flight Path Angle: ACTUAL 19.020 deg
+  Heading Angle: ACTUAL 75.436 deg
+  Geodetic Latitude: ACTUAL 28.865 deg N
+  Longitude: ACTUAL -79.676 deg E
+
+S-II/S-IVB SEPARATION:
+  Range Time, sec: ACTUAL 549.0 | NOMINAL 552.4 | ACT-NOM -3.4
+  Altitude, km: ACTUAL 187.4 (101.2 n mi)
+  Surface Range, km: ACTUAL 1,623.4 (876.6 n mi)
+  Space-Fixed Velocity: ACTUAL 6,918.8 m/s (22,699.5 ft/s)
+  Flight Path Angle: ACTUAL 0.611 deg
+  Heading Angle: ACTUAL 82.426 deg
+  Geodetic Latitude: ACTUAL 31.883 deg N
+
+### Section 12: Separation (PDF page 183, printed page 12-1)
+
+12.1 SUMMARY:
+  "S-IC/S-II first plane separation was satisfactory. Related data indicate
+  that the S-IC retromotors performed as expected. Similarly, S-II second
+  plane separation and S-II/S-IVB separation were nominal."
+
+12.2 S-IC/S-II SEPARATION EVALUATION:
+  "S-IC/S-II separation and associated sequencing were accomplished as
+  planned. Dynamic conditions at separation were within staging limits.
+  Rate gyros and accelerometers located on the Instrument Unit (IU)
+  showed no disturbances, indicating a clean severance of the stages."
+
+12.3 S-II/S-IVB SEPARATION EVALUATION:
+  "The S-II retromotors and the S-IVB ullage motors performed
+  satisfactorily and provided a nominal S-II/S-IVB separation. Dynamic
+  conditions at separation were within staging limits with separation
+  conditions similar to those observed on previous flights."
+
+## Cross-check with Mission Report (NASA-A11-MR Table 3-I)
+
+| Event | Mission Report (Table 3-I) | Flight Evaluation Report (Table 4-3) | Delta |
+|---|---|---|---|
+| S-IC outboard cutoff (OECO) | 161.7 sec | 161.63 sec (Table 2-2 event 22) | -0.07 sec |
+| S-IC/S-II physical separation | (not in Table 3-I) | **162.3 sec** (Table 4-3) | — |
+| S-IC/S-II separation command | (not in Table 3-I) | 164.0 sec (Table 2-2 event 27) | — |
+| S-II cutoff | 548.3 sec | 548.22 sec (Table 2-2 event 43) | -0.08 sec |
+| S-II/S-IVB physical separation | (not in Table 3-I) | **549.0 sec** (Table 4-3) | — |
+| S-II/S-IVB separation command | (not in Table 3-I) | 550.4 sec (Table 2-2 event 46) | — |
+| S-IVB first ignition command | 552.2 sec | 552.2 sec (Table 2-2 event 47) | 0.0 sec |
+
+The physical separation times (162.3 sec and 549.0 sec) fall between the engine cutoff and the separation command times, which is physically correct: cutoff → physical separation → separation command → next stage ignition.
+
+## R-016 Resolution
+
+R-016 is now RESOLVED. The S-IC/S-II and S-II/S-IVB physical separation METs are:
+
+- `a11-sic-sii-separation`: **162.3 sec** (ACTUAL, from Table 4-3 of MPR-SAT-FE-69-9)
+- `a11-sii-sivb-separation`: **549.0 sec** (ACTUAL, from Table 4-3 of MPR-SAT-FE-69-9)
+
+These values can now drive ACTUAL precision animation. The A.3 Event Verification document must be updated to change these from QUALITATIVE-ONLY to MET-CONFIRMED.
