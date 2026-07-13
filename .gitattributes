@@ -1,0 +1,4 @@
+# Force LF line endings for all text files — ensures format:check passes
+# in clean clones on Windows (git archive / git checkout would otherwise
+# convert LF to CRLF, causing prettier --check to fail).
+* text=auto eol=lf
