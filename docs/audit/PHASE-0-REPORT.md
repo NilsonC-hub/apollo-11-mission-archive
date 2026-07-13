@@ -1,9 +1,9 @@
 ﻿# Phase 0 Completion Report
 
-**Phase**: 0 — Baseline, Source Freeze & Feasibility (remediation)
+**Phase**: 0 — Baseline, Source Freeze & Feasibility (remediation round 2)
 **Project**: Apollo 11 Mission Archive + Historical Replay
 **Path**: `D:\apollo-11-mission-archive`
-**Date**: 2026-07-13 (remediation)
+**Date**: 2026-07-13 (remediation round 2)
 **Spec reference**: APOLLO_11_PRODUCTION_SPEC §49 (Phase 0 deliverables + acceptance)
 **Report template**: spec §58
 
@@ -15,12 +15,12 @@
 - ✅ Project config: `package.json`, `tsconfig.json` + 3 ref configs, `vite.config.ts`, `eslint.config.js`, `.prettierrc`, `.prettierignore`, `.gitignore`, `.nvmrc`, `LICENSE`, `README.md`, `AGENTS.md`.
 - ✅ Full directory structure per spec §39.
 - ✅ Production Spec copied into `docs/APOLLO_11_PRODUCTION_SPEC.md` for traceability.
-- ✅ Complete initial Source Manifest: all 31 spec §8 Source IDs registered.
+- ✅ Complete initial Source Manifest: all 31 spec §8 Source IDs registered + 1 remediation source (NASA-A11-SATV-FE) = 32 total.
 - ✅ NASA PDFs / GLBs / STL / ZIP / images / web pages downloaded, hashed, registered.
 - ✅ Appendix A.1 key event table cross-checked against `NASA-A11-MR` Table 3-I extracted text.
 - ✅ Artemis reuse map; Earth / Moon texture candidate inventory.
 
-### Remediation fixes (this round)
+### Remediation round 1 fixes
 
 - ✅ **Appendix A.3 event investigation completed** — 28 Event IDs established across 10 A.3 categories in `docs/audit/EVENT-VERIFICATION-A3.md`, each with source candidates, verification status, and non-ACTUAL processing rules. No longer deferred to Phase 2.
 - ✅ **Saturn V STL printing kit fully enumerated** — 12 STL files inspected (triangle count, bounds, units, SHA-256) in `docs/audit/STL-INSPECTION.txt`. CSM-relevant parts identified: CM, SM, LES, SLA.
@@ -30,6 +30,14 @@
 - ✅ **inspect-glb.ts false-positive semantic detection fixed** — `saturnv_ca` no longer matches as Saturn stage semantic; strict token-boundary matching. `validate-models.ts` now re-parses GLB from disk, verifies SHA-256 correspondence, confirms structural counts.
 - ✅ **All 8 release gates pass** — typecheck, lint, format:check, test:unit, validate:sources, validate:mission, validate:models, build (all exit 0).
 - ✅ **Git initialized** — no prior `.git` existed; initial commit created on branch `master`.
+
+### Remediation round 2 fixes (this round)
+
+- ✅ **R-016 RESOLVED** — Saturn V Launch Vehicle Flight Evaluation Report (MPR-SAT-FE-69-9 / NASA-TM-X-62558 / NTRS 19900066485) archived from archive.org mirror. NTRS record de-indexed (API 404); Wayback has only HTML wrappers. S-IC/S-II physical separation verified at **162.3 sec** (Table 4-3 ACTUAL); S-II/S-IVB physical separation at **549.0 sec** (Table 4-3 ACTUAL). A.3 Event IDs updated to MET-CONFIRMED. See `docs/audit/SATV-FE-SEPARATION-VERIFICATION.txt`.
+- ✅ **Git reproducibility achieved** — `scripts/hydrate-assets.ts` downloads all gitignored GLB/STL/ZIP binaries from canonical URLs with SHA-256 verification and ZIP extraction. Verified in clean `git archive` clone: all 4 binaries downloaded, hashed, and extracted; all 8 gates pass. `.gitattributes` added to force LF for text files and mark binary/archive files as `binary` to preserve exact bytes for hash verification.
+- ✅ **STL documentation contradiction fixed** — "command module.stl not present" corrected to "exact spelling 'command module.stl' does NOT exist; 'command moduel.stl' (original typo) exists and is the CM candidate." Path 2 changed from "confirmed viable" to **"provisionally viable"** pending visual geometry verification (Phase 3). `scripts/inspect-stls.ts` committed and validates all 12 manifest stlParts.
+- ✅ **Cross-wiring detection improved** — `validate-sources.ts` now supports `contentAssertions` field with `htmlCanonicalMarker` check (verifies HTML content contains a declared marker string) and `ntrsCitationId` cross-check. Unit test `tests/unit/cross-wiring.test.ts` verifies that a wrong HTML path fails the content assertion.
+- ✅ **All 8 release gates pass in both original repo and clean clone** — verified with real command outputs.
 
 ## Files changed
 
@@ -191,18 +199,47 @@ Phase 0 did not run the optimize-models pipeline. That is Phase 3 work.
 
 ## Commands run
 
-### Release gates (spec §47) — all must pass
+### Release gates (spec §47) — all must pass — remediation round 2
 
-| Command                 | Exit code | Summary                                                                                                                        |
-| ----------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `pnpm typecheck`        | 0         | `tsc -b` — no errors. TypeScript 5.9.3 (downgraded from 7.0.2 for typescript-eslint peer compatibility).                       |
-| `pnpm lint`             | 0         | `eslint .` — no errors. Fixed unused `readFileSync` import in validate-mission.ts.                                             |
-| `pnpm format:check`     | 0         | `prettier --check .` — "All matched files use Prettier code style!" Original NASA HTML snapshots excluded via .prettierignore. |
-| `pnpm test:unit`        | 0         | `node --test --experimental-strip-types tests/unit/**/*.test.ts` — 6 tests pass (epoch, first-step), 0 fail.                   |
-| `pnpm validate:sources` | 0         | 0 errors, 0 warnings. All binary SHA-256 + sizes verified. File-signature checks pass. No cross-wiring detected.               |
-| `pnpm validate:mission` | 0         | 17/17 prerequisites present (added A.3 doc, STL inspection, POSTTRAJ PDF, STL extracted dir).                                  |
-| `pnpm validate:models`  | 0         | Both GLB inspection reports valid and correspond to on-disk files (hash + structural count verification).                      |
-| `pnpm build`            | 0         | `tsc -b && vite build` — emits `dist/index.html` (1.46 kB, gzip 0.71 kB).                                                      |
+| Command                 | Exit code | Summary                                                                                                                     |
+| ----------------------- | --------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm typecheck`        | 0         | `tsc -b` — no errors. TypeScript 5.9.3.                                                                                     |
+| `pnpm lint`             | 0         | `eslint .` — no errors.                                                                                                     |
+| `pnpm format:check`     | 0         | `prettier --check .` — "All matched files use Prettier code style!"                                                         |
+| `pnpm test:unit`        | 0         | `node --test --experimental-strip-types tests/unit/**/*.test.ts` — 8 tests pass (6 epoch + 2 cross-wiring), 0 fail.         |
+| `pnpm validate:sources` | 0         | 0 errors, 0 warnings. 32 sources. All binary SHA-256 + sizes verified. File-signature checks pass. Content assertions pass. |
+| `pnpm validate:mission` | 0         | 21/21 prerequisites present (added SATV-FE PDF, SATV-FE verification txt, inspect-stls.ts, hydrate-assets.ts).              |
+| `pnpm validate:models`  | 0         | Both GLB inspection reports valid and correspond to on-disk files (hash + structural count verification).                   |
+| `pnpm build`            | 0         | `tsc -b && vite build` — emits `dist/index.html` (1.44 kB, gzip 0.70 kB).                                                   |
+
+### Clean clone gate verification (remediation round 2)
+
+Verified that all 8 gates pass in a clean `git archive` clone after running `pnpm install` + `node --experimental-strip-types scripts/hydrate-assets.ts`:
+
+| Step                                                        | Exit code | Summary                                                                                         |
+| ----------------------------------------------------------- | --------- | ----------------------------------------------------------------------------------------------- |
+| `git archive --format=zip -o repo.zip master`               | 0         | Archive created from HEAD.                                                                      |
+| `Expand-Archive repo.zip`                                   | 0         | Clean clone extracted (no gitignored binaries present).                                         |
+| `pnpm install --prefer-offline`                             | 0         | 94 packages installed.                                                                          |
+| `node --experimental-strip-types scripts/hydrate-assets.ts` | 0         | 4 binaries downloaded (GLB x2, STL x1, ZIP x1), all SHA-256 verified, ZIP extracted to 12 STLs. |
+| `pnpm typecheck`                                            | 0         | PASS                                                                                            |
+| `pnpm lint`                                                 | 0         | PASS                                                                                            |
+| `pnpm format:check`                                         | 0         | PASS                                                                                            |
+| `pnpm test:unit`                                            | 0         | PASS (8 tests)                                                                                  |
+| `pnpm validate:sources`                                     | 0         | PASS (0 errors, 0 warnings)                                                                     |
+| `pnpm validate:mission`                                     | 0         | PASS (21/21 prerequisites)                                                                      |
+| `pnpm validate:models`                                      | 0         | PASS (2 GLBs verified)                                                                          |
+| `pnpm build`                                                | 0         | PASS                                                                                            |
+| `pnpm inspect-stls`                                         | 0         | PASS (12 stlParts verified)                                                                     |
+
+### Remediation round 2 commands
+
+| Command                                                                                                       | Exit code | Summary                                                                                                                                                 |
+| ------------------------------------------------------------------------------------------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `curl.exe -L --ssl-no-revoke ... archive.org/.../saturn-v-launch-vehicle-flight-evaluation-report-as-506.pdf` | 0         | 200 OK, 11,581,879 bytes. sha256 `feb84bc2f6d761cc0996faf7ca74d449d83beb885b8ec67d4892f57e4ed0d212`.                                                    |
+| `python extract_satv_fe.py`                                                                                   | 0         | PyMuPDF extracted S-IC/S-II separation = 162.3 sec (Table 4-3), S-II/S-IVB separation = 549.0 sec (Table 4-3). Section 12.2 + 12.3 narrative confirmed. |
+| `node --experimental-strip-types scripts/inspect-stls.ts`                                                     | 0         | 12 STL parts verified (size, SHA-256, triangle count, bounds).                                                                                          |
+| `node --experimental-strip-types scripts/hydrate-assets.ts`                                                   | 0         | 4 binaries hydrated (download + SHA-256 + ZIP extract).                                                                                                 |
 
 ### Remediation commands
 
@@ -268,7 +305,7 @@ See `docs/audit/RISK-LOG.md` for the complete list. Summary (remediation):
 9. **R-013 / RESOLVED (remediation)**: NASA-A11-POSTTRAJ correct PDF downloaded (8,004,579 bytes); manifest cross-wiring fixed; validator upgraded to detect recurrence.
 10. **R-014 / OPEN**: Apollo 11 audio archive not enumerated. Phase 2 must scope MVP clips.
 11. **R-015 / NOTED**: ALSJ / AFJ editorial content rights status requires per-citation care in Phase 2.
-12. **R-016 / OPEN (new)**: Apollo 11 launch vehicle flight evaluation report not archived. Phase 2 should search NTRS.
+12. **R-016 / RESOLVED (remediation round 2)**: Apollo 11 launch vehicle flight evaluation report archived from archive.org mirror (NTRS de-indexed). S-IC/S-II separation = 162.3 sec, S-II/S-IVB separation = 549.0 sec — both MET-CONFIRMED.
 13. **Owner input needed**: AS-506 / LM-5 marking fidelity (Q1), Blender availability for Phase 3 (Q2), Phase 2 audio scope (Q3), Blue Marble variant preference (Q4), CSM self-build acceptability (Q5).
 
 ## Explicitly not completed
@@ -312,29 +349,42 @@ Items removed from this list in remediation (now completed):
 
 ## Phase 0 acceptance criteria (spec §49)
 
-| Criterion                                                                              | Status                                                                                                                                                                                                                                  |
-| -------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Did not modify Artemis product code                                                    | ✅ `D:\artemis-mission-archive` untouched.                                                                                                                                                                                              |
-| Every local raw source traces to official URL                                          | ✅ All 31 sources in Source Manifest have `originalUrl`; binaries have `sha256`. Validator enforces kind/localPath consistency + file-signature checks.                                                                                 |
-| No key event has un-verified "actual" time                                             | ✅ 33 of 34 Appendix A.1 events verified against `NASA-A11-MR` Table 3-I; first-step canonical MET `109:24:15` page-level verified in SP-4029 (PDF pages 104 + 118); 28 A.3 sub-event IDs established with non-ACTUAL processing rules. |
-| CSM path determined, no Apollo-Soyuz substitute                                        | ✅ `ADR-006` + `CSM-RECONSTRUCTION-PLAN.md`: hybrid Path 2 (STL kit: CM+SM+LES+SLA identified) + Path 3 (GLB top extraction for higher-detail CM), fall back to Path 4. Apollo-Soyuz explicitly forbidden.                              |
-| Model semantic separability determined, unknowns have clear experiments                | ✅ Both GLBs inspected (re-parsed from disk with hash verification); neither has semantic part naming; Phase 3 split plan documented. STL kit fully enumerated with CSM-relevant parts identified.                                      |
-| `ACTUAL / DERIVED / INTERPOLATED / PLANNED / RECONSTRUCTED / SCHEMATIC` usage is clear | ✅ Documented in `AGENTS.md`, `EVENT-VERIFICATION.md`, `EVENT-VERIFICATION-A3.md`, `MODEL-INSPECTION-REPORT.md`, `CSM-RECONSTRUCTION-PLAN.md`, `CELESTIAL-TEXTURE-CANDIDATES.md`.                                                       |
+| Criterion                                                                              | Status                                                                                                                                                                                                                                                                           |
+| -------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Did not modify Artemis product code                                                    | ✅ `D:\artemis-mission-archive` untouched.                                                                                                                                                                                                                                       |
+| Every local raw source traces to official URL                                          | ✅ All 32 sources in Source Manifest have `originalUrl`; binaries have `sha256`. Validator enforces kind/localPath consistency + file-signature checks + content assertions.                                                                                                     |
+| No key event has un-verified "actual" time                                             | ✅ 33 of 34 Appendix A.1 events verified against `NASA-A11-MR` Table 3-I; first-step canonical MET `109:24:15` page-level verified in SP-4029; 28 A.3 sub-event IDs established. S-IC/S-II (162.3s) and S-II/S-IVB (549.0s) separations now MET-CONFIRMED from NASA-A11-SATV-FE. |
+| CSM path determined, no Apollo-Soyuz substitute                                        | ✅ `ADR-006` + `CSM-RECONSTRUCTION-PLAN.md`: hybrid Path 2 (STL kit: CM+SM+LES+SLA — **provisionally** viable pending visual verification) + Path 3 (GLB top extraction for higher-detail CM), fall back to Path 4. Apollo-Soyuz explicitly forbidden.                           |
+| Model semantic separability determined, unknowns have clear experiments                | ✅ Both GLBs inspected; neither has semantic part naming; Phase 3 split plan documented. STL kit fully enumerated (12 parts verified by inspect-stls.ts) with CSM-relevant parts identified.                                                                                     |
+| `ACTUAL / DERIVED / INTERPOLATED / PLANNED / RECONSTRUCTED / SCHEMATIC` usage is clear | ✅ Documented in `AGENTS.md`, `EVENT-VERIFICATION.md`, `EVENT-VERIFICATION-A3.md`, `MODEL-INSPECTION-REPORT.md`, `CSM-RECONSTRUCTION-PLAN.md`, `CELESTIAL-TEXTURE-CANDIDATES.md`.                                                                                                |
+| Git delivery is reproducible                                                           | ✅ `scripts/hydrate-assets.ts` downloads all gitignored binaries from canonical URLs with SHA-256 verification + ZIP extraction. Verified in clean `git archive` clone: all 8 gates pass after hydration.                                                                        |
 
 ## Phase 0 exit gate
 
-**PASS** — all 8 release gates pass with exit code 0:
+**PASS** — all 8 release gates pass with exit code 0 in both the original repo and a clean `git archive` clone (after `pnpm install` + `scripts/hydrate-assets.ts`):
 
 - `pnpm typecheck` exit 0
 - `pnpm lint` exit 0
 - `pnpm format:check` exit 0
-- `pnpm test:unit` exit 0 (6 tests pass)
-- `pnpm validate:sources` exit 0 (0 errors, 0 warnings)
-- `pnpm validate:mission` exit 0 (17/17 prerequisites)
+- `pnpm test:unit` exit 0 (8 tests pass: 6 epoch + 2 cross-wiring)
+- `pnpm validate:sources` exit 0 (0 errors, 0 warnings, 32 sources)
+- `pnpm validate:mission` exit 0 (21/21 prerequisites)
 - `pnpm validate:models` exit 0 (2 GLBs re-verified)
 - `pnpm build` exit 0
 
-Git: branch `master`, commit `81444525603d93b8f9e98ceb943863fab3759868`, dirty status: clean (0 modified files).
+### Git commit structure
+
+| Commit        | Type                        | Description                                                                      |
+| ------------- | --------------------------- | -------------------------------------------------------------------------------- |
+| `8144452`     | Remediation round 1         | Source freeze, event verification, model inspection, gates                       |
+| `f00a0f9`     | Report finalization round 1 | PHASE-0-REPORT updated with round 1 command outputs                              |
+| `e23eee4`     | Remediation round 2         | R-016 resolve, git reproducibility, STL fix, cross-wiring detection              |
+| `0ef794e`     | Remediation round 2         | .gitattributes for LF line endings                                               |
+| `ad62ce6`     | Remediation round 2         | .gitattributes binary file rules for hash preservation                           |
+| `8d74061`     | Remediation round 2         | Renormalize HTML snapshots for CRLF byte preservation                            |
+| (this commit) | Report finalization round 2 | PHASE-0-REPORT updated with round 2 command outputs and clean clone verification |
+
+Git: branch `master`, dirty status: clean (0 modified files).
 
 ## Next steps (Phase 1 — Mission Core)
 
