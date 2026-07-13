@@ -2,3 +2,26 @@
 # in clean clones on Windows (git archive / git checkout would otherwise
 # convert LF to CRLF, causing prettier --check to fail).
 * text=auto eol=lf
+
+# Binary / archive files — no line-ending conversion, preserve exact bytes
+# (SHA-256 hashes in source-manifest.json are computed on original bytes)
+*.pdf binary
+*.glb binary
+*.stl binary
+*.zip binary
+*.jpg binary
+*.png binary
+*.tif binary
+*.tiff binary
+*.mp3 binary
+*.wav binary
+*.inspection.json binary
+
+# HTML snapshots are archive content — preserve exact bytes for hash verification
+docs/sources/apollo11/*.page.html binary
+
+# Generated audit text files — preserve exact bytes
+docs/audit/*.txt binary
+
+# NASA meta JSON files — preserve exact bytes
+docs/sources/apollo11/*.meta.json binary
