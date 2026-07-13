@@ -1,0 +1,7 @@
+{
+  "manifestVersion": 0,
+  "missionId": "apollo11",
+  "status": "stub",
+  "note": "Phase 0 stub. Asset Manifest is populated in Phase 3 (Model & Celestial Asset Pipeline) after the optimize-models pipeline runs. Phase 0 records the raw NASA asset inventory in source-manifest.json; this file records the derived runtime assets (high/medium/low LOD GLBs, KTX2 textures, fallbacks) once they exist.",
+  "assets": []
+}

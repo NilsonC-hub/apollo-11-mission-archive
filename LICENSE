@@ -1,0 +1,20 @@
+MIT License
+
+Copyright (c) 2026 Apollo 11 Mission Archive contributors
+
+This project's own source code is licensed under the MIT License.
+
+This project builds on the experience of the redradman/artemis prototype
+(https://github.com/redradman/artemis), also MIT-licensed. Attribution to that
+project is preserved here per its license.
+
+NASA imagery, audio, models, documents, and data referenced or included in
+this archive are works of the U.S. federal government and are in the public
+domain where originally produced by NASA. Specific rights status, source URLs,
+and processing notes for each asset are recorded in
+`src/missions/apollo11/source-manifest.json` and the asset manifest. Inclusion
+of a NASA asset here does not imply NASA endorsement of this project. The NASA
+Insignia, Logotype, and Seal are not used as the brand identifiers of this
+project.
+
+Third-party libraries retain their original licenses (see `package.json`).

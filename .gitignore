@@ -1,0 +1,36 @@
+# Node
+node_modules
+dist
+dist-ssr
+*.local
+.pnpm-store
+.turbo
+
+# Env
+.env
+.env.*
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.sw?
+
+# OS
+.DS_Store
+
+# Assets
+# raw assets are read-only archives; too large for git tracking in some cases
+# but small PDFs tracked. Derived assets tracked by manifest.
+assets/raw/**/*.glb
+assets/raw/**/*.stl
+assets/raw/**/*.zip
+
+# Screenshots
+*.png
+!docs/media/*.png
+
+# Audio (large files — tracked via manifest)
+assets/raw/**/*.mp3
+assets/raw/**/*.wav
+public/**/*.mp3

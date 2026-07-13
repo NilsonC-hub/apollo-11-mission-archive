@@ -1,0 +1,13 @@
+assets/raw/**
+assets/derived/**
+dist
+node_modules
+pnpm-lock.yaml
+# Original NASA HTML snapshots are archive content — never reformat
+docs/sources/apollo11/*.page.html
+# Production spec is a verbatim contract — never reformat
+docs/APOLLO_11_PRODUCTION_SPEC.md
+# Generated inspection outputs — never reformat
+assets/raw/*.inspection.json
+docs/audit/SP4029-extraction.txt
+docs/audit/STL-INSPECTION.txt

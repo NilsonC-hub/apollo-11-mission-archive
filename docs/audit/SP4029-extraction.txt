@@ -1,0 +1,38 @@
+PDF: NASA-APOLLO-NUMBERS.pdf
+Bytes: 36037981
+SHA-256: 2b8051684d39e0e8dfd914320908e3d67b3729b68ffc17d5ee96449fdeeb18af
+
+Page count: 344
+
+=== Searching for '109:24:15' ===
+Total matches: 2
+
+--- match on PDF page 104 (0-indexed: 103), char offset 3423 ---
+Context: ...rage as he descended. The com­ mander's left foot made first contact with the lunar surface at 02:56:15 GMT on 21 July (22:56:15 EDT on 20 July) at 109:24:15. His first words on the lunar surface were, "That's one small step for man, one giant leap for mankind." 1 According to the Apollo 11 Mission Report (MSC-00171), postflight analysis reveal...
+
+--- match on PDF page 118 (0-indexed: 117), char offset 175 ---
+Context: ...GMT GMT Event (hhh:mrn:ss) Time Date 1st step taken on lunar surface (CDR). "That's one small step for a man ... one giant leap for mankind:' 109:24:15.00 02:56:15 21 Jul 1969 CDR started surface examination and description, assessed mobility and described effects of LM descent engine. 109:24:48.00 02:56:48 21 Jul 1969 CDR ended sur...
+
+=== Searching for 'Apollo 11' timeline section markers ===
+PDF page 118: Apollo 11 Timeline  | GET  | GMT  | GMT  | Event  | (hhh:mrn:ss)  | Time  | Date  | 1st step taken on lunar surface (CDR). "That's one small step for a man ... one giant leap  | for mankind:'  | 109:24:15.00  | 02:56:15  | 21 Jul 1969  | CDR started surface examination and description, assessed mobility and described effects  | of LM descent engine.  | 109:24:48.00  | 02:56:48  | 21 Jul 1969  | CDR ended surface examination. LMP started to send down camera.  | 109:26:54.00  | 02:58:54  | 21 Jul 1969  | Camera installed on RCU bracket, LEC stored on secondary strut of LM landing gear.  | 109:30:23.00  | 03:02:23  | 21 Jul 1969  | Surface photogr
+
+PDF page 339: A  | Air Force Institute of Technology, see U.S. Air Force  | Institute of Technology  | Aldrin, Edwin "Buzz", 33, 90, 267, 268, 270, 309, 312   | Allen, Joseph, 187, 240, 270-71   | Anders, William, 33, 90, 145, 267, 268, 270, 309, 312   | Apennine Mountains, 184, 188   | Apollo 1 (AS-204)  | Background, 2   | The Accident, 2   | Chronology of the Fire, 7   | The Investigation, 8   | Causes of the Apollo 1 Fire, 9   | Spacecraft History, 10   | Fire Tirneline, 11   | Apollo 5, 52   | Apollo 7   | Background, 14   | Launch Preparations, 14-15   | Ascent Phase, 15   | Inflight activities, 15-20   | Recovery, 20-21   | Conclusions, 21   | O
+
+=== Searching for 'first step' / 'First Step' / 'small step' ===
+PDF page 17, phrase 'first step': ...that would vent the com­ mand module to the outside atmosphere. Although operation of this was the first step in established emergency egress procedures, such action would have been to no avail because the venting capacity was insufficient to prevent the rapid buildup of pressure due to the fire. It was estimated that opening the valve would have delayed command module rupture by less than o...
+
+PDF page 17, phrase 'First Step': ...that would vent the com­ mand module to the outside atmosphere. Although operation of this was the first step in established emergency egress procedures, such action would have been to no avail because the venting capacity was insufficient to prevent the rapid buildup of pressure due to the fire. It was estimated that opening the valve would have delayed command module rupture by less than o...
+
+PDF page 17, phrase 'FIRST STEP': ...that would vent the com­ mand module to the outside atmosphere. Although operation of this was the first step in established emergency egress procedures, such action would have been to no avail because the venting capacity was insufficient to prevent the rapid buildup of pressure due to the fire. It was estimated that opening the valve would have delayed command module rupture by less than o...
+
+PDF page 104, phrase 'small step': ...ly (22:56:15 EDT on 20 July) at 109:24:15. His first words on the lunar surface were, "That's one small step for man, one giant leap for mankind." 1 According to the Apollo 11 Mission Report (MSC-00171), postflight analysis revealed that there was 45 seconds of fuel remaining at lunar touchdown, not as little as 7 seconds as indicated by other sources. ~ Apollo by the Numbers...
+
+PDF page 104, phrase 'Small Step': ...ly (22:56:15 EDT on 20 July) at 109:24:15. His first words on the lunar surface were, "That's one small step for man, one giant leap for mankind." 1 According to the Apollo 11 Mission Report (MSC-00171), postflight analysis revealed that there was 45 seconds of fuel remaining at lunar touchdown, not as little as 7 seconds as indicated by other sources. ~ Apollo by the Numbers...
+
+PDF page 118, phrase 'small step': ...GET GMT GMT Event (hhh:mrn:ss) Time Date 1st step taken on lunar surface (CDR). "That's one small step for a man ... one giant leap for mankind:' 109:24:15.00 02:56:15 21 Jul 1969 CDR started surface examination and description, assessed mobility and described effects of LM descent engine. 109:24:48.00 02:56:48 21 Jul 1969 CDR ended surface examination. LMP started to send down c...
+
+PDF page 118, phrase 'Small Step': ...GET GMT GMT Event (hhh:mrn:ss) Time Date 1st step taken on lunar surface (CDR). "That's one small step for a man ... one giant leap for mankind:' 109:24:15.00 02:56:15 21 Jul 1969 CDR started surface examination and description, assessed mobility and described effects of LM descent engine. 109:24:48.00 02:56:48 21 Jul 1969 CDR ended surface examination. LMP started to send down c...
+
+=== Searching for Apollo 11 chapter page labels (e.g. '11-1', '11-2') ===
+PDF page 279: labels=['11-14'], has_109=False, has_:24:=False
+PDF page 284: labels=['11-12', '11-5', '11-7', '11-8'], has_109=True, has_:24:=False

@@ -1,0 +1,77 @@
+# Artemis Prototype Reuse Map
+
+**Phase**: 0
+**Source**: `docs/audit/ARTEMIS-REUSE-MAP.md`
+**Date**: 2026-07-13
+**Reference**: `D:\artemis-mission-archive` (read-only, per spec §4)
+
+## Purpose
+
+Per Production Spec §4 (`Based on redradman/artemis (MIT). Design brief: restrained, technical, credible.`) and §4.3 (attribution requirements), this document records which concepts, code patterns, and project-structure decisions may be inherited from the Artemis prototype, and which must NOT be carried over.
+
+The Artemis repo is read-only. **No file is copied verbatim.** Concepts are inherited; concrete mission data and rocket geometry are not.
+
+## What may be inherited
+
+| Concept / Pattern                                        | Artemis location                                                 | Apollo 11 reuse                                                                                          | Notes                                                                                                                                                                                      |
+| -------------------------------------------------------- | ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Two top-level modes (`01 ARCHIVE`, `02 MISSION CONTROL`) | `src/store/missionStore.ts` `appMode: 'archive' \| 'simulation'` | Same UX shape; rename `'simulation'` → `'replay'` per spec vocabulary                                    | Apollo uses `HISTORICAL REPLAY`, not `SIMULATION`                                                                                                                                          |
+| Restrained, technical visual tone                        | throughout                                                       | Yes — design brief is identical                                                                          | But color tokens differ (spec §21)                                                                                                                                                         |
+| Mission elapsed time as primary fact axis                | `src/hooks/useMissionPlayback.ts`                                | Yes — but split into MET / storyTime / visualTime per spec §11                                           | Apollo forbids using one 0–1 `t` for everything (spec §4.2)                                                                                                                                |
+| Event-driven phase navigation                            | `src/scenes/ArtemisII/data/phases.ts`                            | Yes — 12 phases per spec §12                                                                             | Apollo phase set is different (no lunar-orbit-ascent in Artemis)                                                                                                                           |
+| Component dossier pattern                                | `src/scenes/ArtemisII/data/components.ts`                        | Yes — Apollo has Saturn V / CSM / LM dossiers                                                            | Component set completely different                                                                                                                                                         |
+| Source-room concept                                      | Artemis docs/sources/                                            | Yes — Apollo source room is core to product                                                              | Source set completely different                                                                                                                                                            |
+| State machine via event reduction                        | `useMissionPlayback` derives state from `t`                      | Yes — but Apollo requires pure `stateAtMet(def, met)` in `mission-core`                                  | Apollo core must be React/Three/Zustand-free (spec §37)                                                                                                                                    |
+| Image plate pattern in Archive                           | Artemis `public/archive/plate-0*.jpg`                            | Yes — Apollo archive plates from `NASA-A11-IMAGES`                                                       | Different image set                                                                                                                                                                        |
+| Procedural wireframe rocket fallback                     | `src/scenes/ArtemisII/` (Rocket + R3F)                           | **No — but the pattern of "if model fails, show programmatic fallback" is inherited**                    | Apollo uses NASA GLBs, not procedural wireframes (spec §4.2). But the fallback principle (spec §29: "WebGL unavailable → static annotated plate; events still complete") is the same idea. |
+| MIT attribution chain                                    | `README.md`, `LICENSE`                                           | Yes — preserved in Apollo `README.md` + `LICENSE`                                                        | Apollo adds NASA public-domain notices per spec §4.3                                                                                                                                       |
+| Phase boundary holds                                     | `useMissionPlayback` `phaseHold`                                 | Yes — but Apollo distinguishes `HOLD` (operational) from `EVENT PAUSE — EDITORIAL` (spec §10 vocabulary) | Apollo forbids using `HOLD` for editor pauses                                                                                                                                              |
+| GO / NO-GO poll pattern                                  | Artemis Mission Control console                                  | Yes — Apollo has liftoff + TLI GO/NO-GO records                                                          | Different poll set per spec §19.1                                                                                                                                                          |
+| DSN handover + OWLT pattern                              | Artemis console                                                  | Yes — Apollo has MSFN handover + AOS/LOS                                                                 | Different network; Apollo uses MSFN not DSN                                                                                                                                                |
+| Strip chart for telemetry                                | Artemis console                                                  | Yes — but Apollo forbids fake continuous curves (spec §15)                                               | Apollo: discrete readings + `INTERPOLATED` only with cited bounds                                                                                                                          |
+| Starfield drift + celestial scaling                      | Artemis scene                                                    | Yes — but Apollo must use reference frames (spec §C.5)                                                   | Apollo: SYSTEM_FRAME, EARTH_ORBIT_FRAME, MOON_ORBIT_FRAME, LANDING_SITE_FRAME, EARTH_ENTRY_FRAME                                                                                           |
+| Vite + React 19 + TypeScript + R3F + Zustand toolchain   | All Artemis configs                                              | Yes — same stack per spec                                                                                | Apollo adds `@gltf-transform` + `draco3d` for Phase 0                                                                                                                                      |
+| ESLint + Prettier config style                           | Artemis `eslint.config.js`, `.prettierrc`                        | Yes — same shape                                                                                         | Apollo uses single-quote, no-semi (matches user CLAUDE.md style)                                                                                                                           |
+| `AGENTS.md` collaboration guide pattern                  | Artemis `AGENTS.md`                                              | Yes — Apollo has its own `AGENTS.md` pointing at the Production Spec                                     | Content different                                                                                                                                                                          |
+
+## What must NOT be inherited
+
+| Concept / Data                                        | Artemis location                         | Why excluded                                                                         | Apollo replacement                                                   |
+| ----------------------------------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------ | -------------------------------------------------------------------- |
+| Artemis II phase data (t-values, METs)                | `src/scenes/ArtemisII/data/phases.ts`    | Wrong mission; Apollo 11 has 12 phases per spec §12                                  | New `src/missions/apollo11/events.ts`                                |
+| Artemis II telemetry keyframes                        | `src/scenes/ArtemisII/data/telemetry.ts` | Wrong mission, wrong vehicle                                                         | New `src/missions/apollo11/telemetry/`                               |
+| SLS / Orion / ICPS / ESA terminology                  | throughout Artemis                       | Forbidden by spec §1.4.2 and §10                                                     | Saturn V / CSM-107 Columbia / LM-5 Eagle / S-IC / S-II / S-IVB       |
+| Artemis single `t: 0–1` as fact primary key           | `useMissionPlayback`                     | Forbidden by spec §4.2 and §11 — must not use 0–1 for fact time                      | `metSeconds` integer/float seconds (real MET)                        |
+| Procedural wireframe rocket as the _primary_ 3D model | `src/scenes/ArtemisII/Rocket*`           | Apollo uses NASA GLBs (spec §30)                                                     | NASA Saturn V + Lunar Module GLBs + reconstructed CSM                |
+| Artemis color tokens (`blueprint`, `space`)           | `src/store/missionStore.ts` theme types  | Apollo uses different tokens (spec §21)                                              | `archive-paper`, `ops-bg`, `ops-phosphor`, etc.                      |
+| `cinematic` theme                                     | Artemis `theme` types                    | Forbidden by spec §1.4.2 (retired from UI) — do not resurface                        | Apollo has only `archive` and `mission-control`                      |
+| Artemis GO/NO-GO poll wording                         | Artemis Mission Control                  | Different mission control positions                                                  | Apollo MCC roles: BOOST, ECOM, GUIDO, FIDO, CAPCOM, etc.             |
+| Artemis crew names / mission dates                    | throughout                               | Wrong mission                                                                        | Armstrong / Collins / Aldrin; 16–24 Jul 1969                         |
+| Artemis `redradman/artemis` repo URL in product UI    | Artemis footer                           | Attribution is preserved in README + LICENSE + Archive footer, not in product chrome | Same                                                                 |
+| Artemis vehicle stack geometry                        | `Rocket*` components                     | Wrong vehicle                                                                        | Saturn V three-stage stack + CSM + LM                                |
+| Artemis DSN as the network name                       | Artemis console                          | Wrong network — Apollo used MSFN (Manned Space Flight Network), not DSN              | MSFN stations: Goldstone, Honeysuckle Creek, Madrid, Carnarvon, etc. |
+| Artemis image plates (`public/archive/plate-0*.jpg`)  | `public/archive/`                        | Wrong mission photography                                                            | Apollo 11 plates from `NASA-A11-IMAGES` and `NASA-A11-MEDIA50`       |
+
+## Concrete code-pattern reuse (allowed, after rewrite)
+
+These Artemis patterns are valuable to copy conceptually but must be rewritten for the Apollo project:
+
+1. **`useMissionPlayback` hook** → rewrite as Apollo `useReplayPlayback` with the spec §11 three-axis time split. The Artemis hook conflates wall-clock, `t`, and phase state; Apollo must keep `storyTime` (ms, browser-driven), `MET` (seconds, fact axis), and `visualTime` (local animation) separate.
+2. **`missionStore` Zustand slices** → split per spec §38 into `playbackSlice`, `uiSlice`, `cameraSlice`, `audioSlice`. Artemis has a single store; Apollo separates interaction state from fact state (facts live in `mission-core` selectors, not Zustand).
+3. **`phases.ts` data shape** → mirror the structure (phase id, label, anchors, contents) but Apollo anchors must be Event IDs, not 0–1 `t` values (spec §12).
+4. **Archive section components** (`src/components/Archive/`) → mirror the section-based layout, but Apollo has 13 sections (00–12) per spec §17, not Artemis' 7.
+5. **Console components** (`src/components/Console/`) → mirror the panel structure, but Apollo has phase-specific console configurations per spec §19 (e.g., Lunar Surface Operations is a config change, not a separate mode).
+
+## Attribution commitment
+
+Per spec §4.3, the Apollo project preserves in its `README.md`, `LICENSE`, and Archive footer:
+
+- "Based on [`redradman/artemis`](https://github.com/redradman/artemis) (MIT)" with repository link
+- The MIT license chain attribution
+- "Not an official NASA product" disclaimer
+- NASA public-domain work notices (per asset, in the Source Manifest)
+
+## Open questions for Phase 1+
+
+1. Should any Artemis UI component be ported wholesale (rewritten) to Apollo, or should Apollo start from scratch and only inherit the patterns? **Recommendation**: start from scratch for UI components; the spec §4.2 explicitly warns against carrying over Artemis UI conventions like single-`t` playback.
+2. The Artemis repo's `useMissionPlayback` phase-boundary hold pattern is a useful starting point, but Apollo must distinguish operational `HOLD` (only when sourced) from `EVENT PAUSE — EDITORIAL` (spec §10). Should Phase 1 implement the editorial-pause state machine from scratch, or attempt to fork the Artemis pattern? **Recommendation**: from scratch — the spec requires the distinction to be first-class.

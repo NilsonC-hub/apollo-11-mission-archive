@@ -1,0 +1,32 @@
+# STL Inspection — Saturn V Printing Kit
+Source ZIP: NASA-MODEL-SATV-STL.zip
+Extracted to: D:\apollo-11-mission-archive\assets\raw\NASA-MODEL-SATV-STL-extracted
+
+STL count: 12
+
+| File | Bytes | SHA-256 | Triangles | Bounds min (x,y,z) | Bounds max (x,y,z) | Size (W x H x D) | Heuristic |
+|---|---:|---|---:|---|---|---|---|
+| command moduel.stl | 182684 | 12d6e8d1bc35a24fdc9f842fae54b7dfcb3790f9f49e92c9c3174b0cc5ee32b2 | 3,652 | (-16.73, -121.50, -8.03) | (17.22, -101.41, 25.87) | 33.95 x 20.09 x 33.90 | likely-centimeters-or-scaled |
+| escape tower.stl | 801584 | 42ff337d2c2f246cd731700fcd68d03236ee9246bc9da3e26b7391b31db0cb2d | 16,030 | (-19.23, -216.03, -10.46) | (19.08, -105.14, 27.90) | 38.31 x 110.89 x 38.36 | likely-millimeters |
+| fin (print 4).stl | 3384 | 89bb87aa90e3cd3e8bba76d177a40219944e6bb020230626bba5c6fd61f6f76e | 66 | (-91.33, 119.18, -2.84) | (-46.48, 148.17, 2.49) | 44.86 x 28.99 x 5.33 | likely-centimeters-or-scaled |
+| lem shroud.stl | 58184 | 03c45c2dbb7640038102df1c6306d5c054bffbbd55949511029d2047e1b34874 | 1,162 | (-29.29, -58.69, -20.17) | (29.01, 4.96, 37.92) | 58.31 x 63.65 x 58.09 | likely-centimeters-or-scaled |
+| S-IC bottom.stl | 1891434 | 1f7cd0a01026dcc1b7475d4327198aa6a0cb5d72be36ee45810c3138ee4fbb31 | 37,827 | (-62.32, -0.00, -62.45) | (62.24, 203.08, 62.11) | 124.56 x 203.09 x 124.56 | likely-millimeters |
+| S-IC joining cube.stl | 684 | 66ad879b02f5dc5e96f697a6425808a351ad970077dfe60eb936c657baf649cc | 12 | (-22.90, -22.90, -22.90) | (22.90, 22.90, 22.90) | 45.79 x 45.79 x 45.79 | likely-centimeters-or-scaled |
+| S-IC top.stl | 820384 | 8e1cfb31c2aaeee6c5339a236e635b8ae92019bf7dc209a163c9d3a64fb8605c | 16,406 | (-45.08, -78.51, -45.22) | (45.02, 88.81, 44.88) | 90.10 x 167.32 x 90.10 | likely-millimeters |
+| S-II.stl | 816184 | dcfca68d42222dde64e1461bae5f0a0ac6aa18ad837d3511fc0be7edebb9fe36 | 16,322 | (-48.05, 119.98, -36.64) | (45.13, 384.68, 54.18) | 93.18 x 264.70 x 90.82 | likely-millimeters |
+| S-IV b.stl | 836634 | 65bca1d8aa5865d1d3ec456ff31a7da68d52bffb040c4fcb866947998b2ea3d8 | 16,731 | (-32.40, -12.65, -24.22) | (31.10, 169.09, 41.84) | 63.50 x 181.73 x 66.06 | likely-millimeters |
+| service module.stl | 2329184 | 1e7b612d310ba2b8ca6f16321888726afc4f081c8c44991fddd1997184e79fbe | 46,582 | (-20.21, -111.53, -13.66) | (19.70, -30.16, 28.62) | 39.91 x 81.37 x 42.29 | likely-centimeters-or-scaled |
+| stage 1-2 coupler v2.stl | 331184 | 3a696ddc2e2aac0f2b7532da607c4c5eac8d647efad586596d88724d92ed63a7 | 6,622 | (-45.21, -43.42, -45.21) | (45.18, 53.43, 45.18) | 90.39 x 96.85 x 90.39 | likely-centimeters-or-scaled |
+| stage 1-2 coupler.stl | 207484 | 353d9d13fd08eb24043f3a776a9a5febfb6da8b60e848259aff41037307b3623 | 4,148 | (-45.66, 339.95, -36.60) | (44.73, 436.80, 53.79) | 90.39 x 96.85 x 90.39 | likely-centimeters-or-scaled |
+
+## CSM reconstruction relevance
+
+Files of interest for ADR-006 CSM reconstruction:
+- `service module.stl` — explicitly named, SM candidate
+- `escape tower.stl` — LES, top of CSM stack
+- `lem shroud.stl` — SLA (Spacecraft/LM Adapter), the conical adapter between S-IVB and CSM
+- `command module.stl` — NOT PRESENT in this kit (the CM is not a separate STL)
+
+Implication: Path 2 (STL kit) provides SM + LES + SLA but NOT CM.
+The CM must come from Path 3 (extract from Saturn V GLB top) or Path 4 (self-build).
+Recommendation: combine Path 2 (SM/LES/SLA) + Path 3 (CM from GLB) hybrid approach.
