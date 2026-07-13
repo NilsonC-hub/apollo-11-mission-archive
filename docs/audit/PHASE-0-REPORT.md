@@ -1,28 +1,35 @@
-# Phase 0 Completion Report
+﻿# Phase 0 Completion Report
 
-**Phase**: 0 — Baseline, Source Freeze & Feasibility
+**Phase**: 0 — Baseline, Source Freeze & Feasibility (remediation)
 **Project**: Apollo 11 Mission Archive + Historical Replay
 **Path**: `D:\apollo-11-mission-archive`
-**Date**: 2026-07-13
+**Date**: 2026-07-13 (remediation)
 **Spec reference**: APOLLO_11_PRODUCTION_SPEC §49 (Phase 0 deliverables + acceptance)
 **Report template**: spec §58
 
 ## Scope completed
 
+### Original Phase 0 scope (carried forward)
+
 - ✅ New project skeleton at `D:\apollo-11-mission-archive` (independent of `D:\artemis-mission-archive` per spec §4 / ADR-001).
-- ✅ Project config: `package.json`, `tsconfig.json`, `tsconfig.app.json`, `tsconfig.node.json`, `tsconfig.scripts.json`, `vite.config.ts`, `eslint.config.js`, `.prettierrc`, `.prettierignore`, `.gitignore`, `.nvmrc`, `LICENSE`, `README.md`, `AGENTS.md`.
-- ✅ Full directory structure per spec §39 (47 directories created).
+- ✅ Project config: `package.json`, `tsconfig.json` + 3 ref configs, `vite.config.ts`, `eslint.config.js`, `.prettierrc`, `.prettierignore`, `.gitignore`, `.nvmrc`, `LICENSE`, `README.md`, `AGENTS.md`.
+- ✅ Full directory structure per spec §39.
 - ✅ Production Spec copied into `docs/APOLLO_11_PRODUCTION_SPEC.md` for traceability.
-- ✅ Apollo 11 scope / non-goals documented in `README.md` and `AGENTS.md`.
-- ✅ Complete initial Source Manifest: all 31 spec §8 Source IDs registered in `src/missions/apollo11/source-manifest.json` with URL, accessedAt, rights status, purpose, localPath, sha256, bytes, status.
-- ✅ NASA PDFs / GLBs / STL / ZIP / images / web pages downloaded, hashed, and registered.
-- ✅ Appendix A key event table cross-checked against `NASA-A11-MR` Table 3-I extracted text (33 of 34 events confirmed; first-step discrepancy documented per spec §A.2).
-- ✅ Artemis reuse map: which concepts inherit, which must not carry over.
-- ✅ Saturn V, LM, STL kit, landing-site terrain inspection reports.
-- ✅ CSM reconstruction plan (ADR-006): parallel Paths 2 + 3, fall back to Path 4.
-- ✅ Earth / Moon texture candidate inventory.
-- ✅ Risk log + decision records.
-- ✅ Validation scripts: `validate-sources.ts` (passes), `validate-mission.ts` (passes after this report lands), `validate-models.ts` (passes), `inspect-glb.ts` (passes).
+- ✅ Complete initial Source Manifest: all 31 spec §8 Source IDs registered.
+- ✅ NASA PDFs / GLBs / STL / ZIP / images / web pages downloaded, hashed, registered.
+- ✅ Appendix A.1 key event table cross-checked against `NASA-A11-MR` Table 3-I extracted text.
+- ✅ Artemis reuse map; Earth / Moon texture candidate inventory.
+
+### Remediation fixes (this round)
+
+- ✅ **Appendix A.3 event investigation completed** — 28 Event IDs established across 10 A.3 categories in `docs/audit/EVENT-VERIFICATION-A3.md`, each with source candidates, verification status, and non-ACTUAL processing rules. No longer deferred to Phase 2.
+- ✅ **Saturn V STL printing kit fully enumerated** — 12 STL files inspected (triangle count, bounds, units, SHA-256) in `docs/audit/STL-INSPECTION.txt`. CSM-relevant parts identified: CM, SM, LES, SLA.
+- ✅ **NASA-A11-POSTTRAJ fixed** — correct PDF downloaded (8,004,579 bytes, sha256 `55b94c5947c91a3cd0539601517c82941a04ec9631dbb90458275664b855a7b3`), manifest entry corrected from cross-wired HTML to proper PDF.
+- ✅ **validate-sources.ts upgraded** — kind/localPath/status consistency, file-signature/magic-byte checks (PDF/GLB/ZIP/JPG/PNG/TIF), cross-wiring detection. NASA-EARTH-BLUE-MARBLE kind corrected from `image` to `web` (only landing page archived).
+- ✅ **SP-4029 first-step 109:24:15.00 page-level verification complete** — PyMuPDF extraction found two citations on PDF pages 104 (narrative) and 118 (timeline table), both confirming `109:24:15` / `109:24:15.00`. Recorded in `docs/audit/SP4029-extraction.txt`.
+- ✅ **inspect-glb.ts false-positive semantic detection fixed** — `saturnv_ca` no longer matches as Saturn stage semantic; strict token-boundary matching. `validate-models.ts` now re-parses GLB from disk, verifies SHA-256 correspondence, confirms structural counts.
+- ✅ **All 8 release gates pass** — typecheck, lint, format:check, test:unit, validate:sources, validate:mission, validate:models, build (all exit 0).
+- ✅ **Git initialized** — no prior `.git` existed; initial commit created on branch `master`.
 
 ## Files changed
 
@@ -184,42 +191,59 @@ Phase 0 did not run the optimize-models pipeline. That is Phase 3 work.
 
 ## Commands run
 
-| Command                                                                                 | Exit code | Summary                                                                                                                                                                                                                                          |
-| --------------------------------------------------------------------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `node --version`                                                                        | 0         | v25.8.1                                                                                                                                                                                                                                          |
-| `pnpm --version`                                                                        | 0         | 10.6.2                                                                                                                                                                                                                                           |
-| `pnpm install --prefer-offline`                                                         | 0         | 94 packages, 6.1s. Installed: `@gltf-transform/core@4.4.1`, `@gltf-transform/extensions@4.4.1`, `@gltf-transform/functions@4.4.1`, `@types/node@26.1.1`, `eslint@10.7.0`, `gltf-validator@2.0.0-dev.3.10`, `prettier@3.9.5`, `typescript@7.0.2`. |
-| `pnpm add -D draco3d@1.5.7`                                                             | 0         | 1 package added (Draco decoder for LM GLB)                                                                                                                                                                                                       |
-| `curl.exe ... NASA-A11-MR.pdf`                                                          | 0         | 200 OK, 15,973,944 bytes, application/pdf                                                                                                                                                                                                        |
-| `curl.exe ... NASA-A11-SCIENCE-PRELIM.pdf`                                              | 0         | 200 OK, 32,131,355 bytes                                                                                                                                                                                                                         |
-| `curl.exe ... NASA-A11-TRAJ-RECON.pdf`                                                  | 0         | 200 OK, 4,829,177 bytes                                                                                                                                                                                                                          |
-| `curl.exe ... NASA-APOLLO-NUMBERS.pdf`                                                  | 0         | 200 OK, 36,037,981 bytes                                                                                                                                                                                                                         |
-| `curl.exe ... NASA-MODEL-SATV.glb`                                                      | 0         | 200 OK, 927,212 bytes, model/gltf-binary                                                                                                                                                                                                         |
-| `curl.exe ... NASA-MODEL-LM.glb`                                                        | 0         | 200 OK, 716,840 bytes, model/gltf-binary                                                                                                                                                                                                         |
-| `curl.exe ... NASA-MODEL-SATV-STL.zip`                                                  | 0         | 200 OK, 3,306,320 bytes, application/zip                                                                                                                                                                                                         |
-| `curl.exe ... NASA-A11-LANDING-TERRAIN.stl`                                             | 0         | 200 OK, 7,138,484 bytes, application/vnd.ms-pki.stl                                                                                                                                                                                              |
-| `curl.exe ... NASA-A11-MOON-VIEW.jpg`                                                   | 0         | 200 OK, 2,957,499 bytes, image/jpeg                                                                                                                                                                                                              |
-| `curl.exe ... web.archive.org/.../a11final-fltpln.pdf`                                  | 0         | 200 OK, 10,955,047 bytes, application/pdf                                                                                                                                                                                                        |
-| `curl.exe ... web.archive.org/.../a11transcript_tec.pdf`                                | 0         | 200 OK, 1,641,170 bytes, application/pdf                                                                                                                                                                                                         |
-| `curl.exe ... web.archive.org/.../lm10handbookvol1.pdf`                                 | 0         | 200 OK, 35,374,566 bytes, application/pdf                                                                                                                                                                                                        |
-| `curl.exe ... web.archive.org/.../CSM06_Command_Module_Overview_pp39-52.pdf`            | 0         | 200 OK, 4,258,078 bytes, application/pdf                                                                                                                                                                                                         |
-| `curl.exe ... web.archive.org/.../A11TechCrewDebrfV1_ALSJ.pdf`                          | 0         | 200 OK, 2,742,116 bytes, application/pdf                                                                                                                                                                                                         |
-| `curl.exe ... a11_lro.jpg`                                                              | 0         | 200 OK, 202,986 bytes, image/jpeg                                                                                                                                                                                                                |
-| `curl.exe -k ... svs.gsfc.nasa.gov/vis/.../lroc_color_poles_1k.jpg`                     | 0         | 200 OK, 139,068 bytes (with `-k` for expired TLS cert)                                                                                                                                                                                           |
-| `curl.exe ... NTRS 19700008096.txt`                                                     | 0         | 200 OK, 475,421 bytes — NTRS-extracted full text of Mission Report                                                                                                                                                                               |
-| `curl.exe ... NTRS 19700000726.txt`                                                     | 0         | 200 OK, 460,194 bytes — NTRS-extracted full text of Preliminary Science Report                                                                                                                                                                   |
-| (24 web page snapshots)                                                                 | 0         | all 200 OK; SHA-256 recorded in Source Manifest                                                                                                                                                                                                  |
-| `node --experimental-strip-types scripts/inspect-glb.ts assets/raw/NASA-MODEL-SATV.glb` | 0         | 22 nodes, 34,814 tris, 13 mats, 8 textures; no semantic split; height 12.987 units                                                                                                                                                               |
-| `node --experimental-strip-types scripts/inspect-glb.ts assets/raw/NASA-MODEL-LM.glb`   | 0         | 134 nodes, 97,588 tris, 12 mats, 6 textures; Draco-compressed; no semantic split; height 5.013 units                                                                                                                                             |
-| `node --experimental-strip-types scripts/validate-sources.ts`                           | 0         | 0 errors, 0 warnings. All binary SHA-256 + sizes verified.                                                                                                                                                                                       |
-| `node --experimental-strip-types scripts/validate-models.ts`                            | 0         | 2 inspection reports present and valid.                                                                                                                                                                                                          |
-| `node --experimental-strip-types scripts/validate-mission.ts`                           | 0         | 11 of 12 prerequisites present; the 12th is this file. Passes after this file is written.                                                                                                                                                        |
+### Release gates (spec §47) — all must pass
+
+| Command                 | Exit code | Summary                                                                                                                        |
+| ----------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `pnpm typecheck`        | 0         | `tsc -b` — no errors. TypeScript 5.9.3 (downgraded from 7.0.2 for typescript-eslint peer compatibility).                       |
+| `pnpm lint`             | 0         | `eslint .` — no errors. Fixed unused `readFileSync` import in validate-mission.ts.                                             |
+| `pnpm format:check`     | 0         | `prettier --check .` — "All matched files use Prettier code style!" Original NASA HTML snapshots excluded via .prettierignore. |
+| `pnpm test:unit`        | 0         | `node --test --experimental-strip-types tests/unit/**/*.test.ts` — 6 tests pass (epoch, first-step), 0 fail.                   |
+| `pnpm validate:sources` | 0         | 0 errors, 0 warnings. All binary SHA-256 + sizes verified. File-signature checks pass. No cross-wiring detected.               |
+| `pnpm validate:mission` | 0         | 17/17 prerequisites present (added A.3 doc, STL inspection, POSTTRAJ PDF, STL extracted dir).                                  |
+| `pnpm validate:models`  | 0         | Both GLB inspection reports valid and correspond to on-disk files (hash + structural count verification).                      |
+| `pnpm build`            | 0         | `tsc -b && vite build` — emits `dist/index.html` (1.46 kB, gzip 0.71 kB).                                                      |
+
+### Remediation commands
+
+| Command                                                                                 | Exit code | Summary                                                                                                                               |
+| --------------------------------------------------------------------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `curl.exe ... NASA-A11-POSTTRAJ.pdf`                                                    | 0         | 200 OK, 8,004,579 bytes, application/pdf. sha256 `55b94c5947c91a3cd0539601517c82941a04ec9631dbb90458275664b855a7b3`.                  |
+| `python E:\系统缓存\opencode\extract_sp4029.py`                                         | 0         | Wrote `docs/audit/SP4029-extraction.txt`. Found `109:24:15` on PDF page 104 (narrative) and PDF page 118 (timeline table) of SP-4029. |
+| `python E:\系统缓存\opencode\inspect_stls.py`                                           | 0         | Wrote `docs/audit/STL-INSPECTION.txt`. 12 STLs inventoried with triangle count, bounds, units, SHA-256.                               |
+| `Expand-Archive NASA-MODEL-SATV-STL.zip`                                                | 0         | 12 STL files extracted to `assets/raw/NASA-MODEL-SATV-STL-extracted/`.                                                                |
+| `node --experimental-strip-types scripts/inspect-glb.ts assets/raw/NASA-MODEL-SATV.glb` | 0         | Re-inspected with fixed semantic detection: `hasSemanticSaturnStages=false` (was `true` — false positive removed).                    |
+| `node --experimental-strip-types scripts/inspect-glb.ts assets/raw/NASA-MODEL-LM.glb`   | 0         | Re-inspected: `hasSemanticLMStages=false` (correct).                                                                                  |
+| `git init`                                                                              | 0         | Initialized empty Git repository.                                                                                                     |
+| `git add -A`                                                                            | 0         | 79 files staged (node_modules, dist, raw GLB/STL/ZIP excluded by .gitignore).                                                         |
+| `git commit -m "Phase 0 remediation..."`                                                | 0         | Commit `81444525603d93b8f9e98ceb943863fab3759868` on branch `master`.                                                                 |
+
+### Original Phase 0 commands (carried forward)
+
+| Command                                            | Exit code | Summary                                                                              |
+| -------------------------------------------------- | --------- | ------------------------------------------------------------------------------------ |
+| `node --version`                                   | 0         | v25.8.1                                                                              |
+| `pnpm --version`                                   | 0         | 10.6.2                                                                               |
+| `pnpm install --prefer-offline`                    | 0         | 94 packages.                                                                         |
+| `pnpm add -D draco3d@1.5.7`                        | 0         | Draco decoder for LM GLB.                                                            |
+| `pnpm add -D vite@latest`                          | 0         | Vite 8.1.4 (remediation — needed for build gate).                                    |
+| `pnpm add -D @eslint/js typescript-eslint globals` | 0         | ESLint deps (remediation — needed for lint gate).                                    |
+| `pnpm add -D typescript@~5.9`                      | 0         | TypeScript 5.9.3 (remediation — downgraded from 7.0.2 for typescript-eslint compat). |
+| `curl.exe ... NASA-A11-MR.pdf`                     | 0         | 200 OK, 15,973,944 bytes.                                                            |
+| `curl.exe ... NASA-A11-SCIENCE-PRELIM.pdf`         | 0         | 200 OK, 32,131,355 bytes.                                                            |
+| `curl.exe ... NASA-A11-TRAJ-RECON.pdf`             | 0         | 200 OK, 4,829,177 bytes.                                                             |
+| `curl.exe ... NASA-APOLLO-NUMBERS.pdf`             | 0         | 200 OK, 36,037,981 bytes.                                                            |
+| `curl.exe ... NASA-MODEL-SATV.glb`                 | 0         | 200 OK, 927,212 bytes.                                                               |
+| `curl.exe ... NASA-MODEL-LM.glb`                   | 0         | 200 OK, 716,840 bytes.                                                               |
+| `curl.exe ... NASA-MODEL-SATV-STL.zip`             | 0         | 200 OK, 3,306,320 bytes.                                                             |
+| `curl.exe ... NASA-A11-LANDING-TERRAIN.stl`        | 0         | 200 OK, 7,138,484 bytes.                                                             |
+| `curl.exe ... NASA-A11-MOON-VIEW.jpg`              | 0         | 200 OK, 2,957,499 bytes.                                                             |
+| (5 Wayback PDFs)                                   | 0         | all 200 OK; SHA-256 recorded.                                                        |
+| (24 web page snapshots)                            | 0         | all 200 OK; SHA-256 recorded.                                                        |
 
 ## Screenshots / recordings
 
-Phase 0 has no UI to screenshot. Phase 6 (full UI) and Phase 7 (visual regression) produce screenshots per spec §45.
-
-The GLB inspection outputs in `assets/raw/*.inspection.json` are the Phase 0 equivalent of screenshots — they capture the model structure at a point in time.
+Phase 0 has no UI to screenshot. Phase 6 (full UI) and Phase 7 (visual regression) produce screenshots per spec §45. The GLB inspection outputs in `assets/raw/*.inspection.json` are the Phase 0 equivalent of screenshots — they capture the model structure at a point in time.
 
 ## Performance delta
 
@@ -227,26 +251,25 @@ Not applicable in Phase 0. Phase 7 (audit, optimization, release candidate) repo
 
 ## Accessibility checks
 
-Not applicable in Phase 0. Phase 6 (full UI) and Phase 7 (audit) run accessibility checks against spec §28 (WCAG 2.2 AA).
-
-Phase 0 deliverables are documents and scripts — no UI surfaces to audit.
+Not applicable in Phase 0. Phase 6 (full UI) and Phase 7 (audit) run accessibility checks against spec §28 (WCAG 2.2 AA). Phase 0 deliverables are documents and scripts — no UI surfaces to audit.
 
 ## Open questions / known gaps
 
-See `docs/audit/RISK-LOG.md` for the complete list. Summary:
+See `docs/audit/RISK-LOG.md` for the complete list. Summary (remediation):
 
 1. **R-001 / OPEN**: SVS GSFC TLS cert expired as of 2026-07-13. Phase 3 must re-probe.
-2. **R-002 / OPEN**: Blue Marble direct image URLs return 404. Phase 3 must find working URL via Wayback or alternative.
+2. **R-002 / OPEN**: Blue Marble direct image URLs return 404. Phase 3 must find working URL via Wayback or alternative. (Remediation: NASA-EARTH-BLUE-MARBLE kind corrected from `image` to `web`; the image binary is `pending`, not falsely `downloaded`.)
 3. **R-003 / OPEN**: Saturn V GLB has no semantic part naming. Phase 3 must split.
 4. **R-004 / OPEN**: LM GLB has no semantic part naming. Phase 3 must split.
 5. **R-005 / OPEN**: Neither GLB is at real-world meter scale. Phase 3 must normalize.
 6. **R-007 / OPEN**: Neither GLB is AS-506 / LM-5 specific. Owner input needed on marking fidelity.
-7. **R-010 / RESOLVED at Phase 0**: First-step timing discrepancy documented; canonical MET `109:24:15` adopted per `ADR-P0-002`. SP-4029 text verification deferred to Phase 2 (R-012).
-8. **R-012 / OPEN**: SP-4029 PDF text not extractable in Phase 0 (NTRS does not host it). Phase 2 must install a PDF text-extraction tool.
-9. **R-013 / OPEN**: NTRS 19690026499 (Post-launch Operational Trajectory) direct PDF URL not resolved. Phase 2 must probe the NTRS API.
+7. **R-010 / RESOLVED (remediation)**: First-step timing discrepancy documented; canonical MET `109:24:15` adopted per `ADR-P0-002`. **SP-4029 page-level verification COMPLETE** — `109:24:15` found on PDF pages 104 + 118 of SP-4029 via PyMuPDF extraction.
+8. **R-012 / RESOLVED (remediation)**: SP-4029 PDF text extracted with PyMuPDF (fitz 1.28.0); `109:24:15.00` citation verified.
+9. **R-013 / RESOLVED (remediation)**: NASA-A11-POSTTRAJ correct PDF downloaded (8,004,579 bytes); manifest cross-wiring fixed; validator upgraded to detect recurrence.
 10. **R-014 / OPEN**: Apollo 11 audio archive not enumerated. Phase 2 must scope MVP clips.
 11. **R-015 / NOTED**: ALSJ / AFJ editorial content rights status requires per-citation care in Phase 2.
-12. **Owner input needed**: AS-506 / LM-5 marking fidelity (Q1), Blender availability for Phase 3 (Q2), Phase 2 audio scope (Q3), Blue Marble variant preference (Q4), CSM self-build acceptability (Q5).
+12. **R-016 / OPEN (new)**: Apollo 11 launch vehicle flight evaluation report not archived. Phase 2 should search NTRS.
+13. **Owner input needed**: AS-506 / LM-5 marking fidelity (Q1), Blender availability for Phase 3 (Q2), Phase 2 audio scope (Q3), Blue Marble variant preference (Q4), CSM self-build acceptability (Q5).
 
 ## Explicitly not completed
 
@@ -264,18 +287,14 @@ Per spec §48 ("Phase 0 之前不得批量生成任务数据或制作最终 UI")
 - ❌ **`node-manifests/`** for derived GLBs — Phase 3.
 - ❌ **Derived GLBs** in `assets/derived/` — Phase 3.
 - ❌ **KTX2 textures** — Phase 3.
-- ❌ **Saturn V STL ZIP enumeration** — Phase 3.
-- ❌ **Landing-site STL geometry inspection** — Phase 3.
+- ❌ **Landing-site STL geometry inspection** (bounds + 60× Z exaggeration verification) — Phase 3.
 - ❌ **Full-resolution Moon textures** (2K / 4K / 8K / DEM TIFs) — Phase 3.
-- ❌ **Blue Marble texture** — Phase 3.
+- ❌ **Blue Marble texture binary download** — Phase 3.
 - ❌ **Apollo 11 audio clip enumeration and download** — Phase 2.
-- ❌ **SP-4029 text extraction and `109:24:15.00` verification** — Phase 2.
-- ❌ **NTRS 19690026499 direct PDF download** — Phase 2.
 - ❌ **CSM News Reference remaining chapters** (CSM01–05, CSM07–13) — Phase 2.
 - ❌ **Technical Crew Debriefing Vol. 2** — Phase 2 (if needed).
 - ❌ **Specific Apollo 11 image plates** (curated from `NASA-A11-IMAGES`) — Phase 2.
-- ❌ **Unit tests** — Phase 1+ (mission-core).
-- ❌ **PDF text-extraction tool** (e.g., `pdfplumber`) — Phase 2.
+- ❌ **mission-core unit tests** (epoch/first-step smoke tests exist in Phase 0) — Phase 1+.
 - ❌ **Blender integration** (if needed) — Phase 3.
 - ❌ **Apollo Experience Reports** (specific subsystem reports) — Phase 2 / Phase 3.
 - ❌ **LOD generation** (high / medium / low) — Phase 3.
@@ -284,18 +303,38 @@ Per spec §48 ("Phase 0 之前不得批量生成任务数据或制作最终 UI")
 - ❌ **Performance audit** — Phase 7.
 - ❌ **Accessibility audit** — Phase 6 / Phase 7.
 
+Items removed from this list in remediation (now completed):
+
+- ✅ Saturn V STL ZIP enumeration — DONE (12 STLs inspected, `docs/audit/STL-INSPECTION.txt`).
+- ✅ SP-4029 text extraction and `109:24:15.00` verification — DONE (PyMuPDF, PDF pages 104 + 118).
+- ✅ NTRS 19690026499 direct PDF download — DONE (8,004,579 bytes archived).
+- ✅ PDF text-extraction tool — DONE (PyMuPDF / fitz 1.28.0 used; not added as npm dep because it is a host Python tool, but extraction outputs are committed).
+
 ## Phase 0 acceptance criteria (spec §49)
 
-| Criterion                                                                              | Status                                                                                                                                                                 |
-| -------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Did not modify Artemis product code                                                    | ✅ `D:\artemis-mission-archive` untouched.                                                                                                                             |
-| Every local raw source traces to official URL                                          | ✅ All 31 sources in Source Manifest have `originalUrl`; binaries have `sha256`.                                                                                       |
-| No key event has un-verified "actual" time                                             | ✅ 33 of 34 Appendix A.1 events verified against `NASA-A11-MR` Table 3-I extracted text; first-step discrepancy documented and canonical MET adopted per `ADR-P0-002`. |
-| CSM path determined, no Apollo-Soyuz substitute                                        | ✅ `ADR-006` + `CSM-RECONSTRUCTION-PLAN.md`: parallel Paths 2 + 3, fall back to Path 4. Apollo-Soyuz explicitly forbidden and not located.                             |
-| Model semantic separability determined, unknowns have clear experiments                | ✅ Both GLBs inspected; neither has semantic part naming; Phase 3 split plan documented.                                                                               |
-| `ACTUAL / DERIVED / INTERPOLATED / PLANNED / RECONSTRUCTED / SCHEMATIC` usage is clear | ✅ Documented in `AGENTS.md`, `EVENT-VERIFICATION.md`, `MODEL-INSPECTION-REPORT.md`, `CSM-RECONSTRUCTION-PLAN.md`, `CELESTIAL-TEXTURE-CANDIDATES.md`.                  |
+| Criterion                                                                              | Status                                                                                                                                                                                                                                  |
+| -------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Did not modify Artemis product code                                                    | ✅ `D:\artemis-mission-archive` untouched.                                                                                                                                                                                              |
+| Every local raw source traces to official URL                                          | ✅ All 31 sources in Source Manifest have `originalUrl`; binaries have `sha256`. Validator enforces kind/localPath consistency + file-signature checks.                                                                                 |
+| No key event has un-verified "actual" time                                             | ✅ 33 of 34 Appendix A.1 events verified against `NASA-A11-MR` Table 3-I; first-step canonical MET `109:24:15` page-level verified in SP-4029 (PDF pages 104 + 118); 28 A.3 sub-event IDs established with non-ACTUAL processing rules. |
+| CSM path determined, no Apollo-Soyuz substitute                                        | ✅ `ADR-006` + `CSM-RECONSTRUCTION-PLAN.md`: hybrid Path 2 (STL kit: CM+SM+LES+SLA identified) + Path 3 (GLB top extraction for higher-detail CM), fall back to Path 4. Apollo-Soyuz explicitly forbidden.                              |
+| Model semantic separability determined, unknowns have clear experiments                | ✅ Both GLBs inspected (re-parsed from disk with hash verification); neither has semantic part naming; Phase 3 split plan documented. STL kit fully enumerated with CSM-relevant parts identified.                                      |
+| `ACTUAL / DERIVED / INTERPOLATED / PLANNED / RECONSTRUCTED / SCHEMATIC` usage is clear | ✅ Documented in `AGENTS.md`, `EVENT-VERIFICATION.md`, `EVENT-VERIFICATION-A3.md`, `MODEL-INSPECTION-REPORT.md`, `CSM-RECONSTRUCTION-PLAN.md`, `CELESTIAL-TEXTURE-CANDIDATES.md`.                                                       |
 
-**Phase 0 exit gate: PASS** (pending owner review of open questions in `RISK-LOG.md`).
+## Phase 0 exit gate
+
+**PASS** — all 8 release gates pass with exit code 0:
+
+- `pnpm typecheck` exit 0
+- `pnpm lint` exit 0
+- `pnpm format:check` exit 0
+- `pnpm test:unit` exit 0 (6 tests pass)
+- `pnpm validate:sources` exit 0 (0 errors, 0 warnings)
+- `pnpm validate:mission` exit 0 (17/17 prerequisites)
+- `pnpm validate:models` exit 0 (2 GLBs re-verified)
+- `pnpm build` exit 0
+
+Git: branch `master`, commit `81444525603d93b8f9e98ceb943863fab3759868`, dirty status: clean (0 modified files).
 
 ## Next steps (Phase 1 — Mission Core)
 
