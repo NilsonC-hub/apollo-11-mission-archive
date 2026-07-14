@@ -713,9 +713,11 @@ test('adjacent event button and keyboard navigation land on target and pause rep
   await waitForScene(page)
   await page.locator('.scene-frame').focus()
   await page.keyboard.press('l')
-  await expect(page.getByRole('button', { name: 'PLAY', exact: true })).toBeVisible()
   const firstDocking = getEvent('a11-first-docking')
-  expect(new URL(page.url()).pathname).toBe(controlMetPath(firstDocking.metSeconds))
+  await expect
+    .poll(() => new URL(page.url()).pathname)
+    .toBe(controlMetPath(firstDocking.metSeconds))
+  await expect(page.getByRole('button', { name: 'PLAY', exact: true })).toBeVisible()
   await expect(page.locator('.met-display')).toHaveText(formatEventMet(firstDocking))
 })
 
@@ -799,6 +801,16 @@ test('more than 32 replace scrubs cannot evict a reachable traversal snapshot', 
     await expect
       .poll(() => page.evaluate(() => history.state?.key as string | undefined))
       .not.toBe(previousKey)
+    const currentKey = await page.evaluate(() => history.state?.key as string | undefined)
+    expect(currentKey).toBeDefined()
+    await expect
+      .poll(() =>
+        page.evaluate((expectedKey) => {
+          const entryId = history.state?.__apollo11ControlEntryId
+          return typeof entryId === 'string' && entryId.startsWith(`control:${expectedKey}:`)
+        }, currentKey),
+      )
+      .toBe(true)
   }
   expect(await page.evaluate(() => history.length)).toBe(historyAfterPush)
 
