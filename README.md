@@ -25,16 +25,17 @@ a NASA-source PDF or be labelled schematic.
 
 Phase 0 (baseline/source freeze), Phase 1 (mission core), Phase 2 (Apollo 11
 mission pack), Phase 3 (model/celestial asset pipeline), Phase 4
-(Launch / Earth Orbit / TLI), and Phase 5 (Translunar / Lunar / Return) are
-complete. The deterministic replay now spans launch through splashdown. Phase
-6 final Archive/UI closure and Phase 7 release audit remain pending.
+(Launch / Earth Orbit / TLI), Phase 5 (Translunar / Lunar / Return), and Phase
+6 (complete Archive / Mission Control UI) are complete. The deterministic
+replay spans launch through splashdown; Phase 7 release audit remains pending.
 See
 [`docs/audit/PHASE-0-REPORT.md`](./docs/audit/PHASE-0-REPORT.md),
 [`docs/audit/PHASE-1-REPORT.md`](./docs/audit/PHASE-1-REPORT.md), and
 [`docs/audit/PHASE-2-REPORT.md`](./docs/audit/PHASE-2-REPORT.md), and
 [`docs/audit/PHASE-3-REPORT.md`](./docs/audit/PHASE-3-REPORT.md), and
 [`docs/audit/PHASE-4-REPORT.md`](./docs/audit/PHASE-4-REPORT.md), and
-[`docs/audit/PHASE-5-REPORT.md`](./docs/audit/PHASE-5-REPORT.md).
+[`docs/audit/PHASE-5-REPORT.md`](./docs/audit/PHASE-5-REPORT.md), and
+[`docs/audit/PHASE-6-REPORT.md`](./docs/audit/PHASE-6-REPORT.md).
 
 The separate `prototype/` directory is a labelled, non-production visual and
 interaction study. It is not imported by the production build; the production
@@ -79,7 +80,7 @@ pnpm validate:sources       # verify Source Manifest references + hashes
 pnpm validate:mission       # verify event table + fact coverage
 pnpm validate:models         # verify Node Manifests + GLB parseability
 pnpm validate:decoders      # offline-decode GLBs and validate KTX2 assets
-pnpm test:unit              # run source/core/pack/asset/Phase 4–5 regression tests
+pnpm test:unit              # run source/core/pack/asset/Phase 4–6 regression tests
 pnpm bootstrap:ktx          # provision pinned project-local Khronos tools
 pnpm optimize:models        # reproducibly generate three vehicle LOD sets
 pnpm optimize:textures      # reproducibly generate Earth/Moon 1K/2K/4K KTX2

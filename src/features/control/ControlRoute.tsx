@@ -398,6 +398,9 @@ export function Component() {
   const met = useMissionStore((state) => state.metSeconds)
   const quality = useMissionStore((state) => state.quality)
   const setQuality = useMissionStore((state) => state.setQuality)
+  const resumeAvailable = useMissionStore((state) => state.resumeAvailable)
+  const resumeAfterModeSwitch = useMissionStore((state) => state.resumeAfterModeSwitch)
+  const dismissResume = useMissionStore((state) => state.dismissResume)
   const currentEvent = currentReplayEvent(met)
   const state = stateAtMet(mission, met)
   const phase = phasesById.get(state.phaseId)
@@ -435,6 +438,21 @@ export function Component() {
           </b>
         </div>
       </section>
+
+      {resumeAvailable && (
+        <section className="resume-notice" aria-labelledby="resume-title">
+          <div>
+            <span id="resume-title">REPLAY PAUSED ON MODE CHANGE</span>
+            <b>{formatMet(met, { fractionDigits: 1 })} · STATE PRESERVED</b>
+          </div>
+          <button type="button" onClick={resumeAfterModeSwitch}>
+            RESUME REPLAY
+          </button>
+          <button type="button" onClick={dismissResume}>
+            KEEP PAUSED
+          </button>
+        </section>
+      )}
 
       <nav className="phase-rail" aria-label="Phase navigation">
         {phaseGroups.map((group) => {
@@ -490,7 +508,11 @@ export function Component() {
             <Suspense fallback={<div className="scene-loading outside">INITIALIZING 3D VIEW</div>}>
               <MissionScene met={met} quality={quality} />
             </Suspense>
-            <div className="scene-corner top-left">MISSION FRAME / SCHEMATIC</div>
+            <div className="scene-corner top-left">
+              {mode === 'descent' || mode === 'surface' || mode === 'rendezvous'
+                ? 'LOCAL VIEW / SCHEMATIC · NO POSITION CLAIM'
+                : 'VISUAL REFERENCE / SCHEMATIC'}
+            </div>
             <div className="scene-corner bottom-left">{copy.body}</div>
             <div className="scene-corner bottom-right">MODEL TRUTH / SEE ARCHIVE 05–11</div>
           </div>

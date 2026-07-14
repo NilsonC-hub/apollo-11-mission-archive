@@ -1,15 +1,23 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
+
+import { useMissionStore } from './missionStore.ts'
 
 export function RootLayout() {
   const location = useLocation()
   const control = location.pathname.startsWith('/control')
+  const wasControl = useRef(control)
 
   useEffect(() => {
     document.documentElement.dataset.mode = control ? 'control' : 'archive'
     document
       .querySelector('meta[name="theme-color"]')
       ?.setAttribute('content', control ? '#070908' : '#e7e1d4')
+  }, [control])
+
+  useEffect(() => {
+    if (wasControl.current && !control) useMissionStore.getState().pauseForModeSwitch()
+    wasControl.current = control
   }, [control])
 
   return (

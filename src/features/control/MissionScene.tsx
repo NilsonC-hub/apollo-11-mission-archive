@@ -206,26 +206,15 @@ function Planet({
   )
 
   return (
-    <group position={position}>
-      <mesh>
-        <sphereGeometry args={[radius, 64, 32]} />
-        <meshStandardMaterial map={texture} roughness={1} metalness={0} />
-      </mesh>
-      <mesh rotation={[Math.PI / 2.8, 0, 0]}>
-        <torusGeometry args={[radius * 1.16, 0.008, 4, 160]} />
-        <meshBasicMaterial color="#8da1a2" transparent opacity={0.3} />
-      </mesh>
-    </group>
+    <mesh position={position}>
+      <sphereGeometry args={[radius, 64, 32]} />
+      <meshStandardMaterial map={texture} roughness={1} metalness={0} />
+    </mesh>
   )
 }
 
-function LunarReferencePlane() {
-  return (
-    <>
-      <Planet kind="moon" position={[-1.4, -10.4, -8]} radius={8} />
-      <gridHelper args={[19, 19, '#4c4d46', '#252923']} position={[0, -3.1, 0]} />
-    </>
-  )
+function LunarSurfaceReference() {
+  return <Planet kind="moon" position={[-1.4, -10.4, -8]} radius={8} />
 }
 
 function TrajectoryReference({ mode }: { mode: 'outbound' | 'orbit' | 'return' }) {
@@ -257,7 +246,6 @@ function MissionConfiguration({
         <Planet kind="earth" position={[-7.6, -4.8, -7]} radius={5.5} />
         <SaturnStack met={met} quality={quality} />
         <ExtractionAssembly met={met} quality={quality} />
-        <gridHelper args={[24, 24, '#2f3a34', '#172019']} position={[0, -4.4, 0]} />
       </>
     )
   }
@@ -298,8 +286,7 @@ function MissionConfiguration({
     const progress = rangeProgress(met, 'a11-undocking', 'a11-touchdown')
     return (
       <>
-        <LunarReferencePlane />
-        <TrajectoryReference mode="orbit" />
+        <LunarSurfaceReference />
         <CsmModel quality={quality} position={[4.3, 2.2, -1]} scale={0.11} />
         <LunarModuleModel
           quality={quality}
@@ -313,7 +300,7 @@ function MissionConfiguration({
   if (mode === 'surface') {
     return (
       <>
-        <LunarReferencePlane />
+        <LunarSurfaceReference />
         <LunarModuleModel quality={quality} position={[-0.7, -2.42, 0]} scale={0.2} />
       </>
     )
@@ -323,7 +310,7 @@ function MissionConfiguration({
     const progress = rangeProgress(met, 'a11-lunar-liftoff', 'a11-lm-csm-docking')
     return (
       <>
-        <LunarReferencePlane />
+        <LunarSurfaceReference />
         <LunarModuleModel
           quality={quality}
           stage="descent"
@@ -337,7 +324,6 @@ function MissionConfiguration({
           scale={0.16}
         />
         <CsmModel quality={quality} position={[3.4, 2.25, -0.6]} scale={0.13} />
-        <TrajectoryReference mode="orbit" />
       </>
     )
   }
@@ -364,7 +350,6 @@ function MissionConfiguration({
         position={[recovered ? 0.2 : 2.4, recovered ? -1.75 : 1.6, 0]}
         scale={0.22}
       />
-      <gridHelper args={[16, 16, '#33413b', '#19211d']} position={[0, -3.2, 0]} />
     </>
   )
 }
@@ -435,6 +420,7 @@ export function MissionScene({ met, quality }: { met: number; quality: ModelQual
       <Canvas
         dpr={[1, quality === 'high' ? 2 : 1.5]}
         camera={{ position: [9.2, 4.8, 12.8], fov: 38, near: 0.1, far: 120 }}
+        frameloop="demand"
         gl={{ antialias: quality !== 'low', powerPreference: 'high-performance' }}
         fallback={<StaticVehicleFallback />}
       >

@@ -9,21 +9,25 @@ import {
   mission,
   missionPack,
   replayEvents,
-  sourcesById,
 } from '../../app/mission.ts'
 
 const archiveNav = [
   ['index', '00', 'Mission Index'],
+  ['objectives', '01', 'Mission Objectives'],
+  ['crew', '02', 'Crew & Flight Roles'],
   ['timeline', '03', 'As-Flown Timeline'],
   ['architecture', '04', 'Flight Architecture'],
   ['saturn', '05', 'Saturn V / AS-506'],
   ['spacecraft', '06', 'Columbia & Eagle'],
+  ['guidance', '07', 'Guidance & Computing'],
   ['control-records', '08', 'Mission Control Record'],
   ['landing', '09', 'Powered Descent'],
   ['surface', '10', 'Surface Operations'],
   ['return', '11', 'Return & Recovery'],
   ['sources', '12', 'Media & Source Room'],
 ] as const
+
+const chaptersById = new Map(missionPack.archive.chapters.map((chapter) => [chapter.id, chapter]))
 
 const phase4Components = new Set([
   's-ic',
@@ -66,6 +70,19 @@ function SourceNote({ eventId }: { eventId: string }) {
   )
 }
 
+function ChapterSources({ chapterId }: { chapterId: string }) {
+  const chapter = chaptersById.get(chapterId)
+  if (!chapter) return null
+  return (
+    <details className="chapter-sources">
+      <summary>CHAPTER SOURCES</summary>
+      {chapter.citations.map((citation) => (
+        <p key={`${citation.sourceId}-${formatCitation(citation)}`}>{formatCitation(citation)}</p>
+      ))}
+    </details>
+  )
+}
+
 export function Component() {
   const location = useLocation()
 
@@ -74,38 +91,26 @@ export function Component() {
     if (id && id !== 'archive') document.getElementById(id)?.scrollIntoView()
   }, [location.pathname])
 
-  const selectedSources = [
-    'NASA-A11-MR',
-    'NASA-A11-TTEC-WEB',
-    'NASA-A11-SATV-FE',
-    'NASA-MODEL-SATV',
-    'NASA-MODEL-SATV-STL',
-    'NASA-MODEL-LM',
-    'NASA-CSM-NR',
-    'NASA-LM-HB',
-    'NASA-A11-MOON-VIEW',
-  ]
-    .map((id) => sourcesById.get(id))
-    .filter((source) => source !== undefined)
+  const selectedSources = mission.sources.sources
 
   return (
     <main id="main-content" className="archive-shell" tabIndex={-1}>
       <aside className="archive-index" aria-label="Archive index">
-        <p className="rail-kicker">DOCUMENT REGISTER / PHASE 5 RECORD</p>
+        <p className="rail-kicker">DOCUMENT REGISTER / PHASE 6 RECORD</p>
         <ol>
           {archiveNav.map(([id, number, label]) => (
             <li key={id}>
-              <a href={`#${id}`}>
+              <Link to={`/archive/${id}`}>
                 <span>{number}</span>
                 {label}
-              </a>
+              </Link>
             </li>
           ))}
         </ol>
         <div className="rail-status">
           <span>RECORD SCOPE</span>
           <b>LAUNCH → SPLASHDOWN</b>
-          <p>Deterministic replay scope. Final archive closure remains outside this build phase.</p>
+          <p>Complete document register with source-bound replay and explicit truth labels.</p>
         </div>
       </aside>
 
@@ -114,7 +119,7 @@ export function Component() {
           <div className="folio-meta">
             <span>AS-FLOWN RECORD</span>
             <span>MISSION / {mission.id.toUpperCase()}</span>
-            <span>RELEASE / PHASE 5 DEV</span>
+            <span>STATUS / PHASE 6 COMPLETE</span>
           </div>
           <div className="hero-grid">
             <div>
@@ -159,6 +164,66 @@ export function Component() {
               <FactValue id="a11-lm-designation" />
             </div>
           </dl>
+        </section>
+
+        <section id="objectives" className="archive-section section-rule">
+          <header className="section-heading">
+            <p>01 / MISSION OBJECTIVES</p>
+            <h2>INTENT AND AS-FLOWN OUTCOME</h2>
+            <span lang="zh-Hans">任务目标</span>
+          </header>
+          <div className="objective-register">
+            <article>
+              <span className="record-class record-planned">PLANNED MISSION OBJECTIVE</span>
+              <h3>CREWED LUNAR LANDING AND RETURN TO EARTH</h3>
+              <p>
+                The objective is presented as mission intent, not as proof of outcome and not as an
+                animation cue.
+              </p>
+            </article>
+            <article>
+              <span className="record-class record-actual">AS-FLOWN EVENT ANCHORS</span>
+              <div className="objective-events">
+                {['a11-touchdown', 'a11-splashdown'].map((eventId) => {
+                  const event = getEvent(eventId)
+                  return (
+                    <div key={event.id}>
+                      <time>{formatMet(event.metSeconds)}</time>
+                      <b>{event.label}</b>
+                    </div>
+                  )
+                })}
+              </div>
+              <p>Outcome is established only through the cited ACTUAL event record.</p>
+            </article>
+          </div>
+          <ChapterSources chapterId="01" />
+        </section>
+
+        <section id="crew" className="archive-section section-rule">
+          <header className="section-heading">
+            <p>02 / CREW &amp; FLIGHT ROLES</p>
+            <h2>DISTINCT FLIGHT STATIONS, ONE MISSION</h2>
+            <span lang="zh-Hans">乘组与飞行职责</span>
+          </header>
+          <div className="crew-register">
+            {[
+              ['CDR', 'NEIL ARMSTRONG', 'EAGLE · LANDING AND SURFACE OPERATIONS'],
+              ['LMP', 'EDWIN E. “BUZZ” ALDRIN JR.', 'EAGLE · LM AND SURFACE OPERATIONS'],
+              ['CMP', 'MICHAEL COLLINS', 'COLUMBIA · COMMAND MODULE PILOT'],
+            ].map(([role, name, station]) => (
+              <article key={role}>
+                <span>{role}</span>
+                <h3>{name}</h3>
+                <p>{station}</p>
+              </article>
+            ))}
+          </div>
+          <p className="method-callout">
+            Crew roles describe responsibility and vehicle station. They do not imply continuous
+            crew-location telemetry between verified configuration events.
+          </p>
+          <ChapterSources chapterId="02" />
         </section>
 
         <section id="timeline" className="archive-section section-rule">
@@ -284,6 +349,74 @@ export function Component() {
               </figcaption>
             </figure>
           </div>
+          <div className="component-dossier" aria-label="Spacecraft component dossier">
+            {mission.vehicle.components
+              .filter((component) =>
+                [
+                  'command-module',
+                  'service-module',
+                  'lm-ascent-stage',
+                  'lm-descent-stage',
+                ].includes(component.id),
+              )
+              .map((component) => (
+                <article key={component.id}>
+                  <span>{component.id.toUpperCase()}</span>
+                  <h3>{component.label}</h3>
+                  <b className={`evidence-tag evidence-${component.evidence}`}>
+                    {component.evidence}
+                  </b>
+                  <p>{component.method}</p>
+                  <small>SOURCES / {component.sourceIds?.join(' · ')}</small>
+                </article>
+              ))}
+          </div>
+          <ChapterSources chapterId="06" />
+        </section>
+
+        <section id="guidance" className="archive-section section-rule">
+          <header className="section-heading">
+            <p>07 / GUIDANCE &amp; COMPUTING</p>
+            <h2>SYSTEM BOUNDARIES, NOT AN AGC EMULATOR</h2>
+            <span lang="zh-Hans">制导与计算</span>
+          </header>
+          <div className="guidance-register">
+            <article>
+              <span>LAUNCH VEHICLE</span>
+              <h3>INSTRUMENT UNIT</h3>
+              <p>Launch-vehicle guidance identity is linked to the Saturn V source record.</p>
+            </article>
+            <article>
+              <span>COMMAND MODULE</span>
+              <h3>COLUMBIA GUIDANCE CONTEXT</h3>
+              <p>
+                Mission configuration and cited events are shown; computer state is not emulated.
+              </p>
+            </article>
+            <article>
+              <span>LUNAR MODULE</span>
+              <h3>EAGLE GUIDANCE CONTEXT</h3>
+              <p>
+                Descent and rendezvous anchors remain distinct from missing continuous telemetry.
+              </p>
+            </article>
+          </div>
+          <div className="pending-records">
+            <header>
+              <span>ALARM RECORD STATUS</span>
+              <b>PRECISE MET NOT VERIFIED</b>
+            </header>
+            {missionPack.unavailable.preciseEvents
+              .filter((event) => event.id.startsWith('a11-agc-'))
+              .map((event) => (
+                <article key={event.id}>
+                  <h3>{event.label}</h3>
+                  <span>ARCHIVE-ONLY · NO PRECISE ANIMATION</span>
+                  <p>{event.note}</p>
+                </article>
+              ))}
+          </div>
+          <ChapterSources chapterId="07" />
         </section>
 
         <section id="control-records" className="archive-section section-rule">
@@ -299,7 +432,7 @@ export function Component() {
           </p>
           <div className="archive-transcripts">
             {missionPack.media.transcripts.map((record) => (
-              <article key={record.id}>
+              <article id={record.id} key={record.id}>
                 <div>
                   <time>{formatMet(record.metSeconds)}</time>
                   <span>{record.speaker}</span>
@@ -309,6 +442,7 @@ export function Component() {
               </article>
             ))}
           </div>
+          <ChapterSources chapterId="08" />
         </section>
 
         <section id="landing" className="archive-section section-rule">
@@ -343,6 +477,7 @@ export function Component() {
               around this single source sample.
             </p>
           </div>
+          <ChapterSources chapterId="09" />
         </section>
 
         <section id="surface" className="archive-section section-rule">
@@ -372,6 +507,7 @@ export function Component() {
             The Mission Control lunar surface and ascent views are configuration diagrams. Relative
             distance, trajectory, surface location, and apparent scale are schematic.
           </p>
+          <ChapterSources chapterId="10" />
         </section>
 
         <section id="return" className="archive-section section-rule return-record">
@@ -412,6 +548,7 @@ export function Component() {
               })}
             </ol>
           </div>
+          <ChapterSources chapterId="11" />
         </section>
 
         <section id="sources" className="archive-section section-rule source-room">
@@ -420,7 +557,26 @@ export function Component() {
             <h2>PRIMARY RECORDS &amp; MODEL PROVENANCE</h2>
             <span lang="zh-Hans">媒体与来源室</span>
           </header>
-          <div className="source-table" role="table" aria-label="Phase 5 source register">
+          <div className="media-status-register" aria-label="Media availability">
+            <article>
+              <span>MISSION IMAGE</span>
+              <b>ARCHIVED · HASH VERIFIED</b>
+              <p>AS11-44-6665 is used only in its documented return-leg context.</p>
+            </article>
+            <article>
+              <span>TRANSCRIPT TEXT</span>
+              <b>AVAILABLE · SOURCE LOCATED</b>
+              <p>Exact text records retain speaker, channel, MET, and source locator.</p>
+            </article>
+            <article>
+              <span>HISTORICAL AUDIO</span>
+              <b>NOT AVAILABLE</b>
+              <p>
+                No playback is rendered without verified bytes, hash, alignment, and clip bounds.
+              </p>
+            </article>
+          </div>
+          <div className="source-table" role="table" aria-label="Phase 6 source register">
             {selectedSources.map((source) => (
               <div role="row" key={source.id}>
                 <span role="cell">{source.id}</span>
@@ -435,9 +591,14 @@ export function Component() {
               </div>
             ))}
           </div>
+          <ChapterSources chapterId="12" />
           <footer className="archive-footer">
             <p>{missionPack.definition.meta.description}</p>
             <p>NUMERIC CLAIMS REQUIRE A LOCATABLE NASA SOURCE OR AN EXPLICIT SCHEMATIC LABEL.</p>
+            <p>
+              EXPERIENCE LESSONS FROM REDRADMAN/ARTEMIS · MIT ATTRIBUTION RETAINED · NOT AN OFFICIAL
+              NASA PRODUCT
+            </p>
           </footer>
         </section>
       </article>
