@@ -51,11 +51,13 @@ for (const eventId of appendixEventIds) {
   })
 }
 
-test('Editorial event pause with transcript/audio status baseline', async ({ page }) => {
+test('Control component inspection baseline', async ({ page }) => {
   await prepareControl(page, 'a11-liftoff')
-  await page.getByRole('button', { name: 'PLAY', exact: true }).click()
-  await expect(page.getByText('EVENT PAUSE — EDITORIAL')).toBeVisible()
-  await expect(page).toHaveScreenshot('control-editorial-pause.png')
+  await page.getByRole('button', { name: 'Inspect S-IC FIRST STAGE' }).click()
+  await expect(page.getByText('COMPONENT INSPECTION · REPLAY PAUSED')).toBeVisible()
+  await page.waitForTimeout(700)
+  await page.evaluate(() => window.scrollTo(0, 0))
+  await expect(page).toHaveScreenshot('control-inspection.png')
 })
 
 test('Mission Control WebGL fallback baseline', async ({ page }) => {
@@ -71,9 +73,9 @@ test('Mission Control Reduced Motion baseline', async ({ page }) => {
   await expect(page).toHaveScreenshot('control-reduced-motion.png')
 })
 
-test('390 px event jump and playback baseline', async ({ page }) => {
+test('390 px event jump and free-look baseline', async ({ page }) => {
   await prepareControl(page, 'a11-touchdown', { width: 390, height: 844 })
-  await page.getByRole('button', { name: 'PLAY', exact: true }).click()
-  await expect(page.getByText('EVENT PAUSE — EDITORIAL')).toBeVisible()
-  await expect(page).toHaveScreenshot('control-mobile-390-playback.png')
+  await page.getByRole('button', { name: 'ROTATE −', exact: true }).click()
+  await expect(page.locator('.camera-mode b')).toHaveText('FREE LOOK')
+  await expect(page).toHaveScreenshot('control-mobile-390-free-look.png')
 })
