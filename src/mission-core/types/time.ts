@@ -26,3 +26,9 @@ export interface NarrativePosition {
   storyTimeMs: number
   progress: number
 }
+
+export interface VisualNarrativeState {
+  segmentId: string
+  visualTimeMs: number
+  progress: number
+}

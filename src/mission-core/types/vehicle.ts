@@ -10,6 +10,11 @@ export interface VehicleComponentState {
   engineMode?: EngineMode
 }
 
+export interface VehicleNodeBinding {
+  assetId: string
+  semanticNodeId: string
+}
+
 export interface VehicleComponentDefinition {
   id: string
   label: string
@@ -18,6 +23,7 @@ export interface VehicleComponentDefinition {
   sourceIds?: string[]
   evidence?: EvidenceClass
   method?: string
+  nodeBinding?: VehicleNodeBinding
 }
 
 export interface VehicleDefinition {

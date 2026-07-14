@@ -16,6 +16,7 @@ function component(
     evidence?: EvidenceClass
   } = {},
 ): VehicleComponentDefinition {
+  const nodeBinding = nodeBindings[id as keyof typeof nodeBindings]
   return {
     id,
     label,
@@ -23,6 +24,7 @@ function component(
     sourceIds,
     evidence: options.evidence ?? 'reconstructed',
     method,
+    ...(nodeBinding ? { nodeBinding } : {}),
     initialState: {
       lifecycle: 'attached',
       parentId,
@@ -36,6 +38,48 @@ const saturnMethod =
   'Semantic identity follows the mission architecture and NASA references; Phase 3 must bind it to stable processed-model nodes.'
 const spacecraftMethod =
   'Semantic identity follows NASA spacecraft references. This table is not geometry and does not claim flight-CAD fidelity.'
+
+const nodeBindings = {
+  's-ic': { assetId: 'apollo11-saturn-v', semanticNodeId: 'launchVehicle.sic' },
+  's-ic-s-ii-interstage': {
+    assetId: 'apollo11-saturn-v',
+    semanticNodeId: 'launchVehicle.sicSiiInterstage',
+  },
+  's-ii': { assetId: 'apollo11-saturn-v', semanticNodeId: 'launchVehicle.sii' },
+  's-ii-s-ivb-interstage': {
+    assetId: 'apollo11-saturn-v',
+    semanticNodeId: 'launchVehicle.siiSivbInterstage',
+  },
+  's-ivb': { assetId: 'apollo11-saturn-v', semanticNodeId: 'launchVehicle.sivb' },
+  'instrument-unit': {
+    assetId: 'apollo11-saturn-v',
+    semanticNodeId: 'launchVehicle.instrumentUnit',
+  },
+  'spacecraft-lm-adapter': {
+    assetId: 'apollo11-saturn-v',
+    semanticNodeId: 'spacecraft.sla',
+  },
+  'lm-descent-stage': {
+    assetId: 'apollo11-lunar-module',
+    semanticNodeId: 'lunarModule.descentStage',
+  },
+  'lm-ascent-stage': {
+    assetId: 'apollo11-lunar-module',
+    semanticNodeId: 'lunarModule.ascentStage',
+  },
+  'service-module': {
+    assetId: 'apollo11-command-service-module',
+    semanticNodeId: 'spacecraft.serviceModule',
+  },
+  'command-module': {
+    assetId: 'apollo11-command-service-module',
+    semanticNodeId: 'spacecraft.commandModule',
+  },
+  'launch-escape-system': {
+    assetId: 'apollo11-saturn-v',
+    semanticNodeId: 'spacecraft.launchEscapeSystem',
+  },
+} as const
 
 export const apollo11Vehicle: VehicleDefinition = {
   rootComponentIds: ['s-ic'],

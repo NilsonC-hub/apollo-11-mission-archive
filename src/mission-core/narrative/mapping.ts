@@ -2,6 +2,7 @@ import type {
   CompiledNarrativeSegment,
   NarrativePosition,
   NarrativeSegment,
+  VisualNarrativeState,
 } from '../types/time.ts'
 
 const EPSILON = 1e-9
@@ -96,4 +97,22 @@ export function storyTimeAtMet(segments: readonly NarrativeSegment[], metSeconds
   const segment = compiled.find((candidate) => clamped <= candidate.metEnd + EPSILON) ?? last
   const progress = (clamped - segment.metStart) / (segment.metEnd - segment.metStart)
   return segment.storyStartMs + Math.min(1, Math.max(0, progress)) * segment.storyDurationMs
+}
+
+export function visualStateAtStoryTime(
+  segments: readonly NarrativeSegment[],
+  storyTimeMs: number,
+): VisualNarrativeState {
+  const position = narrativePositionAtStoryTime(segments, storyTimeMs)
+  const compiled = compileNarrative(segments)
+  const segment = compiled.find((candidate) => candidate.id === position.segmentId)
+  if (!segment) throw new RangeError(`Unknown narrative segment: ${position.segmentId}`)
+  return {
+    segmentId: segment.id,
+    visualTimeMs: Math.min(
+      segment.storyDurationMs,
+      Math.max(0, position.storyTimeMs - segment.storyStartMs),
+    ),
+    progress: position.progress,
+  }
 }

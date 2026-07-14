@@ -43,16 +43,23 @@ test('Phase 7 Archive keeps small text contrast-safe and defers offscreen plates
   assert.equal(archive.match(/loading="lazy"/g)?.length, 4)
 })
 
-test('Phase 7 browser playback advances storyTime and exposes editorial pauses', async () => {
+test('Control continuity advances separated clocks and keeps holds behind a procedure policy', async () => {
   const playback = await readFile('src/features/control/useMissionPlayback.ts', 'utf8')
   const control = await readFile('src/features/control/ControlRoute.tsx', 'utf8')
   const store = await readFile('src/app/missionStore.ts', 'utf8')
 
-  assert.match(playback, /storyTimeMs/)
-  assert.match(playback, /beginEditorialPause/)
+  assert.match(playback, /advancePlayback/)
+  assert.match(playback, /visibilitychange/)
+  assert.match(playback, /pagehide/)
+  assert.match(playback, /focus-loss/)
   assert.doesNotMatch(playback, /setMet|metSeconds/)
   assert.match(store, /storyTimeAtMet/)
+  assert.match(store, /visualTimeMs/)
+  assert.match(store, /playbackPolicy === 'procedure'/)
+  assert.match(store, /beginEditorialPause/)
   assert.match(control, /EVENT PAUSE — EDITORIAL/)
   assert.match(control, /MISSION COMPLETE/)
   assert.match(control, /EDITED \/ SOURCE-BOUND/)
+  assert.match(control, /NARRATIVE RATE/)
+  assert.match(control, /RETURN TO GUIDED VIEW/)
 })

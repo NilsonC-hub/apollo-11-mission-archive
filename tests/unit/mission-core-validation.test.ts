@@ -123,3 +123,16 @@ test('reconstructed semantic components require a method note', () => {
   definition.vehicle.components[0].evidence = 'reconstructed'
   assert.ok(errorCodes(definition).includes('COMPONENT_WITHOUT_METHOD'))
 })
+
+test('terminal component lifecycle cannot retain a burning engine', () => {
+  const broken = structuredClone(minimalMission)
+  broken.events
+    .at(-1)!
+    .actions.push(
+      { type: 'set-component-lifecycle', componentId: 'fixture-carrier', lifecycle: 'discarded' },
+      { type: 'set-engine-mode', componentId: 'fixture-carrier', engineMode: 'burning' },
+    )
+
+  const issues = validateMissionDefinition(broken)
+  assert.ok(issues.some((item) => item.code === 'TERMINAL_COMPONENT_BURNING'))
+})

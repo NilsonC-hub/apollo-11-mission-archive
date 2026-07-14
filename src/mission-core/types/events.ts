@@ -19,4 +19,5 @@ export interface MissionEvent {
   citations: CitationRef[]
   actions: MissionAction[]
   precision?: 'second' | 'tenth-second' | 'source-rounded'
+  displayFractionDigits?: 0 | 1 | 2 | 3
 }

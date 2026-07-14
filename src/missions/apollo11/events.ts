@@ -38,6 +38,7 @@ const actionsByEventId: Partial<Record<string, MissionAction[]>> = {
   'a11-sii-cutoff': [{ type: 'set-engine-mode', componentId: 's-ii', engineMode: 'cutoff' }],
   'a11-sii-sivb-separation': [
     { type: 'set-component-parent', componentId: 's-ivb', parentId: null },
+    { type: 'set-component-lifecycle', componentId: 's-ivb', lifecycle: 'free' },
     { type: 'set-component-lifecycle', componentId: 's-ii', lifecycle: 'discarded' },
     {
       type: 'set-component-parent',
@@ -58,7 +59,7 @@ const actionsByEventId: Partial<Record<string, MissionAction[]>> = {
     { type: 'set-phase', phaseId: 'earth-orbit' },
   ],
   'a11-tli-ignition': [
-    { type: 'set-engine-mode', componentId: 's-ivb', engineMode: 'burning' },
+    { type: 'set-engine-mode', componentId: 's-ivb', engineMode: 'ignition' },
     { type: 'set-phase', phaseId: 'tli-extraction' },
   ],
   'a11-csm-sivb-separation': [
@@ -73,27 +74,28 @@ const actionsByEventId: Partial<Record<string, MissionAction[]>> = {
   ],
   'a11-spacecraft-ejection': [
     { type: 'set-component-parent', componentId: 'lm-descent-stage', parentId: null },
+    { type: 'set-component-lifecycle', componentId: 's-ivb', lifecycle: 'discarded' },
     { type: 'set-phase', phaseId: 'translunar' },
   ],
   'a11-mcc1-ignition': [
-    { type: 'set-engine-mode', componentId: 'service-module', engineMode: 'burning' },
+    { type: 'set-engine-mode', componentId: 'service-module', engineMode: 'ignition' },
   ],
   'a11-loi-ignition': [
-    { type: 'set-engine-mode', componentId: 'service-module', engineMode: 'burning' },
+    { type: 'set-engine-mode', componentId: 'service-module', engineMode: 'ignition' },
     { type: 'set-phase', phaseId: 'lunar-orbit' },
   ],
   'a11-lunar-orbit-circularization': [
-    { type: 'set-engine-mode', componentId: 'service-module', engineMode: 'burning' },
+    { type: 'set-engine-mode', componentId: 'service-module', engineMode: 'ignition' },
   ],
   'a11-undocking': [
     { type: 'set-component-parent', componentId: 'service-module', parentId: null },
     { type: 'set-phase', phaseId: 'descent' },
   ],
   'a11-lm-separation-maneuver': [
-    { type: 'set-engine-mode', componentId: 'service-module', engineMode: 'burning' },
+    { type: 'set-engine-mode', componentId: 'service-module', engineMode: 'ignition' },
   ],
   'a11-doi-ignition': [
-    { type: 'set-engine-mode', componentId: 'lm-descent-stage', engineMode: 'burning' },
+    { type: 'set-engine-mode', componentId: 'lm-descent-stage', engineMode: 'ignition' },
   ],
   'a11-pdi-ignition': [
     { type: 'set-engine-mode', componentId: 'lm-descent-stage', engineMode: 'burning' },
@@ -106,17 +108,17 @@ const actionsByEventId: Partial<Record<string, MissionAction[]>> = {
   'a11-lunar-liftoff': [
     { type: 'set-component-parent', componentId: 'lm-ascent-stage', parentId: null },
     { type: 'set-component-lifecycle', componentId: 'lm-ascent-stage', lifecycle: 'free' },
-    { type: 'set-engine-mode', componentId: 'lm-ascent-stage', engineMode: 'burning' },
+    { type: 'set-engine-mode', componentId: 'lm-ascent-stage', engineMode: 'ignition' },
     { type: 'set-phase', phaseId: 'ascent-rendezvous' },
   ],
   'a11-csi-ignition': [
-    { type: 'set-engine-mode', componentId: 'lm-ascent-stage', engineMode: 'burning' },
+    { type: 'set-engine-mode', componentId: 'lm-ascent-stage', engineMode: 'ignition' },
   ],
   'a11-cdh-ignition': [
-    { type: 'set-engine-mode', componentId: 'lm-ascent-stage', engineMode: 'burning' },
+    { type: 'set-engine-mode', componentId: 'lm-ascent-stage', engineMode: 'ignition' },
   ],
   'a11-tpi-ignition': [
-    { type: 'set-engine-mode', componentId: 'lm-ascent-stage', engineMode: 'burning' },
+    { type: 'set-engine-mode', componentId: 'lm-ascent-stage', engineMode: 'ignition' },
   ],
   'a11-lm-csm-docking': [
     {
@@ -136,14 +138,14 @@ const actionsByEventId: Partial<Record<string, MissionAction[]>> = {
     { type: 'set-phase', phaseId: 'lunar-orbit-return' },
   ],
   'a11-ascent-stage-separation-maneuver': [
-    { type: 'set-engine-mode', componentId: 'service-module', engineMode: 'burning' },
+    { type: 'set-engine-mode', componentId: 'service-module', engineMode: 'ignition' },
   ],
   'a11-tei-ignition': [
-    { type: 'set-engine-mode', componentId: 'service-module', engineMode: 'burning' },
+    { type: 'set-engine-mode', componentId: 'service-module', engineMode: 'ignition' },
     { type: 'set-phase', phaseId: 'transearth' },
   ],
   'a11-mcc2-ignition': [
-    { type: 'set-engine-mode', componentId: 'service-module', engineMode: 'burning' },
+    { type: 'set-engine-mode', componentId: 'service-module', engineMode: 'ignition' },
   ],
   'a11-cm-sm-separation': [
     { type: 'set-component-parent', componentId: 'command-module', parentId: null },

@@ -1,7 +1,7 @@
-import { lazy, Suspense, useEffect, useLayoutEffect, useRef } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 
-import { metForControlPath } from '../../app/controlDeepLink.ts'
+import { controlEventPath, controlMetPath, metForControlPath } from '../../app/controlDeepLink.ts'
 import {
   currentReplayEvent,
   eventsForPhase,
@@ -16,6 +16,7 @@ import {
 import { type ModelQuality, type PlaybackSpeed, useMissionStore } from '../../app/missionStore.ts'
 import {
   formatMet,
+  formatEventMet,
   isMissingValue,
   metAtStoryTime,
   sampleTelemetryAtMet,
@@ -81,14 +82,22 @@ function consoleModeForPhase(phaseId: string): ConsoleMode {
 }
 
 function useControlKeyboard(): void {
+  const navigate = useNavigate()
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null
       if (target?.matches('input, select, textarea, button, a, summary')) return
       const store = useMissionStore.getState()
       if (event.key.toLowerCase() === 'k') store.togglePlaying()
-      if (event.key.toLowerCase() === 'j') store.previousEvent()
-      if (event.key.toLowerCase() === 'l') store.nextEvent()
+      if (event.key.toLowerCase() === 'j') {
+        const targetMet = store.previousEvent()
+        void navigate(controlMetPath(targetMet))
+      }
+      if (event.key.toLowerCase() === 'l') {
+        const targetMet = store.nextEvent()
+        if (targetMet !== undefined) void navigate(controlMetPath(targetMet))
+      }
+      if (event.key === 'Escape') store.closeInspection()
       if (event.key === '[' || event.key === ']') {
         const index = speeds.indexOf(store.speed)
         const nextIndex =
@@ -98,7 +107,21 @@ function useControlKeyboard(): void {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [])
+  }, [navigate])
+}
+
+function usePlaybackUrlSync(met: number, playing: boolean): void {
+  const latestMet = useRef(met)
+  latestMet.current = met
+
+  useEffect(() => {
+    if (!playing) return
+    const interval = window.setInterval(() => {
+      if (!window.location.pathname.startsWith('/control')) return
+      window.history.replaceState(window.history.state, '', controlMetPath(latestMet.current))
+    }, 1_000)
+    return () => window.clearInterval(interval)
+  }, [playing])
 }
 
 function useControlDeepLink(): number | undefined {
@@ -109,15 +132,30 @@ function useControlDeepLink(): number | undefined {
 
   useLayoutEffect(() => {
     appliedPath.current = location.pathname
-    if (targetMet !== undefined) useMissionStore.getState().setMet(targetMet)
+    if (targetMet !== undefined) {
+      const store = useMissionStore.getState()
+      store.setMet(targetMet)
+      store.setPlaying(false)
+    }
   }, [location.pathname, targetMet])
 
   return pendingMet
 }
 
-function EventLog({ met, phaseId }: { met: number; phaseId: string }) {
+type ControlJump = (metSeconds: number, path: string, replace?: boolean) => void
+
+function useControlJump(): ControlJump {
   const navigate = useNavigate()
-  const setMet = useMissionStore((state) => state.setMet)
+  return useCallback(
+    (metSeconds: number, path: string, replace = false) => {
+      useMissionStore.getState().setMet(metSeconds)
+      void navigate(path, { replace })
+    },
+    [navigate],
+  )
+}
+
+function EventLog({ met, phaseId, jump }: { met: number; phaseId: string; jump: ControlJump }) {
   const current = currentReplayEvent(met)
   const events = eventsForPhase(phaseId)
   return (
@@ -134,11 +172,10 @@ function EventLog({ met, phaseId }: { met: number; phaseId: string }) {
               <button
                 type="button"
                 onClick={() => {
-                  setMet(event.metSeconds)
-                  void navigate(`/control/event/${event.id}`)
+                  jump(event.metSeconds, controlEventPath(event.id))
                 }}
               >
-                <time>{formatMet(event.metSeconds)}</time>
+                <time>{formatEventMet(event)}</time>
                 <span>{event.label}</span>
                 <i>{passed ? 'REC' : 'QUE'}</i>
               </button>
@@ -158,6 +195,9 @@ function enginePresentation(
   const component = state.components[componentId]
   if (component.lifecycle === 'discarded') return { label: 'DISCARDED', tone: 'off' }
   if (component.lifecycle === 'landed') return { label: 'LANDED', tone: 'on' }
+  if (component.engineMode === 'ignition') {
+    return { label: 'IGNITION EVENT · MODE N/A', tone: 'unknown' }
+  }
   if (component.engineMode !== 'burning') {
     return {
       label: (component.engineMode ?? component.lifecycle).toUpperCase(),
@@ -247,9 +287,7 @@ const missingRowsByMode: Record<ConsoleMode, Array<[string, string]>> = {
   ],
 }
 
-function TranscriptRecords({ met }: { met: number }) {
-  const navigate = useNavigate()
-  const setMet = useMissionStore((state) => state.setMet)
+function TranscriptRecords({ met, jump }: { met: number; jump: ControlJump }) {
   return (
     <div className="transcript-records">
       <div className="subpanel-head">
@@ -262,8 +300,7 @@ function TranscriptRecords({ met }: { met: number }) {
           key={record.id}
           className={record.metSeconds <= met ? 'is-passed' : undefined}
           onClick={() => {
-            setMet(record.metSeconds)
-            void navigate(`/control/met/${encodeURIComponent(formatMet(record.metSeconds))}`)
+            jump(record.metSeconds, controlMetPath(record.metSeconds))
           }}
         >
           <span>
@@ -276,7 +313,15 @@ function TranscriptRecords({ met }: { met: number }) {
   )
 }
 
-function PhaseDataPanel({ met, mode }: { met: number; mode: ConsoleMode }) {
+function PhaseDataPanel({
+  met,
+  mode,
+  jump,
+}: {
+  met: number
+  mode: ConsoleMode
+  jump: ControlJump
+}) {
   const state = stateAtMet(mission, met)
   const touchdownChannel = mission.telemetry.find(
     (channel) => channel.id === 'a11-touchdown-vertical-speed',
@@ -296,16 +341,22 @@ function PhaseDataPanel({ met, mode }: { met: number; mode: ConsoleMode }) {
           const definition = mission.vehicle.components.find((component) => component.id === id)!
           const presentation = enginePresentation(id, state, met)
           return (
-            <div key={id}>
+            <button
+              key={id}
+              type="button"
+              className="system-row"
+              onClick={() => useMissionStore.getState().inspectComponent(id)}
+              aria-label={`Inspect ${definition.label}`}
+            >
               <span>{definition.label}</span>
               <b>{presentation.label}</b>
               <i className={`status-${presentation.tone}`} />
-            </div>
+            </button>
           )
         })}
       </div>
 
-      {(mode === 'descent' || mode === 'surface') && <TranscriptRecords met={met} />}
+      {(mode === 'descent' || mode === 'surface') && <TranscriptRecords met={met} jump={jump} />}
 
       <div className="data-availability">
         <h3>{mode === 'surface' ? 'SURFACE RECORD AVAILABILITY' : 'FLIGHT DATA AVAILABILITY'}</h3>
@@ -331,26 +382,35 @@ function PhaseDataPanel({ met, mode }: { met: number; mode: ConsoleMode }) {
   )
 }
 
-function PlaybackControls({ met }: { met: number }) {
+function PlaybackControls({ met, jump }: { met: number; jump: ControlJump }) {
   const playing = useMissionStore((state) => state.playing)
   const editorialPause = useMissionStore((state) => state.editorialPauseSegmentId)
   const speed = useMissionStore((state) => state.speed)
-  const setMet = useMissionStore((state) => state.setMet)
   const togglePlaying = useMissionStore((state) => state.togglePlaying)
   const nextEvent = useMissionStore((state) => state.nextEvent)
   const previousEvent = useMissionStore((state) => state.previousEvent)
   const setSpeed = useMissionStore((state) => state.setSpeed)
+  const goToAdjacentEvent = (direction: 'next' | 'previous') => {
+    const targetMet = direction === 'next' ? nextEvent() : previousEvent()
+    if (targetMet === undefined) return
+    const targetEvent = replayEvents.find((event) => event.metSeconds === targetMet)
+    jump(targetMet, targetEvent ? controlEventPath(targetEvent.id) : controlMetPath(targetMet))
+  }
 
   return (
     <section className="playback-deck" aria-label="Mission replay controls">
       <div className="transport-controls">
-        <button type="button" onClick={previousEvent} aria-label="Previous event">
+        <button
+          type="button"
+          onClick={() => goToAdjacentEvent('previous')}
+          aria-label="Previous event"
+        >
           ←
         </button>
         <button className="play-button" type="button" onClick={togglePlaying}>
           {editorialPause ? 'CONTINUE REPLAY' : playing ? 'PAUSE' : 'PLAY'}
         </button>
-        <button type="button" onClick={nextEvent} aria-label="Next event">
+        <button type="button" onClick={() => goToAdjacentEvent('next')} aria-label="Next event">
           →
         </button>
       </div>
@@ -362,19 +422,24 @@ function PlaybackControls({ met }: { met: number }) {
           max={replayEndMet}
           step="0.1"
           value={met}
-          onChange={(event) => setMet(Number(event.target.value))}
+          onChange={(event) => {
+            const targetMet = Number(event.target.value)
+            jump(targetMet, controlMetPath(targetMet), true)
+          }}
         />
         <span>
           <i style={{ width: `${(met / replayEndMet) * 100}%` }} />
         </span>
       </label>
-      <div className="speed-controls" aria-label="Playback speed">
+      <div className="speed-controls" aria-label="Narrative playback rate">
+        <span>NARRATIVE RATE</span>
         {speeds.map((option) => (
           <button
             type="button"
             key={option}
             className={speed === option ? 'is-active' : undefined}
             onClick={() => setSpeed(option)}
+            aria-pressed={speed === option}
           >
             {option}×
           </button>
@@ -422,6 +487,7 @@ function sceneCopy(mode: ConsoleMode): { heading: string; truth: string; body: s
 
 export function Component() {
   const deepLinkMet = useControlDeepLink()
+  const jump = useControlJump()
   useMissionPlayback()
   useControlKeyboard()
 
@@ -433,6 +499,13 @@ export function Component() {
   const resumeAvailable = useMissionStore((state) => state.resumeAvailable)
   const editorialPause = useMissionStore((state) => state.editorialPauseSegmentId)
   const playing = useMissionStore((state) => state.playing)
+  const pauseReason = useMissionStore((state) => state.pauseReason)
+  const interaction = useMissionStore((state) => state.interaction)
+  const cameraCommand = useMissionStore((state) => state.cameraCommand)
+  const enterFreeLook = useMissionStore((state) => state.enterFreeLook)
+  const requestCameraCommand = useMissionStore((state) => state.requestCameraCommand)
+  const returnToGuided = useMissionStore((state) => state.returnToGuided)
+  const closeInspection = useMissionStore((state) => state.closeInspection)
   const resumeAfterModeSwitch = useMissionStore((state) => state.resumeAfterModeSwitch)
   const dismissResume = useMissionStore((state) => state.dismissResume)
   const continueEditorialPause = useMissionStore((state) => state.continueEditorialPause)
@@ -441,6 +514,16 @@ export function Component() {
   const phase = phasesById.get(state.phaseId)
   const mode = consoleModeForPhase(state.phaseId)
   const copy = sceneCopy(mode)
+  const exactEvent = replayEvents.find((event) => Math.abs(event.metSeconds - met) < 0.000_01)
+  const displayedMet = exactEvent
+    ? formatEventMet(exactEvent)
+    : formatMet(met, { fractionDigits: 1 })
+  const inspectedComponent =
+    interaction.mode === 'inspect'
+      ? mission.vehicle.components.find((component) => component.id === interaction.componentId)
+      : undefined
+
+  usePlaybackUrlSync(met, playing)
 
   useEffect(() => {
     if (
@@ -456,7 +539,7 @@ export function Component() {
       <section className="mission-status" aria-label="Current mission state">
         <div>
           <span>MISSION ELAPSED TIME</span>
-          <b className="met-display">{formatMet(met, { fractionDigits: 1 })}</b>
+          <b className="met-display">{displayedMet}</b>
         </div>
         <div>
           <span>FLIGHT PHASE</span>
@@ -477,8 +560,12 @@ export function Component() {
       {resumeAvailable && (
         <section className="resume-notice" aria-labelledby="resume-title">
           <div>
-            <span id="resume-title">REPLAY PAUSED ON MODE CHANGE</span>
-            <b>{formatMet(met, { fractionDigits: 1 })} · STATE PRESERVED</b>
+            <span id="resume-title">
+              {pauseReason === 'mode-switch'
+                ? 'REPLAY PAUSED ON MODE CHANGE'
+                : 'REPLAY PAUSED SAFELY'}
+            </span>
+            <b>{displayedMet} · STATE PRESERVED · EXPLICIT RESUME REQUIRED</b>
           </div>
           <button type="button" onClick={resumeAfterModeSwitch}>
             RESUME REPLAY
@@ -505,6 +592,23 @@ export function Component() {
         </section>
       )}
 
+      {interaction.mode === 'inspect' && inspectedComponent && (
+        <section className="component-inspection" aria-labelledby="component-inspection-title">
+          <div>
+            <span>COMPONENT INSPECTION · REPLAY PAUSED</span>
+            <b id="component-inspection-title">{inspectedComponent.label}</b>
+            <p>
+              {state.components[inspectedComponent.id]?.lifecycle.toUpperCase()} ·{' '}
+              {(inspectedComponent.evidence ?? 'reconstructed').toUpperCase()}
+            </p>
+            <small>SOURCES: {inspectedComponent.sourceIds?.join(' · ')}</small>
+          </div>
+          <button type="button" onClick={closeInspection}>
+            CLOSE DOSSIER
+          </button>
+        </section>
+      )}
+
       {met >= replayEndMet && !playing && !editorialPause && (
         <section className="mission-complete" aria-labelledby="mission-complete-title">
           <div>
@@ -527,7 +631,13 @@ export function Component() {
               key={group.number}
               type="button"
               className={active ? 'is-active' : undefined}
-              onClick={() => useMissionStore.getState().setMet(startEvent?.metSeconds ?? 0)}
+              onClick={() => {
+                const targetMet = startEvent?.metSeconds ?? replayStartMet
+                jump(
+                  targetMet,
+                  startEvent ? controlEventPath(startEvent.id) : controlMetPath(targetMet),
+                )
+              }}
             >
               <span>{group.number}</span>
               {group.label}
@@ -544,12 +654,22 @@ export function Component() {
       )}
 
       <div className="console-grid">
-        <EventLog met={met} phaseId={state.phaseId} />
+        <EventLog met={met} phaseId={state.phaseId} jump={jump} />
         <section className="visualization-panel" aria-label="Vehicle configuration view">
           <div className="viewport-tools">
             <div>
               <span>{copy.heading}</span>
               <b>{copy.truth} · MOTION NOT TO SCALE</b>
+            </div>
+            <div className="camera-mode" role="status">
+              <span>CAMERA</span>
+              <b>
+                {interaction.mode === 'guided'
+                  ? 'GUIDED VIEW'
+                  : interaction.mode === 'free-look'
+                    ? 'FREE LOOK'
+                    : 'INSPECT'}
+              </b>
             </div>
             <label>
               QUALITY
@@ -565,9 +685,66 @@ export function Component() {
               </select>
             </label>
           </div>
-          <div className="scene-frame">
+          <div className="camera-tools" aria-label="Camera controls">
+            <button type="button" onClick={() => requestCameraCommand('rotate-left')}>
+              ROTATE −
+            </button>
+            <button type="button" onClick={() => requestCameraCommand('rotate-right')}>
+              ROTATE +
+            </button>
+            <button type="button" onClick={() => requestCameraCommand('zoom-in')}>
+              ZOOM +
+            </button>
+            <button type="button" onClick={() => requestCameraCommand('zoom-out')}>
+              ZOOM −
+            </button>
+            <button type="button" onClick={() => requestCameraCommand('reset')}>
+              RESET VIEW
+            </button>
+            {interaction.mode === 'free-look' && (
+              <button className="return-guided" type="button" onClick={returnToGuided}>
+                RETURN TO GUIDED VIEW
+              </button>
+            )}
+            {interaction.mode === 'inspect' && interaction.cameraControl === 'free-look' && (
+              <button className="return-guided" type="button" onClick={returnToGuided}>
+                REFOCUS COMPONENT
+              </button>
+            )}
+          </div>
+          <div
+            className="scene-frame"
+            tabIndex={0}
+            onPointerDown={enterFreeLook}
+            onWheel={enterFreeLook}
+            onTouchStart={enterFreeLook}
+            onKeyDown={(event) => {
+              const command =
+                event.key === 'ArrowLeft'
+                  ? 'rotate-left'
+                  : event.key === 'ArrowRight'
+                    ? 'rotate-right'
+                    : event.key === '+' || event.key === '='
+                      ? 'zoom-in'
+                      : event.key === '-'
+                        ? 'zoom-out'
+                        : event.key === 'Home'
+                          ? 'reset'
+                          : undefined
+              if (!command) return
+              event.preventDefault()
+              requestCameraCommand(command)
+            }}
+            aria-label="Interactive vehicle camera; use arrow keys to rotate, plus or minus to zoom, and Home to reset"
+          >
             <Suspense fallback={<div className="scene-loading outside">INITIALIZING 3D VIEW</div>}>
-              <MissionScene met={met} quality={quality} />
+              <MissionScene
+                met={met}
+                storyTimeMs={storyTimeMs}
+                interaction={interaction}
+                cameraCommand={cameraCommand}
+                quality={quality}
+              />
             </Suspense>
             <div className="scene-corner top-left">
               <span>
@@ -599,10 +776,10 @@ export function Component() {
             </details>
           </div>
         </section>
-        <PhaseDataPanel met={met} mode={mode} />
+        <PhaseDataPanel met={met} mode={mode} jump={jump} />
       </div>
 
-      <PlaybackControls met={met} />
+      <PlaybackControls met={met} jump={jump} />
       <p className="keyboard-note">KEYS: K PLAY/PAUSE · J/L PREVIOUS/NEXT EVENT · [ / ] SPEED</p>
     </main>
   )

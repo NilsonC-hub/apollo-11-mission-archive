@@ -6,6 +6,7 @@ import {
   metAtStoryTime,
   narrativePositionAtStoryTime,
   storyTimeAtMet,
+  visualStateAtStoryTime,
 } from '../../src/mission-core/index.ts'
 import { minimalMission } from '../fixtures/minimal-mission.ts'
 
@@ -58,4 +59,16 @@ test('narrative mapping rejects discontinuous MET segments', () => {
   const broken = structuredClone(segments)
   broken[1].metStart = 21
   assert.throws(() => compileNarrative(broken), /previous segment MET end/)
+})
+
+test('visual state reconstructs from authored story time without using the MET span', () => {
+  const first = visualStateAtStoryTime(segments, 1_000)
+  assert.deepEqual(first, { segmentId: 'fixture-segment-a', visualTimeMs: 1_000, progress: 0.5 })
+  assert.deepEqual(visualStateAtStoryTime(segments, 1_000), first)
+
+  const differentMetSpan = structuredClone(segments)
+  differentMetSpan[0].metEnd = 2_000
+  differentMetSpan[1].metStart = 2_000
+  differentMetSpan[1].metEnd = 4_000
+  assert.deepEqual(visualStateAtStoryTime(differentMetSpan, 1_000), first)
 })

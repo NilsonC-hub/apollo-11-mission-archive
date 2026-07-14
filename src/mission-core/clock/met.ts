@@ -1,4 +1,5 @@
 import type { MissionEpochs } from '../types/time.ts'
+import type { MissionEvent } from '../types/events.ts'
 
 const MET_PATTERN = /^([+-])?(\d+):([0-5]\d):([0-5]\d(?:\.\d+)?)$/
 
@@ -38,6 +39,14 @@ export function formatMet(metSeconds: number, options: FormatMetOptions = {}): s
   const sign = metSeconds < 0 ? '-' : options.showPositiveSign ? '+' : ''
 
   return `${sign}${String(hours).padStart(minimumHourDigits, '0')}:${String(minutes).padStart(2, '0')}:${seconds.toFixed(fractionDigits).padStart(secondsWidth, '0')}`
+}
+
+export function formatEventMet(
+  event: Pick<MissionEvent, 'metSeconds' | 'precision' | 'displayFractionDigits'>,
+): string {
+  return formatMet(event.metSeconds, {
+    fractionDigits: event.displayFractionDigits ?? (event.precision === 'tenth-second' ? 1 : 0),
+  })
 }
 
 export function rangeZeroUtcMs(epochs: MissionEpochs): number {

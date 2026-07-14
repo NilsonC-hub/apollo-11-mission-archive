@@ -1,16 +1,33 @@
 import { useEffect, useRef } from 'react'
 
-import { replayEndStoryTime, replayNarrative } from '../../app/mission.ts'
 import { useMissionStore } from '../../app/missionStore.ts'
+
+function usePlaybackInterruptionSafety(): void {
+  useEffect(() => {
+    const pause = useMissionStore.getState().pauseForInterruption
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') pause('visibility')
+    }
+    const onPageHide = () => pause('page-hide')
+    const onBlur = () => pause('focus-loss')
+
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    window.addEventListener('pagehide', onPageHide)
+    window.addEventListener('blur', onBlur)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+      window.removeEventListener('pagehide', onPageHide)
+      window.removeEventListener('blur', onBlur)
+    }
+  }, [])
+}
 
 export function useMissionPlayback(): void {
   const frame = useRef<number | null>(null)
   const previous = useRef<number | null>(null)
   const playing = useMissionStore((state) => state.playing)
-  const speed = useMissionStore((state) => state.speed)
-  const setStoryTime = useMissionStore((state) => state.setStoryTime)
-  const setPlaying = useMissionStore((state) => state.setPlaying)
-  const beginEditorialPause = useMissionStore((state) => state.beginEditorialPause)
+
+  usePlaybackInterruptionSafety()
 
   useEffect(() => {
     if (!playing) {
@@ -21,31 +38,16 @@ export function useMissionPlayback(): void {
     const tick = (now: number) => {
       const prior = previous.current ?? now
       previous.current = now
-      const current = useMissionStore.getState().storyTimeMs
-      const next = Math.min(replayEndStoryTime, current + (now - prior) * speed)
-      const pauseSegment = replayNarrative.find(
-        (segment) =>
-          (segment.presentationPauseMs ?? 0) > 0 &&
-          current <= segment.motionEndMs &&
-          next > segment.motionEndMs,
-      )
-      if (pauseSegment) {
-        beginEditorialPause(pauseSegment.id, pauseSegment.motionEndMs + 0.001)
-        return
-      }
-
-      setStoryTime(next)
-      if (next >= replayEndStoryTime) {
-        setPlaying(false)
-        return
-      }
+      useMissionStore.getState().advancePlayback(now - prior)
+      if (!useMissionStore.getState().playing) return
       frame.current = requestAnimationFrame(tick)
     }
 
     frame.current = requestAnimationFrame(tick)
     return () => {
       if (frame.current !== null) cancelAnimationFrame(frame.current)
+      frame.current = null
       previous.current = null
     }
-  }, [beginEditorialPause, playing, setPlaying, setStoryTime, speed])
+  }, [playing])
 }

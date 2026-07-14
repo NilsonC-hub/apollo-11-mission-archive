@@ -1,4 +1,4 @@
-import { parseMet } from '../mission-core/index.ts'
+import { formatMet, parseMet } from '../mission-core/index.ts'
 import { replayEvents } from './mission.ts'
 
 export function metForControlPath(pathname: string): number | undefined {
@@ -16,4 +16,12 @@ export function metForControlPath(pathname: string): number | undefined {
   } catch {
     return undefined
   }
+}
+
+export function controlMetPath(metSeconds: number): string {
+  return `/control/met/${encodeURIComponent(formatMet(metSeconds, { fractionDigits: 1 }))}`
+}
+
+export function controlEventPath(eventId: string): string {
+  return `/control/event/${encodeURIComponent(eventId)}`
 }

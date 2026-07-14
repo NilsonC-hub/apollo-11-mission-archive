@@ -210,6 +210,17 @@ function validateEvents(value: unknown, path: string, issues: ValidationIssue[])
         issues,
       )
     }
+    if (event.displayFractionDigits !== undefined) {
+      const path = `${eventPath}.displayFractionDigits`
+      if (
+        numberAt(event.displayFractionDigits, path, issues) &&
+        (!Number.isInteger(event.displayFractionDigits) ||
+          event.displayFractionDigits < 0 ||
+          event.displayFractionDigits > 3)
+      ) {
+        schemaIssue(issues, path, 'Expected an integer from 0 to 3')
+      }
+    }
   }
 }
 

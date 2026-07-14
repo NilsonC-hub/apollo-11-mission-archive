@@ -6,6 +6,7 @@ export interface Apollo11EventSeed {
   metSeconds: number
   tier: MissionEvent['tier']
   precision: NonNullable<MissionEvent['precision']>
+  displayFractionDigits?: MissionEvent['displayFractionDigits']
   citations: CitationRef[]
 }
 
@@ -224,6 +225,7 @@ export const apollo11EventSeeds = [
     metSeconds: 393855,
     tier: 'major',
     precision: 'source-rounded',
+    displayFractionDigits: 2,
     citations: [
       {
         sourceId: 'NASA-APOLLO-NUMBERS',

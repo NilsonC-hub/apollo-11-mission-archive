@@ -1404,7 +1404,7 @@ html[data-mode='control'] .mode-nav a.active span {
 
 .visualization-panel {
   display: grid;
-  grid-template-rows: 46px minmax(0, 1fr) 64px;
+  grid-template-rows: 46px auto minmax(0, 1fr) 64px;
 }
 
 .viewport-tools {
@@ -1419,6 +1419,46 @@ html[data-mode='control'] .mode-nav a.active span {
   font-size: 8px;
   font-weight: 500;
   letter-spacing: 0.07em;
+}
+
+.camera-mode {
+  min-width: 82px;
+  padding-left: 10px;
+  border-left: 1px solid var(--ops-rule);
+}
+
+.camera-mode span {
+  color: var(--ops-muted);
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: 0.07em;
+}
+
+.camera-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1px;
+  min-height: 44px;
+  padding: 4px;
+  border-bottom: 1px solid var(--ops-rule);
+  background: #0c100d;
+}
+
+.camera-tools button {
+  min-height: 44px;
+  padding: 0 10px;
+  border: 1px solid #39463d;
+  background: var(--ops-bg);
+  color: var(--ops-muted);
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: 0.04em;
+}
+
+.camera-tools .return-guided {
+  margin-left: auto;
+  border-color: var(--ops-amber);
+  color: var(--ops-amber);
 }
 
 .viewport-tools label {
@@ -1446,6 +1486,11 @@ html[data-mode='control'] .mode-nav a.active span {
   min-height: 0;
   overflow: hidden;
   background: #050706;
+}
+
+.scene-frame:focus-visible {
+  outline: 2px solid var(--ops-focus);
+  outline-offset: -2px;
 }
 
 .scene-frame canvas {
@@ -1581,18 +1626,26 @@ html[data-mode='control'] .mode-nav a.active span {
   font-size: 8px;
 }
 
-.systems-list > div {
+.systems-list .system-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 70px 9px;
+  grid-template-columns: minmax(0, 1fr) minmax(70px, 112px) 9px;
   gap: 6px;
   align-items: center;
   min-height: 48px;
   padding: 7px 10px;
+  width: 100%;
   border-bottom: 1px solid #303a32;
+  background: transparent;
+  color: var(--ops-text);
+  text-align: left;
 }
 
-.systems-list span,
-.systems-list b {
+.systems-list .system-row:hover,
+.systems-list .system-row:focus-visible {
+  background: rgba(167, 181, 143, 0.1);
+}
+
+.systems-list span {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1609,6 +1662,8 @@ html[data-mode='control'] .mode-nav a.active span {
   font-family: var(--mono);
   font-size: 8px;
   font-weight: 500;
+  line-height: 1.25;
+  text-align: right;
   text-transform: uppercase;
 }
 
@@ -1738,6 +1793,7 @@ html[data-mode='control'] .mode-nav a.active span {
 }
 
 .editorial-pause-notice,
+.component-inspection,
 .mission-complete {
   display: grid;
   grid-template-columns: minmax(260px, 1fr) auto;
@@ -1750,6 +1806,7 @@ html[data-mode='control'] .mode-nav a.active span {
 }
 
 .editorial-pause-notice > div,
+.component-inspection > div,
 .mission-complete > div {
   display: grid;
   gap: 3px;
@@ -1759,6 +1816,11 @@ html[data-mode='control'] .mode-nav a.active span {
 .editorial-pause-notice b,
 .editorial-pause-notice p,
 .editorial-pause-notice button,
+.component-inspection span,
+.component-inspection b,
+.component-inspection p,
+.component-inspection small,
+.component-inspection button,
 .mission-complete span,
 .mission-complete b,
 .mission-complete p {
@@ -1769,11 +1831,14 @@ html[data-mode='control'] .mode-nav a.active span {
 }
 
 .editorial-pause-notice span,
+.component-inspection span,
 .mission-complete span {
   color: var(--ops-amber);
 }
 
 .editorial-pause-notice p,
+.component-inspection p,
+.component-inspection small,
 .mission-complete p {
   color: var(--ops-muted);
 }
@@ -1784,6 +1849,23 @@ html[data-mode='control'] .mode-nav a.active span {
   border: 1px solid var(--ops-amber);
   background: var(--ops-amber);
   color: var(--ops-bg);
+}
+
+.component-inspection {
+  border-color: var(--ops-green);
+  background: #111611;
+}
+
+.component-inspection span {
+  color: var(--ops-green);
+}
+
+.component-inspection button {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--ops-green);
+  background: var(--ops-bg);
+  color: var(--ops-green);
 }
 
 .mission-complete {
@@ -1838,7 +1920,7 @@ html[data-mode='control'] .mode-nav a.active span {
 
 .playback-deck {
   display: grid;
-  grid-template-columns: 230px minmax(260px, 1fr) 280px;
+  grid-template-columns: 230px minmax(260px, 1fr) 320px;
   gap: 16px;
   align-items: center;
   min-height: 64px;
@@ -1882,6 +1964,19 @@ html[data-mode='control'] .mode-nav a.active span {
 
 .speed-controls {
   justify-content: flex-end;
+}
+
+.speed-controls > span {
+  display: grid;
+  min-width: 72px;
+  padding: 0 8px;
+  place-items: center;
+  border: 1px solid var(--ops-rule);
+  color: var(--ops-amber);
+  font-family: var(--mono);
+  font-size: 8px;
+  line-height: 1.2;
+  text-align: center;
 }
 
 .speed-controls button {
@@ -2180,6 +2275,10 @@ html[data-mode='control'] .mode-nav a.active span {
   .speed-controls button {
     flex: 1;
   }
+
+  .speed-controls > span {
+    min-height: 44px;
+  }
 }
 
 @media (max-width: 620px) {
@@ -2388,6 +2487,30 @@ html[data-mode='control'] .mode-nav a.active span {
     display: none;
   }
 
+  .viewport-tools > div:first-child b {
+    max-width: 210px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .camera-tools {
+    max-height: 98px;
+    overflow-y: auto;
+  }
+
+  .camera-tools button {
+    flex: 1 1 64px;
+    padding-right: 4px;
+    padding-left: 4px;
+  }
+
+  .camera-tools .return-guided {
+    order: -1;
+    flex-basis: 100%;
+    margin-left: 0;
+  }
+
   .event-readout {
     grid-template-columns: 1fr 84px;
   }
@@ -2414,6 +2537,7 @@ html[data-mode='control'] .mode-nav a.active span {
   }
 
   .editorial-pause-notice,
+  .component-inspection,
   .mission-complete {
     grid-template-columns: 1fr;
   }

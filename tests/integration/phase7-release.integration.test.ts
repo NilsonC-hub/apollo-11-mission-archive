@@ -27,6 +27,11 @@ test('published Apollo 11 events reconstruct one deterministic end-to-end journe
   assert.equal(recovered.components['service-module']?.lifecycle, 'discarded')
   assert.equal(recovered.components['lm-ascent-stage']?.lifecycle, 'discarded')
   assert.equal(recovered.components['lm-descent-stage']?.lifecycle, 'landed')
+  for (const [componentId, component] of Object.entries(recovered.components)) {
+    if (component.lifecycle === 'discarded' || component.lifecycle === 'landed') {
+      assert.notEqual(component.engineMode, 'burning', `${componentId} has a terminal lifecycle`)
+    }
+  }
 })
 
 test('storyTime remains the playback driver across authored pauses and mission completion', () => {

@@ -1,4 +1,5 @@
 import { compileNarrative } from '../narrative/mapping.ts'
+import { stateAtMet } from '../state-machine/stateAtMet.ts'
 import type { MissionAction, MissionEvent } from '../types/events.ts'
 import type { MissionDefinition, SourceRecord } from '../types/mission.ts'
 import type { CitationRef, EvidenceValue, SourcedValue } from '../types/provenance.ts'
@@ -427,6 +428,27 @@ export function validateMissionDefinition(definition: MissionDefinition): Valida
   for (const [index, rootId] of definition.vehicle.rootComponentIds.entries()) {
     if (!componentIds.has(rootId)) {
       issue(issues, 'UNKNOWN_ROOT_COMPONENT', `vehicle.rootComponentIds[${index}]`, rootId)
+    }
+  }
+
+  for (const [eventIndex, event] of definition.events.entries()) {
+    try {
+      const eventState = stateAtMet(definition, event.metSeconds)
+      for (const [componentId, component] of Object.entries(eventState.components)) {
+        if (
+          (component.lifecycle === 'discarded' || component.lifecycle === 'landed') &&
+          component.engineMode === 'burning'
+        ) {
+          issue(
+            issues,
+            'TERMINAL_COMPONENT_BURNING',
+            `events[${eventIndex}]`,
+            `${componentId} is ${component.lifecycle} but remains burning after ${event.id}`,
+          )
+        }
+      }
+    } catch {
+      // Earlier validation reports unknown components and invalid actions more precisely.
     }
   }
 

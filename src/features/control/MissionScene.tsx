@@ -1,13 +1,28 @@
-import { Component, Suspense, useEffect, useMemo } from 'react'
-import { Canvas, useLoader, useThree } from '@react-three/fiber'
+import { Component, Suspense, useEffect, useMemo, useRef } from 'react'
+import { Canvas, useLoader, useThree, type ThreeEvent } from '@react-three/fiber'
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader.js'
-import { BufferGeometry, Float32BufferAttribute, type Group } from 'three'
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
+import {
+  Box3,
+  BufferGeometry,
+  Float32BufferAttribute,
+  Sphere,
+  Vector3,
+  type Group,
+  type Object3D,
+} from 'three'
 
 import { getEvent, mission } from '../../app/mission.ts'
-import type { ModelQuality } from '../../app/missionStore.ts'
-import { stateAtMet } from '../../mission-core/index.ts'
+import {
+  useMissionStore,
+  type CameraCommand,
+  type ControlInteractionState,
+  type ModelQuality,
+} from '../../app/missionStore.ts'
+import { stateAtMet, visualStateAtStoryTime } from '../../mission-core/index.ts'
+import { resolveComponentNode, resolveSemanticNode } from './modelNodeLookup.ts'
 
 const MODEL_ROOT = '/missions/apollo11/models'
 const DRACO_ROOT = '/missions/apollo11/decoders/three-draco/'
@@ -106,24 +121,31 @@ function useGlb(url: string) {
   })
 }
 
-function presentationProgress(met: number, eventId: string, duration = 24): number {
-  const start = getEvent(eventId).metSeconds
-  return Math.min(1, Math.max(0, (met - start) / duration))
-}
-
-function rangeProgress(met: number, startEventId: string, endEventId: string): number {
-  const start = getEvent(startEventId).metSeconds
-  const end = getEvent(endEventId).metSeconds
-  return Math.min(1, Math.max(0, (met - start) / (end - start)))
-}
-
-function setNodePresentation(root: Group, nodeName: string, visible: boolean, offsetY = 0): void {
-  const node = root.getObjectByName(nodeName)
-  if (!node) return
+function setComponentPresentation(
+  root: Group,
+  componentId: string,
+  visible: boolean,
+  offsetY = 0,
+): void {
+  const node = resolveComponentNode(root, componentId)
   const baseY = Number(node.userData.presentationBaseY ?? node.position.y)
   node.userData.presentationBaseY = baseY
+  node.userData.semanticComponentId = componentId
   node.visible = visible
   node.position.y = baseY + offsetY
+}
+
+function handleSemanticClick(event: ThreeEvent<MouseEvent>): void {
+  let candidate: Object3D | null = event.object
+  while (candidate) {
+    const componentId = candidate.userData.semanticComponentId as string | undefined
+    if (componentId) {
+      event.stopPropagation()
+      useMissionStore.getState().inspectComponent(componentId)
+      return
+    }
+    candidate = candidate.parent
+  }
 }
 
 function sceneModeAtMet(met: number): SceneMode {
@@ -151,26 +173,33 @@ function SaturnStack({
   const postCsmSeparation = met >= getEvent('a11-csm-sivb-separation').metSeconds
 
   useEffect(() => {
-    const separations = [
-      ['s-ic', 'a11-sic-sii-separation'],
-      ['s-ic-s-ii-interstage', 'a11-sic-sii-separation'],
-      ['s-ii', 'a11-sii-sivb-separation'],
-      ['s-ii-s-ivb-interstage', 'a11-sii-sivb-separation'],
-      ['launch-escape-system', 'a11-les-jettison'],
+    const separatingComponents = [
+      's-ic',
+      's-ic-s-ii-interstage',
+      's-ii',
+      's-ii-s-ivb-interstage',
+      'launch-escape-system',
     ] as const
 
-    for (const [componentId, eventId] of separations) {
-      const progress = presentationProgress(met, eventId)
+    for (const componentId of separatingComponents) {
       const discarded = state.components[componentId]?.lifecycle === 'discarded'
-      setNodePresentation(scene, componentId, !discarded || progress < 1, -progress * 12)
+      setComponentPresentation(scene, componentId, !discarded)
     }
-    setNodePresentation(scene, 'command-service-module', !postCsmSeparation)
+    for (const componentId of ['s-ivb', 'instrument-unit', 'spacecraft-lm-adapter']) {
+      setComponentPresentation(scene, componentId, true)
+    }
+    const launchCsm = resolveSemanticNode(
+      scene,
+      'apollo11-saturn-v',
+      'spacecraft.csmLaunchRepresentation',
+    )
+    launchCsm.visible = !postCsmSeparation
   }, [met, postCsmSeparation, scene, state.components])
 
   const ascent = state.phaseId === 'prelaunch' || state.phaseId === 'ascent'
   return (
     <group rotation={[0, 0, ascent ? 0 : -Math.PI / 2]} position={[0, ascent ? -3.7 : 0, 0]}>
-      <primitive object={scene} scale={0.067} />
+      <primitive object={scene} scale={0.067} onClick={handleSemanticClick} />
       {state.components['s-ic']?.engineMode === 'burning' && (
         <mesh position={[0, -4.2, 0]}>
           <coneGeometry args={[0.2, 1.4, 14]} />
@@ -196,12 +225,13 @@ function CsmModel({
   const scene = useMemo(() => gltf.scene.clone(true), [gltf.scene])
 
   useEffect(() => {
-    setNodePresentation(scene, 'service-module', configuration === 'full')
+    setComponentPresentation(scene, 'service-module', configuration === 'full')
+    setComponentPresentation(scene, 'command-module', true)
   }, [configuration, scene])
 
   return (
     <group position={position} rotation={[0, 0, -Math.PI / 2]}>
-      <primitive object={scene} scale={scale} />
+      <primitive object={scene} scale={scale} onClick={handleSemanticClick} />
     </group>
   )
 }
@@ -221,13 +251,13 @@ function LunarModuleModel({
   const scene = useMemo(() => gltf.scene.clone(true), [gltf.scene])
 
   useEffect(() => {
-    setNodePresentation(scene, 'lm-ascent-stage', stage !== 'descent')
-    setNodePresentation(scene, 'lm-descent-stage', stage !== 'ascent')
+    setComponentPresentation(scene, 'lm-ascent-stage', stage !== 'descent')
+    setComponentPresentation(scene, 'lm-descent-stage', stage !== 'ascent')
   }, [scene, stage])
 
   return (
     <group position={position} rotation={[0, 0, -Math.PI / 2]}>
-      <primitive object={scene} scale={scale} />
+      <primitive object={scene} scale={scale} onClick={handleSemanticClick} />
     </group>
   )
 }
@@ -244,10 +274,10 @@ function ExtractionAssembly({
   const ejection = getEvent('a11-spacecraft-ejection').metSeconds
   if (met < separation) return null
 
-  const dockingProgress = Math.min(1, Math.max(0, (met - separation) / (docking - separation)))
+  const docked = met >= docking
   const ejected = met >= ejection
   const assemblyX = ejected ? 2.8 : 0
-  const csmX = ejected ? 2.6 : 4.2 - dockingProgress * 3.2
+  const csmX = ejected ? 2.6 : docked ? 1 : 4.2
 
   return (
     <group position={[assemblyX, 0, 0]}>
@@ -303,9 +333,11 @@ function TrajectoryReference({ mode }: { mode: 'outbound' | 'orbit' | 'return' }
 
 function MissionConfiguration({
   met,
+  phaseProgress,
   quality,
 }: {
   met: number
+  phaseProgress: number
   quality: Exclude<ModelQuality, 'fallback'>
 }) {
   const mode = sceneModeAtMet(met)
@@ -321,7 +353,7 @@ function MissionConfiguration({
   }
 
   if (mode === 'translunar') {
-    const progress = rangeProgress(met, 'a11-spacecraft-ejection', 'a11-loi-ignition')
+    const progress = phaseProgress
     return (
       <>
         <Planet
@@ -353,7 +385,7 @@ function MissionConfiguration({
   }
 
   if (mode === 'descent') {
-    const progress = rangeProgress(met, 'a11-undocking', 'a11-touchdown')
+    const progress = phaseProgress
     return (
       <>
         <LunarSurfaceReference />
@@ -377,7 +409,7 @@ function MissionConfiguration({
   }
 
   if (mode === 'rendezvous') {
-    const progress = rangeProgress(met, 'a11-lunar-liftoff', 'a11-lm-csm-docking')
+    const progress = phaseProgress
     return (
       <>
         <LunarSurfaceReference />
@@ -424,13 +456,138 @@ function MissionConfiguration({
   )
 }
 
+const guidedCameraPosition = new Vector3(9.2, 4.8, 12.8)
+const guidedCameraTarget = new Vector3(0, 0, 0)
+const verticalAxis = new Vector3(0, 1, 0)
+
+function CameraRig({
+  interaction,
+  cameraCommand,
+}: {
+  interaction: ControlInteractionState
+  cameraCommand: CameraCommand | null
+}) {
+  const camera = useThree((state) => state.camera)
+  const gl = useThree((state) => state.gl)
+  const scene = useThree((state) => state.scene)
+  const invalidate = useThree((state) => state.invalidate)
+  const controls = useMemo(() => new OrbitControls(camera, gl.domElement), [camera, gl.domElement])
+  const tweenFrame = useRef<number | null>(null)
+
+  useEffect(() => {
+    controls.enableDamping = false
+    controls.enablePan = true
+    controls.minDistance = 1.2
+    controls.maxDistance = 80
+    const onStart = () => useMissionStore.getState().enterFreeLook()
+    const onChange = () => invalidate()
+    const onDirectInput = () => useMissionStore.getState().enterFreeLook()
+    controls.addEventListener('start', onStart)
+    controls.addEventListener('change', onChange)
+    gl.domElement.addEventListener('pointerdown', onDirectInput, { capture: true })
+    gl.domElement.addEventListener('wheel', onDirectInput, { capture: true, passive: true })
+    gl.domElement.addEventListener('touchstart', onDirectInput, { capture: true, passive: true })
+    controls.update()
+    return () => {
+      controls.removeEventListener('start', onStart)
+      controls.removeEventListener('change', onChange)
+      gl.domElement.removeEventListener('pointerdown', onDirectInput, { capture: true })
+      gl.domElement.removeEventListener('wheel', onDirectInput, { capture: true })
+      gl.domElement.removeEventListener('touchstart', onDirectInput, { capture: true })
+      controls.dispose()
+    }
+  }, [controls, invalidate])
+
+  useEffect(() => {
+    document.documentElement.dataset.controlInteraction = interaction.mode
+    return () => {
+      delete document.documentElement.dataset.controlInteraction
+    }
+  }, [interaction.mode])
+
+  useEffect(() => {
+    if (!cameraCommand) return
+    const offset = camera.position.clone().sub(controls.target)
+    if (cameraCommand.kind === 'rotate-left') offset.applyAxisAngle(verticalAxis, Math.PI / 12)
+    if (cameraCommand.kind === 'rotate-right') offset.applyAxisAngle(verticalAxis, -Math.PI / 12)
+    if (cameraCommand.kind === 'zoom-in') offset.multiplyScalar(0.82)
+    if (cameraCommand.kind === 'zoom-out') offset.multiplyScalar(1.22)
+    if (cameraCommand.kind === 'reset') {
+      camera.position.copy(guidedCameraPosition)
+      controls.target.copy(guidedCameraTarget)
+    } else {
+      camera.position.copy(controls.target).add(offset)
+    }
+    controls.update()
+    invalidate()
+    document.documentElement.dataset.cameraCommand = cameraCommand.kind
+  }, [camera, cameraCommand, controls, invalidate])
+
+  useEffect(() => {
+    if (tweenFrame.current !== null) cancelAnimationFrame(tweenFrame.current)
+
+    let targetPosition: Vector3 | undefined
+    let targetLookAt: Vector3 | undefined
+    if (interaction.mode === 'guided') {
+      targetPosition = guidedCameraPosition.clone()
+      targetLookAt = guidedCameraTarget.clone()
+    } else if (interaction.mode === 'inspect' && interaction.cameraControl === 'guided-focus') {
+      let targetObject: Group | undefined
+      scene.traverse((object) => {
+        if (object.userData.semanticComponentId === interaction.componentId) {
+          targetObject = object as Group
+        }
+      })
+      if (targetObject) {
+        const sphere = new Box3().setFromObject(targetObject).getBoundingSphere(new Sphere())
+        const direction = camera.position.clone().sub(controls.target).normalize()
+        const distance = Math.max(3.5, sphere.radius * 5)
+        targetLookAt = sphere.center.clone()
+        targetPosition = sphere.center.clone().add(direction.multiplyScalar(distance))
+      }
+    }
+
+    if (!targetPosition || !targetLookAt) return
+    const startPosition = camera.position.clone()
+    const startTarget = controls.target.clone()
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const durationMs = reduceMotion ? 0 : 550
+    const startedAt = performance.now()
+
+    const update = (now: number) => {
+      const progress = durationMs === 0 ? 1 : Math.min(1, (now - startedAt) / durationMs)
+      const eased = 1 - (1 - progress) ** 3
+      camera.position.lerpVectors(startPosition, targetPosition, eased)
+      controls.target.lerpVectors(startTarget, targetLookAt, eased)
+      controls.update()
+      invalidate()
+      if (progress < 1) tweenFrame.current = requestAnimationFrame(update)
+      else tweenFrame.current = null
+    }
+    tweenFrame.current = requestAnimationFrame(update)
+    return () => {
+      if (tweenFrame.current !== null) cancelAnimationFrame(tweenFrame.current)
+      tweenFrame.current = null
+    }
+  }, [camera, controls, interaction, invalidate, scene])
+
+  return null
+}
+
 function SceneContents({
   met,
+  storyTimeMs,
+  interaction,
+  cameraCommand,
   quality,
 }: {
   met: number
+  storyTimeMs: number
+  interaction: ControlInteractionState
+  cameraCommand: CameraCommand | null
   quality: Exclude<ModelQuality, 'fallback'>
 }) {
+  const phaseProgress = visualStateAtStoryTime(mission.narrative, storyTimeMs).progress
   return (
     <>
       <color attach="background" args={['#050706']} />
@@ -438,7 +595,8 @@ function SceneContents({
       <ambientLight intensity={1.15} />
       <directionalLight position={[8, 7, 10]} intensity={2.5} color="#f3ead8" />
       <directionalLight position={[-6, 2, -4]} intensity={0.7} color="#758a83" />
-      <MissionConfiguration met={met} quality={quality} />
+      <MissionConfiguration met={met} phaseProgress={phaseProgress} quality={quality} />
+      <CameraRig interaction={interaction} cameraCommand={cameraCommand} />
     </>
   )
 }
@@ -527,7 +685,19 @@ function webglAvailable(): boolean {
   return cachedWebglAvailability
 }
 
-export function MissionScene({ met, quality }: { met: number; quality: ModelQuality }) {
+export function MissionScene({
+  met,
+  storyTimeMs,
+  interaction,
+  cameraCommand,
+  quality,
+}: {
+  met: number
+  storyTimeMs: number
+  interaction: ControlInteractionState
+  cameraCommand: CameraCommand | null
+  quality: ModelQuality
+}) {
   if (quality === 'fallback' || !webglAvailable()) return <StaticVehicleFallback />
 
   return (
@@ -541,7 +711,13 @@ export function MissionScene({ met, quality }: { met: number; quality: ModelQual
       >
         <RendererAuditProbe />
         <Suspense fallback={<LoadingScene />}>
-          <SceneContents met={met} quality={quality} />
+          <SceneContents
+            met={met}
+            storyTimeMs={storyTimeMs}
+            interaction={interaction}
+            cameraCommand={cameraCommand}
+            quality={quality}
+          />
         </Suspense>
       </Canvas>
     </SceneErrorBoundary>
