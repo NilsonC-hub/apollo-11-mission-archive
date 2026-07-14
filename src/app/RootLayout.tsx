@@ -21,7 +21,10 @@ export function RootLayout() {
 
   useLayoutEffect(() => {
     if (previousControl.current && !control) snapshotAndPauseActiveControlHistoryEntry()
-    setActiveControlHistoryEntry(control ? ensureControlHistoryEntryId(location.key) : null)
+    setActiveControlHistoryEntry(
+      control ? ensureControlHistoryEntryId(location.key) : null,
+      control ? location.pathname : null,
+    )
     previousControl.current = control
   }, [control, location.key])
 

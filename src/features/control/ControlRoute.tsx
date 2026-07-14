@@ -128,16 +128,16 @@ function useControlKeyboard(): void {
         const target = adjacentReplayTarget('previous')
         if (!target) return
         snapshotActiveControlHistoryEntry()
-        store.setMet(target.metSeconds)
         store.setPlaying(false)
+        store.setMet(target.metSeconds)
         void navigate(controlMetPath(target.metSeconds))
       }
       if (event.key.toLowerCase() === 'l') {
         const target = adjacentReplayTarget('next')
         if (!target) return
         snapshotActiveControlHistoryEntry()
-        store.setMet(target.metSeconds)
         store.setPlaying(false)
+        store.setMet(target.metSeconds)
         void navigate(controlMetPath(target.metSeconds))
       }
       if (event.key === '[' || event.key === ']') {
@@ -226,10 +226,10 @@ function useControlJump(): ControlJump {
   const navigate = useNavigate()
   return useCallback(
     (metSeconds: number, path: string, replace = false, pausePlayback = false) => {
-      snapshotActiveControlHistoryEntry()
+      if (!replace) snapshotActiveControlHistoryEntry()
       const store = useMissionStore.getState()
-      store.setMet(metSeconds)
       if (pausePlayback) store.setPlaying(false)
+      store.setMet(metSeconds)
       void navigate(path, { replace })
     },
     [navigate],

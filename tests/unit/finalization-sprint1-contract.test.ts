@@ -7,6 +7,7 @@ import {
   clearControlTraversalSnapshot,
   consumeControlReloadSnapshot,
   controlMetPath,
+  createControlReloadSnapshotConsumer,
   metForControlPath,
   readControlTraversalSnapshot,
   recordControlPlaybackSnapshot,
@@ -314,6 +315,41 @@ test('sessionStorage getter SecurityError cannot escape or interrupt mode-switch
     assert.equal(useMissionStore.getState().pauseReason, 'mode-switch')
   } finally {
     setActiveControlHistoryEntry(null)
+    if (original) Object.defineProperty(globalThis, 'sessionStorage', original)
+    else delete (globalThis as typeof globalThis & { sessionStorage?: unknown }).sessionStorage
+  }
+})
+
+test('reload boot transaction stays consumed when storage permission appears late', () => {
+  const original = Object.getOwnPropertyDescriptor(globalThis, 'sessionStorage')
+  const pathname = '/control/met/s5'
+  const consumer = createControlReloadSnapshotConsumer(pathname)
+  Object.defineProperty(globalThis, 'sessionStorage', {
+    configurable: true,
+    get: () => {
+      throw new DOMException('Storage access denied', 'SecurityError')
+    },
+  })
+
+  try {
+    assert.equal(consumer.consume(pathname), undefined)
+    Object.defineProperty(globalThis, 'sessionStorage', {
+      configurable: true,
+      value: {
+        getItem: () =>
+          JSON.stringify({
+            sourcePathname: pathname,
+            path: '/control/met/s99',
+            metSeconds: 99,
+          }),
+      },
+    })
+    assert.equal(
+      consumer.consume(pathname),
+      undefined,
+      'a late storage permission change cannot reopen the boot transaction',
+    )
+  } finally {
     if (original) Object.defineProperty(globalThis, 'sessionStorage', original)
     else delete (globalThis as typeof globalThis & { sessionStorage?: unknown }).sessionStorage
   }

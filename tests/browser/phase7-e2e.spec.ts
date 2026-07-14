@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 
-import { metForControlPath } from '../../src/app/controlDeepLink.ts'
+import { controlMetPath, metForControlPath } from '../../src/app/controlDeepLink.ts'
 import { getEvent, replayEndMet } from '../../src/app/mission.ts'
 import { formatEventMet, parseMet } from '../../src/mission-core/index.ts'
 import {
@@ -687,15 +687,102 @@ test('adjacent event button and keyboard navigation land on target and pause rep
     formatEventMet(getEvent('a11-sic-outboard-cutoff')),
   )
 
-  await page.getByRole('button', { name: '1×', exact: true }).click()
-  await page.getByRole('button', { name: 'PLAY', exact: true }).click()
+  await page.goto('/control/event/a11-csm-sivb-separation')
+  await waitForScene(page)
   await page.locator('.scene-frame').focus()
   await page.keyboard.press('l')
   await expect(page.getByRole('button', { name: 'PLAY', exact: true })).toBeVisible()
-  await expect(page).toHaveURL(/\/control\/met\/s162.3$/)
-  await expect(page.locator('.met-display')).toHaveText(
-    formatEventMet(getEvent('a11-sic-sii-separation')),
-  )
+  const firstDocking = getEvent('a11-first-docking')
+  expect(new URL(page.url()).pathname).toBe(controlMetPath(firstDocking.metSeconds))
+  await expect(page.locator('.met-display')).toHaveText(formatEventMet(firstDocking))
+})
+
+test('adjacent button and keyboard PUSH preserve outgoing MET when storage writes fail', async ({
+  page,
+}) => {
+  const denyStorageWrites = async () =>
+    page.evaluate(() => {
+      Storage.prototype.setItem = () => {
+        throw new DOMException('Storage quota exceeded', 'QuotaExceededError')
+      }
+    })
+
+  await page.goto('/control/event/a11-liftoff')
+  await waitForScene(page)
+  await page.getByRole('button', { name: '10×', exact: true }).click()
+  await page.getByRole('button', { name: 'PLAY', exact: true }).click()
+  await page.waitForTimeout(1_050)
+  await expect.poll(() => page.url()).toMatch(/\/control\/met\/s/)
+  await page.waitForTimeout(200)
+  const beforeButton = await displayedMetSeconds(page)
+  const buttonUrlMet = metForControlPath(new URL(page.url()).pathname)
+  expect(buttonUrlMet).toBeDefined()
+  expect(beforeButton).toBeGreaterThan(buttonUrlMet!)
+  await denyStorageWrites()
+
+  await page.getByRole('button', { name: 'Next event' }).click()
+  await expect(page.getByRole('button', { name: 'PLAY', exact: true })).toBeVisible()
+  await page.goBack()
+  await waitForScene(page)
+  const restoredButton = await displayedMetSeconds(page)
+  expect(restoredButton).toBeGreaterThanOrEqual(beforeButton)
+  expect(restoredButton).toBeLessThan(getEvent('a11-sic-outboard-cutoff').metSeconds - 1)
+
+  await page.goto('/control/event/a11-csm-sivb-separation')
+  await waitForScene(page)
+  await page.getByRole('button', { name: '1×', exact: true }).click()
+  await page.getByRole('button', { name: 'PLAY', exact: true }).click()
+  await page.waitForTimeout(1_050)
+  await expect.poll(() => page.url()).toMatch(/\/control\/met\/s/)
+  await page.waitForTimeout(200)
+  const beforeKeyboard = await displayedMetSeconds(page)
+  const keyboardUrlMet = metForControlPath(new URL(page.url()).pathname)
+  expect(keyboardUrlMet).toBeDefined()
+  expect(beforeKeyboard).toBeGreaterThan(keyboardUrlMet!)
+  await denyStorageWrites()
+
+  await page.locator('.scene-frame').focus()
+  await page.keyboard.press('l')
+  await expect(page.getByRole('button', { name: 'PLAY', exact: true })).toBeVisible()
+  await page.goBack()
+  await waitForScene(page)
+  const restoredKeyboard = await displayedMetSeconds(page)
+  expect(restoredKeyboard).toBeGreaterThanOrEqual(beforeKeyboard)
+  expect(restoredKeyboard).toBeLessThan(getEvent('a11-first-docking').metSeconds - 1)
+})
+
+test('more than 32 replace scrubs cannot evict a reachable traversal snapshot', async ({
+  page,
+}) => {
+  await page.goto('/control/met/s5')
+  await waitForScene(page)
+  const historyBeforePush = await page.evaluate(() => history.length)
+  await page.getByRole('button', { name: '1000×', exact: true }).click()
+  await page.getByRole('button', { name: 'PLAY', exact: true }).click()
+  await page.waitForTimeout(250)
+  const firstEntryFinalMet = await displayedMetSeconds(page)
+  expect(firstEntryFinalMet).toBeGreaterThan(20)
+  expect(new URL(page.url()).pathname).toBe('/control/met/s5')
+
+  await page.getByRole('link', { name: '02 MISSION CONTROL', exact: true }).click()
+  await expect(page).toHaveURL(/\/control$/)
+  await page.getByRole('button', { name: 'PAUSE', exact: true }).click()
+  const historyAfterPush = await page.evaluate(() => history.length)
+  expect(historyAfterPush).toBe(historyBeforePush + 1)
+
+  const slider = page.locator('.timeline-slider input')
+  for (let index = 0; index < 40; index += 1) {
+    const previousKey = await page.evaluate(() => history.state?.key as string | undefined)
+    await slider.fill(String(1_000 + index))
+    await expect
+      .poll(() => page.evaluate(() => history.state?.key as string | undefined))
+      .not.toBe(previousKey)
+  }
+  expect(await page.evaluate(() => history.length)).toBe(historyAfterPush)
+
+  await page.goBack()
+  await waitForScene(page)
+  expect(await displayedMetSeconds(page)).toBeGreaterThanOrEqual(firstEntryFinalMet)
 })
 
 test('same-path Control POP applies the destination entry traversal snapshot', async ({ page }) => {

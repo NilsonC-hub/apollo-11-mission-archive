@@ -3,18 +3,25 @@ import { recordControlTraversalSnapshot } from './controlDeepLink.ts'
 import { mission } from './mission.ts'
 import { useMissionStore } from './missionStore.ts'
 
-let activeControlEntryId: string | null = null
+let activeControlEntry: { entryId: string; pathname: string | null } | null = null
 let popCaptureInstalled = false
 
-export function setActiveControlHistoryEntry(entryId: string | null): void {
-  activeControlEntryId = entryId
+export function setActiveControlHistoryEntry(
+  entryId: string | null,
+  pathname: string | null = null,
+): void {
+  activeControlEntry = entryId ? { entryId, pathname } : null
 }
 
 export function snapshotActiveControlHistoryEntry(): void {
-  if (!activeControlEntryId) return
+  if (!activeControlEntry) return
   const state = useMissionStore.getState()
   const metSeconds = metAtStoryTime(mission.narrative, state.storyTimeMs)
-  recordControlTraversalSnapshot(activeControlEntryId, metSeconds)
+  recordControlTraversalSnapshot(
+    activeControlEntry.entryId,
+    metSeconds,
+    activeControlEntry.pathname ?? undefined,
+  )
 }
 
 export function snapshotAndPauseActiveControlHistoryEntry(): void {

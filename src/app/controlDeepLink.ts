@@ -20,7 +20,6 @@ function controlReloadBootPathname(): string | null {
 }
 
 const CONTROL_RELOAD_BOOT_PATHNAME = controlReloadBootPathname()
-let controlReloadBootSnapshot: ControlPlaybackSnapshot | null | undefined
 
 export interface ControlPlaybackSnapshot {
   sourcePathname: string
@@ -45,6 +44,73 @@ function controlSessionStorage(): Storage | null {
     return null
   }
 }
+
+export interface ControlReloadSnapshotConsumer {
+  consume: (pathname: string) => ControlPlaybackSnapshot | undefined
+  clear: () => void
+}
+
+export function createControlReloadSnapshotConsumer(
+  bootPathname: string | null,
+): ControlReloadSnapshotConsumer {
+  let bootSnapshot: ControlPlaybackSnapshot | null | undefined
+
+  return {
+    consume: (pathname) => {
+      if (bootPathname === null || pathname !== bootPathname) return undefined
+      if (bootSnapshot !== undefined) return bootSnapshot ?? undefined
+
+      const storage = controlSessionStorage()
+      if (!storage) {
+        bootSnapshot = null
+        return undefined
+      }
+
+      try {
+        const serialized = storage.getItem(CONTROL_RELOAD_SNAPSHOT_KEY)
+        if (!serialized) {
+          bootSnapshot = null
+          return undefined
+        }
+        const snapshot = JSON.parse(serialized) as Partial<ControlPlaybackSnapshot>
+        const metSeconds =
+          typeof snapshot.path === 'string' ? metForControlPath(snapshot.path) : undefined
+        if (
+          snapshot.sourcePathname !== pathname ||
+          typeof snapshot.path !== 'string' ||
+          metSeconds === undefined ||
+          !Number.isFinite(metSeconds)
+        ) {
+          bootSnapshot = null
+          return undefined
+        }
+        bootSnapshot = {
+          sourcePathname: snapshot.sourcePathname,
+          path: snapshot.path,
+          metSeconds,
+        }
+        return bootSnapshot
+      } catch {
+        bootSnapshot = null
+        return undefined
+      }
+    },
+    clear: () => {
+      bootSnapshot = null
+      const storage = controlSessionStorage()
+      if (!storage) return
+      try {
+        storage.removeItem(CONTROL_RELOAD_SNAPSHOT_KEY)
+      } catch {
+        // The in-memory boot transaction is still consumed when cleanup fails.
+      }
+    },
+  }
+}
+
+const controlReloadSnapshotConsumer = createControlReloadSnapshotConsumer(
+  CONTROL_RELOAD_BOOT_PATHNAME,
+)
 
 function storedControlTraversalSnapshots(
   storage: Storage | null = controlSessionStorage(),
@@ -90,13 +156,24 @@ export function ensureControlHistoryEntryId(locationKey: string): string {
   return entryId
 }
 
-export function recordControlTraversalSnapshot(entryId: string, metSeconds: number): void {
+export function recordControlTraversalSnapshot(
+  entryId: string,
+  metSeconds: number,
+  preferredPathname?: string,
+): void {
   const storage = controlSessionStorage()
   if (!storage || entryId.length === 0) return
   const snapshots = storedControlTraversalSnapshots(storage).filter(
     (snapshot) => snapshot.entryId !== entryId,
   )
-  snapshots.push({ entryId, path: controlMetPath(metSeconds) })
+  const preferredMet = preferredPathname ? metForControlPath(preferredPathname) : undefined
+  const path =
+    preferredPathname !== undefined &&
+    preferredMet !== undefined &&
+    Object.is(preferredMet, metSeconds)
+      ? preferredPathname
+      : controlMetPath(metSeconds)
+  snapshots.push({ entryId, path })
   try {
     storage.setItem(
       CONTROL_TRAVERSAL_SNAPSHOTS_KEY,
@@ -151,54 +228,11 @@ export function recordControlPlaybackSnapshot(sourcePathname: string, metSeconds
 export function consumeControlReloadSnapshot(
   pathname: string,
 ): ControlPlaybackSnapshot | undefined {
-  if (CONTROL_RELOAD_BOOT_PATHNAME === null || pathname !== CONTROL_RELOAD_BOOT_PATHNAME) {
-    return undefined
-  }
-  if (controlReloadBootSnapshot !== undefined) {
-    return controlReloadBootSnapshot ?? undefined
-  }
-  const storage = controlSessionStorage()
-  if (!storage) return undefined
-
-  try {
-    const serialized = storage.getItem(CONTROL_RELOAD_SNAPSHOT_KEY)
-    if (!serialized) {
-      controlReloadBootSnapshot = null
-      return undefined
-    }
-    const snapshot = JSON.parse(serialized) as Partial<ControlPlaybackSnapshot>
-    const metSeconds =
-      typeof snapshot.path === 'string' ? metForControlPath(snapshot.path) : undefined
-    if (
-      snapshot.sourcePathname !== pathname ||
-      typeof snapshot.path !== 'string' ||
-      metSeconds === undefined ||
-      !Number.isFinite(metSeconds)
-    ) {
-      controlReloadBootSnapshot = null
-      return undefined
-    }
-    controlReloadBootSnapshot = {
-      sourcePathname: snapshot.sourcePathname,
-      path: snapshot.path,
-      metSeconds,
-    }
-    return controlReloadBootSnapshot
-  } catch {
-    controlReloadBootSnapshot = null
-    return undefined
-  }
+  return controlReloadSnapshotConsumer.consume(pathname)
 }
 
 export function clearControlReloadSnapshot(): void {
-  controlReloadBootSnapshot = null
-  const storage = controlSessionStorage()
-  if (!storage) return
-  try {
-    storage.removeItem(CONTROL_RELOAD_SNAPSHOT_KEY)
-  } catch {
-    // The in-memory boot transaction is still consumed when cleanup fails.
-  }
+  controlReloadSnapshotConsumer.clear()
 }
 
 export function metForControlPath(pathname: string): number | undefined {
