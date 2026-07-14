@@ -146,3 +146,30 @@ game interface; (b) animated twinkling or atmospheric haze — rejected because
 it is physically inappropriate for an exterior space view and violates the
 motion rules; (c) a telescope mode — deferred until it can be a sourced archive
 instrument rather than an unsourced visual toy.
+
+### ADR-P7-002 — Do not simulate a CRT or pixel grid over the mission scene
+
+**Date**: 2026-07-14
+**Context**: The Mission Control scene retained a faint four-pixel repeating
+horizontal overlay. If interpreted as geometry, it conflicts with the scene's
+celestial relationships; if interpreted as a display surface, it still
+generalizes several historical media and console types into one decorative
+CRT filter. Production Spec §20 and §26 explicitly prohibit persistent CRT
+scanlines and screen flicker.
+
+**Decision**: Remove the scene-surface scanline overlay and do not replace it
+with a pixel grid, phosphor mask, noise, curvature, bloom, or low-resolution
+filter. Express the 1969 mission-control character through source-bound
+terminology, condensed/monospaced typography, panel rules, status colors, and
+information hierarchy.
+
+**Consequence**: Stars, planets, vehicle models, labels, and small text render
+without an artificial raster pattern. The display remains a contemporary
+archive interface rather than a claim that every record was viewed through
+one period CRT technology.
+
+**Alternatives considered**: (a) a visible pixel matrix — rejected because its
+device model and resolution would be invented; (b) a weaker scanline overlay —
+rejected because it retains the same false-media implication while continuing
+to reduce legibility; (c) an optional nostalgia filter — rejected because it
+adds no archival or operational meaning.

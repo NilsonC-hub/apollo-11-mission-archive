@@ -15,6 +15,9 @@ test('Phase 7 star field is deterministic, static, and truth-labelled', async ()
 
 test('Phase 7 scene avoids unsupported celestial spectacle features', async () => {
   const scene = await readFile('src/features/control/MissionScene.tsx', 'utf8')
+  const styles = await readFile('src/styles/global.css', 'utf8')
 
   assert.doesNotMatch(scene, /nebula|telescope|lensFlare|atmosphere/i)
+  assert.doesNotMatch(styles, /\.scene-frame::after/)
+  assert.doesNotMatch(styles, /repeating-linear-gradient/)
 })

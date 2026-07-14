@@ -1440,21 +1440,6 @@ html[data-mode='control'] .mode-nav a.active {
   background: #050706;
 }
 
-.scene-frame::after {
-  position: absolute;
-  inset: 0;
-  z-index: 3;
-  background: repeating-linear-gradient(
-    0deg,
-    rgba(255, 255, 255, 0.012) 0,
-    rgba(255, 255, 255, 0.012) 1px,
-    transparent 1px,
-    transparent 4px
-  );
-  content: '';
-  pointer-events: none;
-}
-
 .scene-frame canvas {
   display: block;
   width: 100% !important;
