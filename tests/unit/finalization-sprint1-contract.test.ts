@@ -257,6 +257,33 @@ test('route traversal snapshots are isolated by history entry key, not pathname'
   })
 })
 
+test('traversal snapshot storage failure is best-effort and cannot prevent mode-switch pause', () => {
+  const original = Object.getOwnPropertyDescriptor(globalThis, 'sessionStorage')
+  Object.defineProperty(globalThis, 'sessionStorage', {
+    configurable: true,
+    value: {
+      getItem: () => null,
+      setItem: () => {
+        throw new DOMException('Storage quota exceeded', 'QuotaExceededError')
+      },
+    },
+  })
+  useMissionStore.setState({ playing: true, resumeAvailable: false, pauseReason: null })
+
+  try {
+    assert.doesNotThrow(() => {
+      recordControlTraversalSnapshot('control:quota-test', 20)
+      useMissionStore.getState().pauseForModeSwitch()
+    })
+    assert.equal(useMissionStore.getState().playing, false)
+    assert.equal(useMissionStore.getState().resumeAvailable, true)
+    assert.equal(useMissionStore.getState().pauseReason, 'mode-switch')
+  } finally {
+    if (original) Object.defineProperty(globalThis, 'sessionStorage', original)
+    else delete (globalThis as typeof globalThis & { sessionStorage?: unknown }).sessionStorage
+  }
+})
+
 test('event MET formatting preserves source precision', () => {
   assert.equal(formatEventMet(getEvent('a11-touchdown')), '102:45:39.9')
   assert.equal(formatEventMet(getEvent('a11-undocking')), '100:12:00')

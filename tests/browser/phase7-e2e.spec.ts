@@ -559,13 +559,139 @@ test('Back leaving Control and Forward restore the final state of the same histo
   }))
   expect(reboundEntry.id).toMatch(new RegExp(`^control:${reboundEntry.key}:`))
   const firstRestoreMet = await displayedMetSeconds(page)
+  await page.getByRole('button', { name: 'RESUME REPLAY', exact: true }).click()
+  const firstRestoreUrl = page.url()
+  await page.waitForTimeout(1_050)
+  await expect.poll(() => page.url()).not.toBe(firstRestoreUrl)
+  await page.waitForTimeout(200)
+  const secondPeriodicMet = metForControlPath(new URL(page.url()).pathname)
+  expect(secondPeriodicMet).toBeDefined()
+  const secondBeforeBack = await displayedMetSeconds(page)
+  expect(secondBeforeBack).toBeGreaterThan(firstRestoreMet)
+  expect(secondBeforeBack).toBeGreaterThan(secondPeriodicMet!)
+
   await page.goBack()
   await expect(page).toHaveURL(/\/archive$/)
   await page.goForward()
   await waitForScene(page)
-  expect(await displayedMetSeconds(page)).toBeGreaterThanOrEqual(firstRestoreMet)
+  expect(await displayedMetSeconds(page)).toBeGreaterThanOrEqual(secondBeforeBack)
   await expect(page.getByText('REPLAY PAUSED ON MODE CHANGE')).toBeVisible()
   expect(await page.evaluate(() => history.length)).toBe(historyWithControl)
+  const secondReboundEntry = await page.evaluate(() => ({
+    id: history.state?.__apollo11ControlEntryId as string | undefined,
+    key: history.state?.key as string | undefined,
+  }))
+  expect(secondReboundEntry.id).toMatch(new RegExp(`^control:${secondReboundEntry.key}:`))
+})
+
+test('Control history PUSH and POP restore each outgoing entry before destination state applies', async ({
+  page,
+}) => {
+  await page.goto('/control/event/a11-liftoff')
+  await waitForScene(page)
+  const historyAtFirstControl = await page.evaluate(() => history.length)
+  await page.getByRole('button', { name: '10×', exact: true }).click()
+  await page.getByRole('button', { name: 'PLAY', exact: true }).click()
+  await page.waitForTimeout(1_050)
+  await expect.poll(() => page.url()).toMatch(/\/control\/met\/s/)
+  await page.waitForTimeout(200)
+  const firstPeriodicMet = metForControlPath(new URL(page.url()).pathname)
+  expect(firstPeriodicMet).toBeDefined()
+  const firstBeforePush = await displayedMetSeconds(page)
+  expect(firstBeforePush).toBeGreaterThan(firstPeriodicMet!)
+
+  await page
+    .locator('.control-event-log button')
+    .filter({ hasText: 'S-IC OUTBOARD ENGINE CUTOFF' })
+    .click()
+  await expect(page).toHaveURL(/\/control\/(?:event\/a11-sic-outboard-cutoff|met\/s)/)
+  expect(await displayedMetSeconds(page)).toBeGreaterThanOrEqual(161.7)
+  expect(await page.evaluate(() => history.length)).toBe(historyAtFirstControl + 1)
+
+  await page.goBack()
+  await waitForScene(page)
+  expect(await displayedMetSeconds(page)).toBeGreaterThanOrEqual(firstBeforePush)
+  const restoredFirstEntry = await page.evaluate(() => ({
+    id: history.state?.__apollo11ControlEntryId as string | undefined,
+    key: history.state?.key as string | undefined,
+  }))
+  expect(restoredFirstEntry.id).toMatch(new RegExp(`^control:${restoredFirstEntry.key}:`))
+
+  await page.goForward()
+  await waitForScene(page)
+  await page.getByRole('button', { name: 'PLAY', exact: true }).click()
+  const secondEventUrl = page.url()
+  await page.waitForTimeout(1_050)
+  await expect.poll(() => page.url()).not.toBe(secondEventUrl)
+  await page.waitForTimeout(200)
+  const secondPeriodicMet = metForControlPath(new URL(page.url()).pathname)
+  expect(secondPeriodicMet).toBeDefined()
+  const secondBeforePop = await displayedMetSeconds(page)
+  expect(secondBeforePop).toBeGreaterThan(secondPeriodicMet!)
+
+  await page.goBack()
+  await waitForScene(page)
+  await page.goForward()
+  await waitForScene(page)
+  expect(await displayedMetSeconds(page)).toBeGreaterThanOrEqual(secondBeforePop)
+  const restoredSecondEntry = await page.evaluate(() => ({
+    id: history.state?.__apollo11ControlEntryId as string | undefined,
+    key: history.state?.key as string | undefined,
+  }))
+  expect(restoredSecondEntry.id).toMatch(new RegExp(`^control:${restoredSecondEntry.key}:`))
+})
+
+test('reload snapshot is boot-only and cannot override a later traversal restore', async ({
+  page,
+  context,
+}) => {
+  await page.goto('/archive')
+  await page.getByRole('link', { name: '02 MISSION CONTROL', exact: true }).click()
+  await waitForScene(page)
+  await page.getByRole('button', { name: '10×', exact: true }).click()
+  await page.getByRole('button', { name: 'PLAY', exact: true }).click()
+  await expect.poll(() => displayedMetSeconds(page)).toBeGreaterThan(2)
+  await page.reload()
+  await waitForScene(page)
+  expect(
+    await page.evaluate(
+      () => (performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming).type,
+    ),
+  ).toBe('reload')
+
+  await page.getByRole('link', { name: '01 ARCHIVE', exact: true }).click()
+  await page.getByRole('link', { name: '02 MISSION CONTROL', exact: true }).click()
+  await waitForScene(page)
+  await page.getByRole('button', { name: 'PLAY', exact: true }).click()
+  await expect.poll(() => displayedMetSeconds(page)).toBeGreaterThan(5)
+  const session = await context.newCDPSession(page)
+  await session.send('Emulation.setFocusEmulationEnabled', { enabled: false })
+  const other = await context.newPage()
+  await other.goto('about:blank')
+  await other.bringToFront()
+  await expect(page.getByText('REPLAY PAUSED SAFELY')).toBeVisible()
+  const blurSnapshotMet = metForControlPath(new URL(page.url()).pathname)
+  expect(blurSnapshotMet).toBeDefined()
+
+  await session.send('Emulation.setFocusEmulationEnabled', { enabled: true })
+  await other.close()
+  await page.bringToFront()
+  await page.getByRole('button', { name: 'RESUME REPLAY', exact: true }).click()
+  await page.waitForTimeout(300)
+  const beforeBack = await displayedMetSeconds(page)
+  expect(beforeBack).toBeGreaterThan(blurSnapshotMet!)
+
+  await page.goBack()
+  await expect(page).toHaveURL(/\/archive$/)
+  await page.goForward()
+  await waitForScene(page)
+  expect(
+    await page.evaluate(
+      () => (performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming).type,
+    ),
+  ).toBe('reload')
+  expect(await displayedMetSeconds(page)).toBeGreaterThanOrEqual(beforeBack)
+  await expect(page.getByText('REPLAY PAUSED ON MODE CHANGE')).toBeVisible()
 })
 
 test('a new history entry at the same Control pathname does not consume an old entry snapshot', async ({
