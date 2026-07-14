@@ -31,13 +31,28 @@
 - ✅ **All 8 release gates pass** — typecheck, lint, format:check, test:unit, validate:sources, validate:mission, validate:models, build (all exit 0).
 - ✅ **Git initialized** — no prior `.git` existed; initial commit created on branch `master`.
 
-### Remediation round 2 fixes (this round)
+### Remediation round 2 fixes
 
-- ✅ **R-016 RESOLVED** — Saturn V Launch Vehicle Flight Evaluation Report (MPR-SAT-FE-69-9 / NASA-TM-X-62558 / NTRS 19900066485) archived from archive.org mirror. NTRS record de-indexed (API 404); Wayback has only HTML wrappers. S-IC/S-II physical separation verified at **162.3 sec** (Table 4-3 ACTUAL); S-II/S-IVB physical separation at **549.0 sec** (Table 4-3 ACTUAL). A.3 Event IDs updated to MET-CONFIRMED. See `docs/audit/SATV-FE-SEPARATION-VERIFICATION.txt`.
+- ✅ **R-016 RESOLVED** — Saturn V Launch Vehicle Flight Evaluation Report (MPR-SAT-FE-69-9 / NASA-TM-X-62558 / NTRS 19900066485) archived from archive.org mirror. NTRS record de-indexed (API 404); Wayback has only HTML wrappers. S-IC/S-II separation verified at **162.3 sec** (Table 4-3 ACTUAL, primary source; Table 2-2 Event 27 TFB cross-check: 161.6+0.7=162.3); S-II/S-IVB separation at **549.0 sec** (Table 4-3 ACTUAL, primary source; Table 2-2 Event 46 TFB cross-check: 548.2+0.8=549.0). A.3 Event IDs updated to MET-CONFIRMED. See `docs/audit/SATV-FE-SEPARATION-VERIFICATION.txt`.
 - ✅ **Git reproducibility achieved** — `scripts/hydrate-assets.ts` downloads all gitignored GLB/STL/ZIP binaries from canonical URLs with SHA-256 verification and ZIP extraction. Verified in clean `git archive` clone: all 4 binaries downloaded, hashed, and extracted; all 8 gates pass. `.gitattributes` added to force LF for text files and mark binary/archive files as `binary` to preserve exact bytes for hash verification.
 - ✅ **STL documentation contradiction fixed** — "command module.stl not present" corrected to "exact spelling 'command module.stl' does NOT exist; 'command moduel.stl' (original typo) exists and is the CM candidate." Path 2 changed from "confirmed viable" to **"provisionally viable"** pending visual geometry verification (Phase 3). `scripts/inspect-stls.ts` committed and validates all 12 manifest stlParts.
 - ✅ **Cross-wiring detection improved** — `validate-sources.ts` now supports `contentAssertions` field with `htmlCanonicalMarker` check (verifies HTML content contains a declared marker string) and `ntrsCitationId` cross-check. Unit test `tests/unit/cross-wiring.test.ts` verifies that a wrong HTML path fails the content assertion.
 - ✅ **All 8 release gates pass in both original repo and clean clone** — verified with real command outputs.
+
+### Remediation round 3 fixes
+
+- ✅ **Table 2-2 transcription corrected** — coordinate-based PyMuPDF extraction revealed row/value misalignment: Event 27 = 162.3 (not 164.0, which is Event 29); Event 46 = 549.0 (not 550.4, which is Event 48). Removed "physical separation before command" argument.
+- ✅ **Cross-wiring test uses real validator** — `validate-sources.ts` exports `validate()` function; CLI supports `--manifest`/`--root` flags. Test calls real validator, no inline logic duplication. Added `htmlCanonicalMarker` to 15 production HTML sources. Removed unimplemented PDF assertion fields.
+- ✅ **Old wording cleaned** — EVENT-VERIFICATION.md, EVENT-VERIFICATION-A3.md, MODEL-INSPECTION-REPORT.md, CSM-RECONSTRUCTION-PLAN.md updated.
+- ✅ **Table 2-2 regression test** — `tests/unit/satv-fe-table22.test.ts` with 11 tests covering Events 27/29/46/48, base+TFB consistency, ordering invariants.
+
+### Remediation round 4 fixes (this round)
+
+- ✅ **Table 2-2 source classification corrected** — Table 4-3 is the primary source for separation METs (162.3 and 549.0 as direct ACTUAL values). Table 2-2 Events 27/46 have no direct ACTUAL cells; their TIME FROM BASE values (0.7/0.8) are cross-check only. Updated verification txt, manifest, A.3 doc, risk log.
+- ✅ **4 non-unique HTML markers fixed** — NASA-A11-AFJ, NASA-A11-FP, NASA-A11-LANDING, NASA-A11-ALSJ markers replaced with precise unique strings (full title tag, unique file reference, or unique MET timestamp). Added test verifying each marker hits exactly one file. Removed "without contentAssertions is allowed" test — all HTML sources must now declare markers.
+- ✅ **Table 2-2 test uses shared JSON fixture** — `tests/fixtures/satv-fe-table22.json` contains PDF SHA-256, page numbers, events, direct ACTUAL, TFB, Table 4-3 values. Test cross-checks fixture, source-manifest.json, and SATV-FE-SEPARATION-VERIFICATION.txt — no hardcoded constants in test file.
+- ✅ **CLI direct-run guard added** — `validate-sources.ts` checks `isMainModule` before executing CLI code, preventing auto-execution on import.
+- ✅ **37 tests pass** (6 epoch + 5 cross-wiring + 26 Table 2-2/fixture).
 
 ## Files changed
 
@@ -199,18 +214,19 @@ Phase 0 did not run the optimize-models pipeline. That is Phase 3 work.
 
 ## Commands run
 
-### Release gates (spec §47) — all must pass — remediation round 2
+### Release gates (spec §47) — all must pass — remediation round 4
 
-| Command                 | Exit code | Summary                                                                                                                     |
-| ----------------------- | --------- | --------------------------------------------------------------------------------------------------------------------------- |
-| `pnpm typecheck`        | 0         | `tsc -b` — no errors. TypeScript 5.9.3.                                                                                     |
-| `pnpm lint`             | 0         | `eslint .` — no errors.                                                                                                     |
-| `pnpm format:check`     | 0         | `prettier --check .` — "All matched files use Prettier code style!"                                                         |
-| `pnpm test:unit`        | 0         | `node --test --experimental-strip-types tests/unit/**/*.test.ts` — 8 tests pass (6 epoch + 2 cross-wiring), 0 fail.         |
-| `pnpm validate:sources` | 0         | 0 errors, 0 warnings. 32 sources. All binary SHA-256 + sizes verified. File-signature checks pass. Content assertions pass. |
-| `pnpm validate:mission` | 0         | 21/21 prerequisites present (added SATV-FE PDF, SATV-FE verification txt, inspect-stls.ts, hydrate-assets.ts).              |
-| `pnpm validate:models`  | 0         | Both GLB inspection reports valid and correspond to on-disk files (hash + structural count verification).                   |
-| `pnpm build`            | 0         | `tsc -b && vite build` — emits `dist/index.html` (1.44 kB, gzip 0.70 kB).                                                   |
+| Command                 | Exit code | Summary                                                                                                                             |
+| ----------------------- | --------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm typecheck`        | 0         | `tsc -b` — no errors. TypeScript 5.9.3.                                                                                             |
+| `pnpm lint`             | 0         | `eslint .` — no errors.                                                                                                             |
+| `pnpm format:check`     | 0         | `prettier --check .` — "All matched files use Prettier code style!"                                                                 |
+| `pnpm test:unit`        | 0         | `node --test --experimental-strip-types tests/unit/**/*.test.ts` — 37 tests pass (6 epoch + 5 cross-wiring + 26 Table 2-2), 0 fail. |
+| `pnpm validate:sources` | 0         | 0 errors, 0 warnings. 32 sources. All binary SHA-256 + sizes verified. Content assertions pass (14 unique HTML markers).            |
+| `pnpm validate:mission` | 0         | 21/21 prerequisites present.                                                                                                        |
+| `pnpm validate:models`  | 0         | Both GLB inspection reports valid and correspond to on-disk files (hash + structural count verification).                           |
+| `pnpm build`            | 0         | `tsc -b && vite build` — emits `dist/index.html` (1.44 kB, gzip 0.70 kB).                                                           |
+| `pnpm inspect-stls`     | 0         | 12 stlParts verified (size, SHA-256, triangle count, bounds).                                                                       |
 
 ### Clean clone gate verification (remediation round 2)
 
@@ -305,7 +321,7 @@ See `docs/audit/RISK-LOG.md` for the complete list. Summary (remediation):
 9. **R-013 / RESOLVED (remediation)**: NASA-A11-POSTTRAJ correct PDF downloaded (8,004,579 bytes); manifest cross-wiring fixed; validator upgraded to detect recurrence.
 10. **R-014 / OPEN**: Apollo 11 audio archive not enumerated. Phase 2 must scope MVP clips.
 11. **R-015 / NOTED**: ALSJ / AFJ editorial content rights status requires per-citation care in Phase 2.
-12. **R-016 / RESOLVED (remediation round 2)**: Apollo 11 launch vehicle flight evaluation report archived from archive.org mirror (NTRS de-indexed). S-IC/S-II separation = 162.3 sec, S-II/S-IVB separation = 549.0 sec — both MET-CONFIRMED.
+12. **R-016 / RESOLVED (remediation round 2)**: Apollo 11 launch vehicle flight evaluation report archived from archive.org mirror (NTRS de-indexed). S-IC/S-II separation = 162.3 sec (Table 4-3 ACTUAL), S-II/S-IVB separation = 549.0 sec (Table 4-3 ACTUAL) — both MET-CONFIRMED with Table 2-2 TFB cross-check.
 13. **Owner input needed**: AS-506 / LM-5 marking fidelity (Q1), Blender availability for Phase 3 (Q2), Phase 2 audio scope (Q3), Blue Marble variant preference (Q4), CSM self-build acceptability (Q5).
 
 ## Explicitly not completed
@@ -366,23 +382,26 @@ Items removed from this list in remediation (now completed):
 - `pnpm typecheck` exit 0
 - `pnpm lint` exit 0
 - `pnpm format:check` exit 0
-- `pnpm test:unit` exit 0 (8 tests pass: 6 epoch + 2 cross-wiring)
-- `pnpm validate:sources` exit 0 (0 errors, 0 warnings, 32 sources)
+- `pnpm test:unit` exit 0 (37 tests pass: 6 epoch + 5 cross-wiring + 26 Table 2-2/fixture)
+- `pnpm validate:sources` exit 0 (0 errors, 0 warnings, 32 sources, 14 unique HTML markers)
 - `pnpm validate:mission` exit 0 (21/21 prerequisites)
 - `pnpm validate:models` exit 0 (2 GLBs re-verified)
 - `pnpm build` exit 0
+- `pnpm inspect-stls` exit 0 (12 stlParts verified)
 
 ### Git commit structure
 
-| Commit        | Type                        | Description                                                                      |
-| ------------- | --------------------------- | -------------------------------------------------------------------------------- |
-| `8144452`     | Remediation round 1         | Source freeze, event verification, model inspection, gates                       |
-| `f00a0f9`     | Report finalization round 1 | PHASE-0-REPORT updated with round 1 command outputs                              |
-| `e23eee4`     | Remediation round 2         | R-016 resolve, git reproducibility, STL fix, cross-wiring detection              |
-| `0ef794e`     | Remediation round 2         | .gitattributes for LF line endings                                               |
-| `ad62ce6`     | Remediation round 2         | .gitattributes binary file rules for hash preservation                           |
-| `8d74061`     | Remediation round 2         | Renormalize HTML snapshots for CRLF byte preservation                            |
-| (this commit) | Report finalization round 2 | PHASE-0-REPORT updated with round 2 command outputs and clean clone verification |
+| Commit    | Type                        | Description                                                                      |
+| --------- | --------------------------- | -------------------------------------------------------------------------------- |
+| `8144452` | Remediation round 1         | Source freeze, event verification, model inspection, gates                       |
+| `f00a0f9` | Report finalization round 1 | PHASE-0-REPORT updated with round 1 command outputs                              |
+| `e23eee4` | Remediation round 2         | R-016 resolve, git reproducibility, STL fix, cross-wiring detection              |
+| `0ef794e` | Remediation round 2         | .gitattributes for LF line endings                                               |
+| `ad62ce6` | Remediation round 2         | .gitattributes binary file rules for hash preservation                           |
+| `8d74061` | Remediation round 2         | Renormalize HTML snapshots for CRLF byte preservation                            |
+| `01d1d3a` | Report finalization round 2 | PHASE-0-REPORT updated with round 2 command outputs and clean clone verification |
+| `f39a515` | Remediation round 3         | Table 2-2 transcription corrections, real-validator tests, old wording cleanup   |
+| (this)    | Remediation round 4         | Table 2-2 source classification, unique markers, shared fixture, CLI guard       |
 
 Git: branch `master`, dirty status: clean (0 modified files).
 

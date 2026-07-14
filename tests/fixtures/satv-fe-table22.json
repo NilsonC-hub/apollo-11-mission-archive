@@ -1,0 +1,100 @@
+{
+  "pdfSha256": "feb84bc2f6d761cc0996faf7ca74d449d83beb885b8ec67d4892f57e4ed0d212",
+  "pdfBytes": 11581879,
+  "reportNumber": "MPR-SAT-FE-69-9",
+  "nasaTmNumber": "NASA-TM-X-62558",
+  "ntrsCitationId": "19900066485",
+  "sourceManifestId": "NASA-A11-SATV-FE",
+  "table43": {
+    "pdfPage": 63,
+    "separations": {
+      "S-IC/S-II": {
+        "rangeTimeActual": 162.3,
+        "rangeTimeNominal": 161.8,
+        "actNom": 0.5
+      },
+      "S-II/S-IVB": {
+        "rangeTimeActual": 549.0,
+        "rangeTimeNominal": 552.4,
+        "actNom": -3.4
+      }
+    }
+  },
+  "table22": {
+    "pdfPages": [41, 42],
+    "sicSiiRegion": {
+      "pdfPage": 41,
+      "timeBase": 161.6,
+      "events": [
+        {
+          "event": 25,
+          "description": "S-II LH2 recirculation pumps off",
+          "rangeTimeActualDirect": 161.8,
+          "timeFromBase": 0.2
+        },
+        {
+          "event": 26,
+          "description": "S-II ullage motor ignition",
+          "rangeTimeActualDirect": null,
+          "timeFromBase": 0.5
+        },
+        {
+          "event": 27,
+          "description": "S-IC/S-II SEPARATION COMMAND",
+          "rangeTimeActualDirect": null,
+          "timeFromBase": 0.7,
+          "table43Actual": 162.3
+        },
+        {
+          "event": 28,
+          "description": "S-II engine start command (ESC)",
+          "rangeTimeActualDirect": 163.0,
+          "timeFromBase": 1.4
+        },
+        {
+          "event": 29,
+          "description": "S-II engine solenoid activation",
+          "rangeTimeActualDirect": 164.0,
+          "timeFromBase": 2.4
+        },
+        {
+          "event": 30,
+          "description": "S-II ullage motor burn time termination",
+          "rangeTimeActualDirect": 166.1,
+          "timeFromBase": 4.4
+        }
+      ]
+    },
+    "siiSivbRegion": {
+      "pdfPage": 42,
+      "timeBase": 548.2,
+      "events": [
+        {
+          "event": 45,
+          "description": "S-IVB ullage motor ignition",
+          "rangeTimeActualDirect": null,
+          "timeFromBase": 0.7
+        },
+        {
+          "event": 46,
+          "description": "S-II/S-IVB SEPARATION COMMAND",
+          "rangeTimeActualDirect": null,
+          "timeFromBase": 0.8,
+          "table43Actual": 549.0
+        },
+        {
+          "event": 47,
+          "description": "S-IVB engine start command (first ESC)",
+          "rangeTimeActualDirect": 549.2,
+          "timeFromBase": 1.0
+        },
+        {
+          "event": 48,
+          "description": "Fuel chilldown pump off",
+          "rangeTimeActualDirect": 550.4,
+          "timeFromBase": 2.2
+        }
+      ]
+    }
+  }
+}

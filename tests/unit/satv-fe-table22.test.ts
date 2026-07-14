@@ -1,224 +1,216 @@
 // tests/unit/satv-fe-table22.test.ts
-// Regression test for Saturn V Flight Evaluation Report Table 2-2 row/value mapping.
-// Prevents the OCR/table misalignment that occurred in remediation round 2,
-// where values from the "RANGE TIME ACTUAL SEC" column were assigned to the
-// wrong event rows because the text extraction jumbled the multi-column layout.
+// Regression test for Saturn V Flight Evaluation Report Table 2-2 and Table 4-3
+// row/value mapping. Prevents the OCR/table misalignment that occurred in
+// remediation round 2, where values from the "RANGE TIME ACTUAL SEC" column
+// were assigned to the wrong event rows.
 //
-// The four critical rows verified here are:
-//   Event 27: S-IC/S-II SEPARATION COMMAND = 162.3 sec (computed: base 161.6 + TFB 0.7)
-//   Event 29: S-II engine solenoid activation = 164.0 sec (direct ACTUAL)
-//   Event 46: S-II/S-IVB SEPARATION COMMAND = 549.0 sec (computed: base 548.2 + TFB 0.8)
-//   Event 48: Fuel chilldown pump off = 550.4 sec (direct ACTUAL)
+// This test reads from a shared JSON fixture (tests/fixtures/satv-fe-table22.json)
+// and cross-checks against:
+//   1. The fixture itself (internal consistency)
+//   2. source-manifest.json (PDF SHA-256, source ID, report numbers)
+//   3. SATV-FE-SEPARATION-VERIFICATION.txt (values present in the audit document)
 //
-// Source: NASA-A11-SATV-FE.pdf (MPR-SAT-FE-69-9), Table 2-2, PDF pages 41-42.
-// Extraction method: PyMuPDF get_text("dict") with bbox coordinates to map
-// values to event rows by y-coordinate alignment.
+// Source: NASA-A11-SATV-FE.pdf (MPR-SAT-FE-69-9), Table 2-2 (pp 41-42) + Table 4-3 (p 63).
 
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
-// Structured fixture: the verified row-to-value mapping from Table 2-2.
-// Each entry has the event number, description, and the verified range time.
-// "source" indicates whether the value is a direct ACTUAL cell or computed
-// from TIME FROM BASE.
-interface Table22Row {
-  event: number
-  description: string
-  rangeTimeSec: number
-  source: 'direct' | 'base+TFB'
-  timeFromBase?: number
-  baseTime?: number
-}
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = resolve(__filename, '..')
+const ROOT = resolve(__dirname, '..', '..')
 
-const TABLE_22_ROWS: Table22Row[] = [
-  // S-IC/S-II separation region (page 41, time base 3, base = 161.6)
-  {
-    event: 25,
-    description: 'S-II LH2 recirculation pumps off',
-    rangeTimeSec: 161.8,
-    source: 'direct',
-  },
-  {
-    event: 26,
-    description: 'S-II ullage motor ignition',
-    rangeTimeSec: 162.1,
-    source: 'base+TFB',
-    timeFromBase: 0.5,
-    baseTime: 161.6,
-  },
-  {
-    event: 27,
-    description: 'S-IC/S-II SEPARATION COMMAND',
-    rangeTimeSec: 162.3,
-    source: 'base+TFB',
-    timeFromBase: 0.7,
-    baseTime: 161.6,
-  },
-  {
-    event: 28,
-    description: 'S-II engine start command (ESC)',
-    rangeTimeSec: 163.0,
-    source: 'direct',
-  },
-  {
-    event: 29,
-    description: 'S-II engine solenoid activation',
-    rangeTimeSec: 164.0,
-    source: 'direct',
-  },
-  {
-    event: 30,
-    description: 'S-II ullage motor burn time termination',
-    rangeTimeSec: 166.1,
-    source: 'direct',
-  },
+// Load shared fixture
+const fixture = JSON.parse(
+  readFileSync(resolve(ROOT, 'tests', 'fixtures', 'satv-fe-table22.json'), 'utf8'),
+)
 
-  // S-II/S-IVB separation region (page 42, time base 4, base = 548.2)
-  {
-    event: 45,
-    description: 'S-IVB ullage motor ignition',
-    rangeTimeSec: 548.9,
-    source: 'base+TFB',
-    timeFromBase: 0.7,
-    baseTime: 548.2,
-  },
-  {
-    event: 46,
-    description: 'S-II/S-IVB SEPARATION COMMAND',
-    rangeTimeSec: 549.0,
-    source: 'base+TFB',
-    timeFromBase: 0.8,
-    baseTime: 548.2,
-  },
-  {
-    event: 47,
-    description: 'S-IVB engine start command (first ESC)',
-    rangeTimeSec: 549.2,
-    source: 'direct',
-  },
-  { event: 48, description: 'Fuel chilldown pump off', rangeTimeSec: 550.4, source: 'direct' },
-]
+// Load source manifest
+const manifest = JSON.parse(
+  readFileSync(resolve(ROOT, 'src', 'missions', 'apollo11', 'source-manifest.json'), 'utf8'),
+)
 
-// Table 4-3 separation Range Time values (must match Table 2-2 command times)
-const TABLE_43_SEPARATION = {
-  'S-IC/S-II': 162.3,
-  'S-II/S-IVB': 549.0,
-}
+// Load verification txt
+const verificationTxt = readFileSync(
+  resolve(ROOT, 'docs', 'audit', 'SATV-FE-SEPARATION-VERIFICATION.txt'),
+  'utf8',
+)
 
-test('Table 2-2 Event 27 S-IC/S-II separation command = 162.3 sec (not 164.0)', () => {
-  const row = TABLE_22_ROWS.find((r) => r.event === 27)
-  assert.ok(row, 'Event 27 must be in the fixture')
-  assert.equal(row.description, 'S-IC/S-II SEPARATION COMMAND')
-  assert.equal(row.rangeTimeSec, 162.3)
-  assert.equal(row.source, 'base+TFB')
-  assert.equal(row.timeFromBase, 0.7)
-  assert.equal(row.baseTime, 161.6)
-  // CRITICAL: 164.0 is Event 29, NOT Event 27
-  assert.notEqual(row.rangeTimeSec, 164.0)
+// Find the SATV-FE source in the manifest
+const satvfeSource = manifest.sources.find((s: { id: string }) => s.id === fixture.sourceManifestId)
+
+// Helper: round to 1 decimal place to avoid floating-point issues
+const r1 = (n: number) => Math.round(n * 10) / 10
+
+// Get specific events from fixture
+const ev27 = fixture.table22.sicSiiRegion.events.find((e: { event: number }) => e.event === 27)
+const ev29 = fixture.table22.sicSiiRegion.events.find((e: { event: number }) => e.event === 29)
+const ev46 = fixture.table22.siiSivbRegion.events.find((e: { event: number }) => e.event === 46)
+const ev48 = fixture.table22.siiSivbRegion.events.find((e: { event: number }) => e.event === 48)
+
+// === Fixture vs manifest cross-check ===
+
+test('fixture PDF SHA-256 matches source manifest', () => {
+  assert.ok(satvfeSource, 'NASA-A11-SATV-FE must be in source manifest')
+  assert.equal(satvfeSource.sha256, fixture.pdfSha256)
 })
 
-test('Table 2-2 Event 29 S-II engine solenoid activation = 164.0 sec', () => {
-  const row = TABLE_22_ROWS.find((r) => r.event === 29)
-  assert.ok(row, 'Event 29 must be in the fixture')
-  assert.equal(row.description, 'S-II engine solenoid activation')
-  assert.equal(row.rangeTimeSec, 164.0)
-  assert.equal(row.source, 'direct')
+test('fixture PDF bytes matches source manifest', () => {
+  assert.equal(satvfeSource.bytes, fixture.pdfBytes)
 })
 
-test('Table 2-2 Event 46 S-II/S-IVB separation command = 549.0 sec (not 550.4)', () => {
-  const row = TABLE_22_ROWS.find((r) => r.event === 46)
-  assert.ok(row, 'Event 46 must be in the fixture')
-  assert.equal(row.description, 'S-II/S-IVB SEPARATION COMMAND')
-  assert.equal(row.rangeTimeSec, 549.0)
-  assert.equal(row.source, 'base+TFB')
-  assert.equal(row.timeFromBase, 0.8)
-  assert.equal(row.baseTime, 548.2)
-  // CRITICAL: 550.4 is Event 48, NOT Event 46
-  assert.notEqual(row.rangeTimeSec, 550.4)
+test('fixture report number matches source manifest', () => {
+  assert.equal(satvfeSource.reportNumber, fixture.reportNumber)
+  assert.equal(satvfeSource.nasaTmNumber, fixture.nasaTmNumber)
 })
 
-test('Table 2-2 Event 48 fuel chilldown pump off = 550.4 sec', () => {
-  const row = TABLE_22_ROWS.find((r) => r.event === 48)
-  assert.ok(row, 'Event 48 must be in the fixture')
-  assert.equal(row.description, 'Fuel chilldown pump off')
-  assert.equal(row.rangeTimeSec, 550.4)
-  assert.equal(row.source, 'direct')
+test('fixture NTRS citation ID matches source manifest', () => {
+  assert.equal(satvfeSource.ntrsCitationId, fixture.ntrsCitationId)
 })
 
-test('Table 4-3 separation times match Table 2-2 command times', () => {
-  const sicSiiCmd = TABLE_22_ROWS.find((r) => r.event === 27)!
-  const siiSivbCmd = TABLE_22_ROWS.find((r) => r.event === 46)!
-  assert.equal(
-    TABLE_43_SEPARATION['S-IC/S-II'],
-    sicSiiCmd.rangeTimeSec,
-    'Table 4-3 S-IC/S-II must equal Table 2-2 Event 27',
-  )
-  assert.equal(
-    TABLE_43_SEPARATION['S-II/S-IVB'],
-    siiSivbCmd.rangeTimeSec,
-    'Table 4-3 S-II/S-IVB must equal Table 2-2 Event 46',
+// === Fixture vs verification txt cross-check ===
+
+test('verification txt contains Table 4-3 S-IC/S-II ACTUAL 162.3', () => {
+  assert.ok(verificationTxt.includes('162.3'), 'Verification txt must mention 162.3')
+  assert.ok(
+    verificationTxt.includes('Table 4-3') || verificationTxt.includes('Table 4-3'),
+    'Verification txt must reference Table 4-3',
   )
 })
 
-test('Table 2-2 base+TFB computations are self-consistent', () => {
-  // Verify that base+TFB rows compute to their stated rangeTimeSec
-  for (const row of TABLE_22_ROWS) {
-    if (row.source === 'base+TFB') {
-      const computed = Math.round((row.baseTime! + row.timeFromBase!) * 10) / 10
-      assert.equal(
-        computed,
-        row.rangeTimeSec,
-        `Event ${row.event}: base ${row.baseTime} + TFB ${row.timeFromBase} = ${computed}, expected ${row.rangeTimeSec}`,
+test('verification txt contains Table 4-3 S-II/S-IVB ACTUAL 549.0', () => {
+  assert.ok(verificationTxt.includes('549.0'), 'Verification txt must mention 549.0')
+})
+
+test('verification txt contains Event 27 TFB cross-check', () => {
+  assert.ok(
+    verificationTxt.includes('0.7') && verificationTxt.includes('161.6'),
+    'Verification txt must contain TFB 0.7 and base 161.6 for Event 27',
+  )
+})
+
+test('verification txt contains Event 46 TFB cross-check', () => {
+  assert.ok(
+    verificationTxt.includes('0.8') && verificationTxt.includes('548.2'),
+    'Verification txt must contain TFB 0.8 and base 548.2 for Event 46',
+  )
+})
+
+test('verification txt contains Event 29 direct ACTUAL 164.0', () => {
+  assert.ok(verificationTxt.includes('164.0'), 'Verification txt must contain 164.0 for Event 29')
+})
+
+test('verification txt contains Event 48 direct ACTUAL 550.4', () => {
+  assert.ok(verificationTxt.includes('550.4'), 'Verification txt must contain 550.4 for Event 48')
+})
+
+// === Table 4-3 primary source verification ===
+
+test('Table 4-3 S-IC/S-II separation ACTUAL = 162.3 sec', () => {
+  assert.equal(fixture.table43.separations['S-IC/S-II'].rangeTimeActual, 162.3)
+})
+
+test('Table 4-3 S-II/S-IVB separation ACTUAL = 549.0 sec', () => {
+  assert.equal(fixture.table43.separations['S-II/S-IVB'].rangeTimeActual, 549.0)
+})
+
+// === Table 2-2 Event 27 (S-IC/S-II separation command) ===
+
+test('Table 2-2 Event 27 has no direct ACTUAL cell', () => {
+  assert.ok(ev27, 'Event 27 must be in fixture')
+  assert.equal(ev27.rangeTimeActualDirect, null)
+})
+
+test('Table 2-2 Event 27 TFB = 0.7, base = 161.6, computed = 162.3', () => {
+  assert.equal(ev27.timeFromBase, 0.7)
+  assert.equal(fixture.table22.sicSiiRegion.timeBase, 161.6)
+  assert.equal(r1(fixture.table22.sicSiiRegion.timeBase + ev27.timeFromBase), 162.3)
+})
+
+test('Table 2-2 Event 27 TFB cross-check matches Table 4-3 ACTUAL', () => {
+  assert.equal(r1(fixture.table22.sicSiiRegion.timeBase + ev27.timeFromBase), ev27.table43Actual)
+  assert.equal(ev27.table43Actual, fixture.table43.separations['S-IC/S-II'].rangeTimeActual)
+})
+
+test('Table 2-2 Event 27 is NOT 164.0 (that is Event 29)', () => {
+  assert.notEqual(ev27.table43Actual, 164.0)
+  assert.notEqual(r1(fixture.table22.sicSiiRegion.timeBase + ev27.timeFromBase), 164.0)
+})
+
+// === Table 2-2 Event 29 (S-II engine solenoid activation) ===
+
+test('Table 2-2 Event 29 direct ACTUAL = 164.0 sec', () => {
+  assert.ok(ev29, 'Event 29 must be in fixture')
+  assert.equal(ev29.rangeTimeActualDirect, 164.0)
+})
+
+// === Table 2-2 Event 46 (S-II/S-IVB separation command) ===
+
+test('Table 2-2 Event 46 has no direct ACTUAL cell', () => {
+  assert.ok(ev46, 'Event 46 must be in fixture')
+  assert.equal(ev46.rangeTimeActualDirect, null)
+})
+
+test('Table 2-2 Event 46 TFB = 0.8, base = 548.2, computed = 549.0', () => {
+  assert.equal(ev46.timeFromBase, 0.8)
+  assert.equal(fixture.table22.siiSivbRegion.timeBase, 548.2)
+  assert.equal(r1(fixture.table22.siiSivbRegion.timeBase + ev46.timeFromBase), 549.0)
+})
+
+test('Table 2-2 Event 46 TFB cross-check matches Table 4-3 ACTUAL', () => {
+  assert.equal(r1(fixture.table22.siiSivbRegion.timeBase + ev46.timeFromBase), ev46.table43Actual)
+  assert.equal(ev46.table43Actual, fixture.table43.separations['S-II/S-IVB'].rangeTimeActual)
+})
+
+test('Table 2-2 Event 46 is NOT 550.4 (that is Event 48)', () => {
+  assert.notEqual(ev46.table43Actual, 550.4)
+  assert.notEqual(r1(fixture.table22.siiSivbRegion.timeBase + ev46.timeFromBase), 550.4)
+})
+
+// === Table 2-2 Event 48 (fuel chilldown pump off) ===
+
+test('Table 2-2 Event 48 direct ACTUAL = 550.4 sec', () => {
+  assert.ok(ev48, 'Event 48 must be in fixture')
+  assert.equal(ev48.rangeTimeActualDirect, 550.4)
+})
+
+// === Base time consistency ===
+
+test('S-IC/S-II region base time is consistent across all direct-ACTUAL events', () => {
+  const base = fixture.table22.sicSiiRegion.timeBase
+  for (const ev of fixture.table22.sicSiiRegion.events) {
+    if (ev.rangeTimeActualDirect !== null) {
+      // Allow ±0.1 sec tolerance for OCR rounding (e.g. Event 30: 166.1-4.4=161.7 vs base 161.6)
+      const computed = r1(ev.rangeTimeActualDirect - ev.timeFromBase)
+      assert.ok(
+        Math.abs(computed - base) <= 0.1,
+        `Event ${ev.event}: ${ev.rangeTimeActualDirect} - ${ev.timeFromBase} = ${computed}, expected base ${base} (±0.1 tolerance)`,
       )
     }
   }
 })
 
-test('Table 2-2 direct values are consistent with base+TFB for overlapping events', () => {
-  // Events with both direct ACTUAL and TIME FROM BASE should be consistent
-  // Event 25: direct 161.8, TFB 0.2 → base = 161.8 - 0.2 = 161.6
-  // Event 28: direct 163.0, TFB 1.4 → base = 163.0 - 1.4 = 161.6
-  // Event 29: direct 164.0, TFB 2.4 → base = 164.0 - 2.4 = 161.6
-  const round1 = (n: number) => Math.round(n * 10) / 10
-  const baseFromEvent25 = round1(161.8 - 0.2)
-  const baseFromEvent28 = round1(163.0 - 1.4)
-  const baseFromEvent29 = round1(164.0 - 2.4)
-  assert.equal(baseFromEvent25, 161.6)
-  assert.equal(baseFromEvent28, 161.6)
-  assert.equal(baseFromEvent29, 161.6)
-
-  // Event 47: direct 549.2, TFB 1.0 → base = 549.2 - 1.0 = 548.2
-  // Event 48: direct 550.4, TFB 2.2 → base = 550.4 - 2.2 = 548.2
-  const baseFromEvent47 = round1(549.2 - 1.0)
-  const baseFromEvent48 = round1(550.4 - 2.2)
-  assert.equal(baseFromEvent47, 548.2)
-  assert.equal(baseFromEvent48, 548.2)
+test('S-II/S-IVB region base time is consistent across all direct-ACTUAL events', () => {
+  const base = fixture.table22.siiSivbRegion.timeBase
+  for (const ev of fixture.table22.siiSivbRegion.events) {
+    if (ev.rangeTimeActualDirect !== null) {
+      const computed = r1(ev.rangeTimeActualDirect - ev.timeFromBase)
+      assert.ok(
+        Math.abs(computed - base) <= 0.1,
+        `Event ${ev.event}: ${ev.rangeTimeActualDirect} - ${ev.timeFromBase} = ${computed}, expected base ${base} (±0.1 tolerance)`,
+      )
+    }
+  }
 })
 
-test('Table 2-2 separation command is NOT after engine solenoid activation', () => {
-  // Regression: round 2 erroneously had Event 27 = 164.0 (solenoid activation time),
-  // which would place the separation command AFTER the engine start sequence.
-  // The correct value (162.3) places the separation command BEFORE the S-II
-  // engine solenoid activation (164.0), which is the correct ordering:
-  // OECO (161.63) → separation command (162.3) → S-II ESC (163.0) → solenoid (164.0)
-  const separationCmd = TABLE_22_ROWS.find((r) => r.event === 27)!.rangeTimeSec
-  const solenoidActivation = TABLE_22_ROWS.find((r) => r.event === 29)!.rangeTimeSec
-  assert.ok(
-    separationCmd < solenoidActivation,
-    `Separation command (${separationCmd}) must be before solenoid activation (${solenoidActivation})`,
-  )
+// === Ordering invariants ===
+
+test('separation command (162.3) is before S-II solenoid activation (164.0)', () => {
+  assert.ok(ev27.table43Actual < ev29.rangeTimeActualDirect)
 })
 
-test('Table 2-2 S-II/S-IVB separation command is NOT after fuel chilldown', () => {
-  // Regression: round 2 erroneously had Event 46 = 550.4 (fuel chilldown time),
-  // which would place the separation command AFTER fuel chilldown pump off.
-  // The correct value (549.0) places the separation command BEFORE
-  // fuel chilldown (550.4) and S-IVB ESC (549.2):
-  // S-II OECO (548.22) → separation command (549.0) → S-IVB ESC (549.2) → chilldown (550.4)
-  const separationCmd = TABLE_22_ROWS.find((r) => r.event === 46)!.rangeTimeSec
-  const fuelChilldown = TABLE_22_ROWS.find((r) => r.event === 48)!.rangeTimeSec
-  assert.ok(
-    separationCmd < fuelChilldown,
-    `S-II/S-IVB separation command (${separationCmd}) must be before fuel chilldown (${fuelChilldown})`,
-  )
+test('separation command (549.0) is before fuel chilldown (550.4)', () => {
+  assert.ok(ev46.table43Actual < ev48.rangeTimeActualDirect)
 })

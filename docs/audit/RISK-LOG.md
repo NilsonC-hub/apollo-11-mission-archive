@@ -205,8 +205,8 @@ Extraction recorded in `docs/audit/SP4029-extraction.txt`. Printed-page labels i
 3. **Archive.org**: advancedsearch.php found the item `saturn-v-launch-vehicle-flight-evaluation-report-as-506`. PDF downloaded from `https://ia802806.us.archive.org/24/items/...` — 11,581,879 bytes, SHA-256 `feb84bc2f6d761cc0996faf7ca74d449d83beb885b8ec67d4892f57e4ed0d212`. Title page confirms MPR-SAT-FE-69-9, NASA-TM-X-62558, AS-506, Apollo 11, Marshall Space Flight Center.
 4. **Provenance grade**: MIRROR — not NTRS-direct, but archive.org copy is a faithful reproduction of the original NASA technical memorandum. Content is U.S. government work, public domain.
 5. **Separation METs verified** via PyMuPDF extraction:
-   - S-IC/S-II physical separation: **162.3 sec** (Table 4-3 ACTUAL)
-   - S-II/S-IVB physical separation: **549.0 sec** (Table 4-3 ACTUAL)
+   - S-IC/S-II separation: **162.3 sec** (Table 4-3 ACTUAL, primary source; Table 2-2 Event 27 TFB cross-check: 161.6+0.7=162.3)
+   - S-II/S-IVB separation: **549.0 sec** (Table 4-3 ACTUAL, primary source; Table 2-2 Event 46 TFB cross-check: 548.2+0.8=549.0)
    - Section 12.2 confirms S-IC/S-II separation was "accomplished as planned" with "clean severance"
    - Section 12.3 confirms S-II/S-IVB separation was "nominal"
    - Cross-check with Mission Report Table 3-I: OECO 161.7s (MR) vs 161.63s (SATV-FE) — delta 0.07s; S-II cutoff 548.3s (MR) vs 548.22s (SATV-FE) — delta 0.08s. Consistent.

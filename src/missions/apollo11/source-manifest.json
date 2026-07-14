@@ -44,7 +44,7 @@
       "status": "downloaded",
       "notes": "HTML frameset stub; references five PDFs (a11-fltplan1..5.pdf, a11final-fltpln.pdf, a11final-fltpln_pp3-3to8.pdf, a11fltpln_final_reformat.pdf). The actual chapter PDFs are tracked under NASA-A11-FP1-WB. Original nasa.gov .../alsj/a11/a11-fltplan1.pdf returns 404 as of 2026-07-13; chapters retrieved via Internet Archive Wayback (see NASA-A11-FP1-WB).",
       "contentAssertions": {
-        "htmlCanonicalMarker": "Apollo 11 Flight Plan"
+        "htmlCanonicalMarker": "a11-fltplan"
       }
     },
     {
@@ -135,7 +135,7 @@
       "status": "downloaded",
       "notes": "Spec URL https://www.nasa.gov/wp-content/uploads/static/history/afj/ap11fj/ returns 404 as of 2026-07-13. Mirror at https://history.nasa.gov/afj/ap11fj/ works. The two paths may have diverged editorially; cross-check by-line before treating as identical.",
       "contentAssertions": {
-        "htmlCanonicalMarker": "Apollo Flight Journal"
+        "htmlCanonicalMarker": "The Apollo Lunar Surface Journal and Apollo Flight Journal - NASA"
       }
     },
     {
@@ -154,7 +154,7 @@
       "status": "downloaded",
       "notes": "Frameset stub. Full ALSJ content accessed via sub-pages (a11.landing.html, a11MissionAudio.html, a11tecdbrf.html, etc.) — each tracked separately.",
       "contentAssertions": {
-        "htmlCanonicalMarker": "Apollo 11 Lunar Surface Journal"
+        "htmlCanonicalMarker": "a11MissionAudio.html"
       }
     },
     {
@@ -172,7 +172,7 @@
       "bytes": 147126,
       "status": "downloaded",
       "contentAssertions": {
-        "htmlCanonicalMarker": "The First Lunar Landing"
+        "htmlCanonicalMarker": "102:45:40"
       }
     },
     {
@@ -281,7 +281,7 @@
       "ntrsCitationId": "19900066485",
       "reportNumber": "MPR-SAT-FE-69-9",
       "nasaTmNumber": "NASA-TM-X-62558",
-      "notes": "R-016 RESOLVED. This report provides the S-IC/S-II separation command at 162.3 sec (Table 2-2 Event 27, computed from TIME FROM BASE = 161.6 + 0.7; Table 4-3 ACTUAL = 162.3 — same value) and S-II/S-IVB separation command at 549.0 sec (Table 2-2 Event 46, computed from TIME FROM BASE = 548.2 + 0.8; Table 4-3 ACTUAL = 549.0 — same value). Table 4-3 and Table 2-2 report the same value for each event; no independent physical-severance timestamp distinct from the command time is available. Section 12.2 confirms S-IC/S-II separation was 'accomplished as planned' with 'clean severance of the stages'. Section 12.3 confirms S-II/S-IVB separation was 'nominal'. See docs/audit/SATV-FE-SEPARATION-VERIFICATION.txt for full extraction and cross-check."
+      "notes": "R-016 RESOLVED. This report provides the S-IC/S-II separation at 162.3 sec (Table 4-3 ACTUAL, primary source; Table 2-2 Event 27 TFB cross-check: base 161.6 + 0.7 = 162.3) and S-II/S-IVB separation at 549.0 sec (Table 4-3 ACTUAL, primary source; Table 2-2 Event 46 TFB cross-check: base 548.2 + 0.8 = 549.0). Table 2-2 Events 27 and 46 have no direct ACTUAL cells; their TIME FROM BASE values cross-check the Table 4-3 values. No independent physical-severance timestamp distinct from the command time is available. Section 12.2 confirms S-IC/S-II separation was 'accomplished as planned' with 'clean severance of the stages'. Section 12.3 confirms S-II/S-IVB separation was 'nominal'. See docs/audit/SATV-FE-SEPARATION-VERIFICATION.txt for full extraction and cross-check."
     },
     {
       "id": "NASA-A11-TRAJ-RECON",

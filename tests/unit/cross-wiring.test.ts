@@ -14,7 +14,7 @@
 
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { writeFileSync, mkdirSync, rmSync, existsSync } from 'node:fs'
+import { writeFileSync, mkdirSync, rmSync, existsSync, readFileSync } from 'node:fs'
 import { resolve, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { validate } from '../../scripts/validate-sources.ts'
@@ -230,43 +230,69 @@ test('cross-wiring detection: production POSTTRAJ scenario — unique wrong HTML
   }
 })
 
-test('cross-wiring detection: HTML source without contentAssertions is allowed', () => {
-  // Sources without contentAssertions should not fail on that basis —
-  // the content assertion check is opt-in, not mandatory.
-  // This documents the rule: local HTML sources without content assertions
-  // pass the validator; they just don't get the extra cross-wiring protection.
-  const dir = setupFixture()
-  try {
-    writeFileSync(
-      join(dir, 'docs', 'sources', 'NASA-A11-INDEX.page.html'),
-      '<html><body>Index page</body></html>',
-    )
+test('cross-wiring detection: production markers are unique across all HTML snapshots', () => {
+  // Verify that each production htmlCanonicalMarker appears in exactly ONE
+  // HTML snapshot file. This ensures the markers can detect cross-wiring —
+  // if a marker appeared in multiple files, it could not distinguish them.
+  const manifest = JSON.parse(
+    readFileSync(resolve(ROOT, 'src/missions/apollo11/source-manifest.json'), 'utf8'),
+  )
 
-    writeManifest(dir, [
-      {
-        id: 'NASA-A11-INDEX',
-        kind: 'web',
-        title: 'Index page (no content assertion)',
-        originalUrl: 'https://example.com/index',
-        accessedAt: '2026-07-13',
-        rightsStatus: 'public domain',
-        purpose: 'test',
-        localPath: 'docs/sources/NASA-A11-INDEX.page.html',
-        status: 'downloaded',
-        // No contentAssertions — this is allowed
-      },
-    ])
+  // Collect all sources with HTML localPaths and markers (web + dataset kinds)
+  const htmlSources = manifest.sources.filter(
+    (s: {
+      kind: string
+      localPath?: string
+      contentAssertions?: { htmlCanonicalMarker?: string }
+    }) =>
+      s.localPath && s.localPath.endsWith('.page.html') && s.contentAssertions?.htmlCanonicalMarker,
+  )
 
-    const manifestPath = join(dir, 'src', 'missions', 'apollo11', 'source-manifest.json')
-    const errors = validate(manifestPath, dir)
+  assert.ok(
+    htmlSources.length >= 14,
+    `Expected at least 14 HTML sources with markers, got ${htmlSources.length}`,
+  )
 
-    const assertionErrors = errors.filter((e) => e.field === 'contentAssertions')
+  for (const source of htmlSources) {
+    const marker = source.contentAssertions.htmlCanonicalMarker
+
+    // Check how many HTML snapshot files contain this marker
+    let hitCount = 0
+    const hitFiles: string[] = []
+    for (const other of htmlSources) {
+      const otherPath = resolve(ROOT, other.localPath)
+      if (!existsSync(otherPath)) continue
+      const content = readFileSync(otherPath, 'utf8')
+      if (content.includes(marker)) {
+        hitCount++
+        hitFiles.push(other.id)
+      }
+    }
+
     assert.equal(
-      assertionErrors.length,
-      0,
-      `Sources without contentAssertions must not fail. Errors: ${JSON.stringify(assertionErrors)}`,
+      hitCount,
+      1,
+      `Marker '${marker}' for ${source.id} must be unique (found in ${hitCount} files: ${hitFiles.join(', ')}). ` +
+        `If the marker appears in multiple files, it cannot detect cross-wiring.`,
     )
-  } finally {
-    teardownFixture()
+  }
+})
+
+test('cross-wiring detection: all production HTML sources have contentAssertions', () => {
+  // All local HTML snapshots must declare an htmlCanonicalMarker.
+  // Sources without markers do not get cross-wiring protection.
+  const manifest = JSON.parse(
+    readFileSync(resolve(ROOT, 'src/missions/apollo11/source-manifest.json'), 'utf8'),
+  )
+
+  const htmlSources = manifest.sources.filter(
+    (s: { kind: string; localPath?: string }) => s.localPath && s.localPath.endsWith('.page.html'),
+  )
+
+  for (const source of htmlSources) {
+    assert.ok(
+      source.contentAssertions?.htmlCanonicalMarker,
+      `HTML source ${source.id} must have contentAssertions.htmlCanonicalMarker`,
+    )
   }
 })

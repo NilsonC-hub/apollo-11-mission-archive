@@ -516,39 +516,45 @@ export function validate(manifestPath: string, rootDir?: string): ValidationErro
 
 // === CLI entry point ===
 // Supports optional --manifest <path> and --root <dir> flags for fixture-based testing.
-// When not invoked as a module import, runs the validator and exits.
-const args = process.argv.slice(2)
-const manifestIdx = args.indexOf('--manifest')
-const rootIdx = args.indexOf('--root')
-const cliManifest =
-  manifestIdx >= 0 && args[manifestIdx + 1]
-    ? resolve(args[manifestIdx + 1])
-    : resolve(ROOT, 'src/missions/apollo11/source-manifest.json')
-const cliRoot = rootIdx >= 0 && args[rootIdx + 1] ? resolve(args[rootIdx + 1]) : undefined
+// Guard: only runs when this module is the entry point (direct CLI invocation),
+// not when imported by tests.
+const isMainModule =
+  process.argv[1] && resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url))
 
-const errors = validate(cliManifest, cliRoot)
+if (isMainModule) {
+  const args = process.argv.slice(2)
+  const manifestIdx = args.indexOf('--manifest')
+  const rootIdx = args.indexOf('--root')
+  const cliManifest =
+    manifestIdx >= 0 && args[manifestIdx + 1]
+      ? resolve(args[manifestIdx + 1])
+      : resolve(ROOT, 'src/missions/apollo11/source-manifest.json')
+  const cliRoot = rootIdx >= 0 && args[rootIdx + 1] ? resolve(args[rootIdx + 1]) : undefined
 
-const errorsList = errors.filter((e) => e.severity === 'error')
-const warnings = errors.filter((e) => e.severity === 'warn')
+  const errors = validate(cliManifest, cliRoot)
 
-console.log('=== Source Manifest Validation ===')
-console.log(`Manifest: ${cliManifest}`)
-console.log(`Errors:   ${errorsList.length}`)
-console.log(`Warnings: ${warnings.length}`)
+  const errorsList = errors.filter((e) => e.severity === 'error')
+  const warnings = errors.filter((e) => e.severity === 'warn')
 
-if (errorsList.length > 0) {
-  console.log('\n--- Errors ---')
-  for (const e of errorsList) {
-    console.log(`[${e.sourceId}] ${e.field}: ${e.message}`)
+  console.log('=== Source Manifest Validation ===')
+  console.log(`Manifest: ${cliManifest}`)
+  console.log(`Errors:   ${errorsList.length}`)
+  console.log(`Warnings: ${warnings.length}`)
+
+  if (errorsList.length > 0) {
+    console.log('\n--- Errors ---')
+    for (const e of errorsList) {
+      console.log(`[${e.sourceId}] ${e.field}: ${e.message}`)
+    }
   }
-}
-if (warnings.length > 0) {
-  console.log('\n--- Warnings ---')
-  for (const e of warnings) {
-    console.log(`[${e.sourceId}] ${e.field}: ${e.message}`)
+  if (warnings.length > 0) {
+    console.log('\n--- Warnings ---')
+    for (const e of warnings) {
+      console.log(`[${e.sourceId}] ${e.field}: ${e.message}`)
+    }
   }
-}
 
-if (errorsList.length > 0) {
-  process.exit(1)
+  if (errorsList.length > 0) {
+    process.exit(1)
+  }
 }
