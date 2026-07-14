@@ -554,6 +554,45 @@ test('Back leaving Control and Forward restore the final state of the same histo
   expect(await page.evaluate(() => history.length)).toBe(historyWithControl)
 })
 
+test('a new history entry at the same Control pathname does not consume an old entry snapshot', async ({
+  page,
+}) => {
+  await page.goto('/archive')
+  await page.getByRole('link', { name: '02 MISSION CONTROL', exact: true }).click()
+  await waitForScene(page)
+  await page.getByRole('button', { name: '10×', exact: true }).click()
+  await page.getByRole('button', { name: 'PLAY', exact: true }).click()
+  await page.waitForTimeout(1_050)
+  await expect.poll(() => page.url()).toMatch(/\/control\/met\/s/)
+  await page.waitForTimeout(200)
+
+  const oldEntryPath = new URL(page.url()).pathname
+  const oldEntryKey = await page.evaluate(() => history.state?.key as string | undefined)
+  const pathnameMet = metForControlPath(oldEntryPath)
+  expect(pathnameMet).toBeDefined()
+  const oldEntryFinalMet = await displayedMetSeconds(page)
+  expect(oldEntryFinalMet).toBeGreaterThan(pathnameMet!)
+
+  await page.goBack()
+  await expect(page).toHaveURL(/\/archive$/)
+  await page.evaluate((pathname) => {
+    const anchor = document.createElement('a')
+    anchor.id = 'same-path-new-entry'
+    anchor.href = pathname
+    anchor.textContent = 'Open same Control pathname in a new entry'
+    document.body.append(anchor)
+  }, oldEntryPath)
+  await page.locator('#same-path-new-entry').click()
+  await waitForScene(page)
+
+  const newEntryKey = await page.evaluate(() => history.state?.key as string | undefined)
+  expect(newEntryKey).not.toBe(oldEntryKey)
+  expect(new URL(page.url()).pathname).toBe(oldEntryPath)
+  const newEntryMet = await displayedMetSeconds(page)
+  expect(Math.abs(newEntryMet - pathnameMet!)).toBeLessThan(0.11)
+  expect(newEntryMet).toBeLessThan(oldEntryFinalMet)
+})
+
 test('natural replay completion flushes the terminal URL before reload', async ({ page }) => {
   await page.goto(`/control/met/${encodeURIComponent('195:18:34')}`)
   await waitForScene(page)
