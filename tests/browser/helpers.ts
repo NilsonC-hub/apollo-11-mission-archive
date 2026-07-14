@@ -16,7 +16,17 @@ export const appendixEventIds = [
 export async function waitForScene(page: Page): Promise<void> {
   await page.locator('canvas, .static-vehicle-fallback').first().waitFor()
   await page.evaluate(() => document.fonts.ready)
-  await page.waitForTimeout(250)
+  const canvas = page.locator('canvas')
+  if (await canvas.count()) {
+    await expect(page.locator('html')).toHaveAttribute('data-control-scene', 'ready')
+  }
+}
+
+export async function waitForInspectionCamera(page: Page, componentId: string): Promise<void> {
+  const html = page.locator('html')
+  await expect(html).toHaveAttribute('data-inspect-target', componentId)
+  await expect(html).toHaveAttribute('data-inspect-target-count', '1')
+  await expect(html).toHaveAttribute('data-camera-settled', componentId)
 }
 
 export async function assertNoRootOverflow(page: Page): Promise<void> {

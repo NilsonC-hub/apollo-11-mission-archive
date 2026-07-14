@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 
-import { appendixEventIds, waitForScene } from './helpers.ts'
+import { appendixEventIds, waitForInspectionCamera, waitForScene } from './helpers.ts'
 
 async function prepareArchive(
   page: Page,
@@ -55,7 +55,7 @@ test('Control component inspection baseline', async ({ page }) => {
   await prepareControl(page, 'a11-liftoff')
   await page.getByRole('button', { name: 'Inspect S-IC FIRST STAGE' }).click()
   await expect(page.getByText('COMPONENT INSPECTION · REPLAY PAUSED')).toBeVisible()
-  await page.waitForTimeout(700)
+  await waitForInspectionCamera(page, 's-ic')
   await page.evaluate(() => window.scrollTo(0, 0))
   await expect(page).toHaveScreenshot('control-inspection.png')
 })

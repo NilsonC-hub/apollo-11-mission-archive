@@ -2,7 +2,12 @@ import { expect, test } from '@playwright/test'
 
 import { formatEventMet } from '../../src/mission-core/index.ts'
 import { getEvent } from '../../src/app/mission.ts'
-import { appendixEventIds, assertNoRootOverflow, waitForScene } from './helpers.ts'
+import {
+  appendixEventIds,
+  assertNoRootOverflow,
+  waitForInspectionCamera,
+  waitForScene,
+} from './helpers.ts'
 
 test('Archive cold route remains isolated from Three, R3F, models, textures, and decoders', async ({
   page,
@@ -217,6 +222,7 @@ test('component inspection pauses, focuses, and resumes exactly once', async ({ 
   await page.getByRole('button', { name: 'Inspect S-IC FIRST STAGE' }).click()
 
   await expect(page.getByText('COMPONENT INSPECTION · REPLAY PAUSED')).toBeVisible()
+  await waitForInspectionCamera(page, 's-ic')
   await expect(page.locator('.camera-mode b')).toHaveText('INSPECT')
   const frozen = await page.locator('.met-display').textContent()
   await page.waitForTimeout(250)
@@ -232,6 +238,48 @@ test('component inspection pauses, focuses, and resumes exactly once', async ({ 
   await page.getByRole('button', { name: 'Inspect S-IC FIRST STAGE' }).click()
   await page.getByRole('button', { name: 'CLOSE DOSSIER', exact: true }).click()
   await expect(page.getByRole('button', { name: 'PLAY', exact: true })).toBeVisible()
+})
+
+test('a pointer tap preserves the pre-inspection mode and Escape works from controls', async ({
+  page,
+}) => {
+  await page.goto('/control/event/a11-liftoff')
+  await waitForScene(page)
+  const frame = page.locator('.scene-frame')
+  const box = await frame.boundingBox()
+  expect(box).not.toBeNull()
+  await page.mouse.click(box!.x + 8, box!.y + 8)
+  await expect(page.locator('.camera-mode b')).toHaveText('GUIDED VIEW')
+
+  await page.mouse.click(box!.x + box!.width * 0.5, box!.y + box!.height * 0.7)
+  await expect(page.getByText('COMPONENT INSPECTION · REPLAY PAUSED')).toBeVisible()
+  const close = page.getByRole('button', { name: 'CLOSE DOSSIER', exact: true })
+  await close.focus()
+  await page.keyboard.press('Escape')
+  await expect(close).toHaveCount(0)
+  await expect(page.locator('.camera-mode b')).toHaveText('GUIDED VIEW')
+})
+
+test('fallback exposes explicit non-interactive camera and inspection controls', async ({
+  page,
+}) => {
+  await page.goto('/control/event/a11-liftoff')
+  await waitForScene(page)
+  await page.getByLabel('QUALITY').selectOption('fallback')
+  await expect(page.getByRole('img', { name: 'Static vehicle structure fallback' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'ROTATE −', exact: true })).toBeDisabled()
+  await expect(page.getByRole('button', { name: /Inspect S-IC FIRST STAGE/ })).toBeDisabled()
+  await expect(page.locator('.scene-frame')).toHaveAttribute('aria-disabled', 'true')
+})
+
+test('inspection status names include the visible component state and use one runtime target', async ({
+  page,
+}) => {
+  await page.goto('/control/event/a11-liftoff')
+  await waitForScene(page)
+  const inspect = page.getByRole('button', { name: /Inspect S-IC FIRST STAGE BURNING/ })
+  await inspect.click()
+  await waitForInspectionCamera(page, 's-ic')
 })
 
 test('focus loss pauses without applying hidden time and requires explicit resume', async ({
@@ -286,12 +334,50 @@ test('event, phase, keyboard, scrub, refresh, Back, and Forward preserve URL sta
   await slider.fill('360720')
   await slider.fill('360721')
   await slider.fill('360720')
-  await expect(page).toHaveURL(/\/control\/met\/100%3A12%3A00.0$/)
+  await expect(page).toHaveURL(/\/control\/met\/100%3A12%3A00$/)
   expect(await page.evaluate(() => history.length)).toBe(historyBefore)
   await expect(page.locator('.met-display')).toHaveText('100:12:00')
   await page.reload()
   await waitForScene(page)
   await expect(page.locator('.met-display')).toHaveText('100:12:00')
+})
+
+test('MET URLs are lossless and final playback state flushes without adding history', async ({
+  page,
+}) => {
+  await page.goto('/control/met/000%3A02%3A41.66')
+  await waitForScene(page)
+  await expect(page).toHaveURL(/000%3A02%3A41.66$/)
+  const historyBefore = await page.evaluate(() => history.length)
+  await page.getByRole('button', { name: 'PLAY', exact: true }).click()
+  await page.waitForTimeout(160)
+  await page.getByRole('button', { name: 'PAUSE', exact: true }).click()
+  const pausedUrl = page.url()
+  expect(pausedUrl).not.toMatch(/000%3A02%3A41.66$/)
+  expect(await page.evaluate(() => history.length)).toBe(historyBefore)
+  await page.reload()
+  await waitForScene(page)
+  expect(page.url()).toBe(pausedUrl)
+
+  await page.getByRole('button', { name: 'PLAY', exact: true }).click()
+  await page.waitForTimeout(160)
+  const beforePageHide = page.url()
+  await page.evaluate(() => window.dispatchEvent(new Event('pagehide')))
+  await expect(page.getByText('REPLAY PAUSED SAFELY')).toBeVisible()
+  expect(page.url()).not.toBe(beforePageHide)
+  expect(await page.evaluate(() => history.length)).toBe(historyBefore)
+})
+
+test('ignition-only records do not persist as an engine mode', async ({ page }) => {
+  await page.goto('/control/event/a11-tli-ignition')
+  await waitForScene(page)
+  await expect(
+    page.getByRole('button', { name: /S-IVB THIRD STAGE IGNITION EVENT · MODE N\/A/ }),
+  ).toBeVisible()
+  await page.goto('/control/met/000%3A11%3A40.3')
+  await waitForScene(page)
+  await expect(page.getByRole('button', { name: /S-IVB THIRD STAGE CUTOFF/ })).toBeVisible()
+  await expect(page.getByText('IGNITION EVENT · MODE N/A')).toHaveCount(0)
 })
 
 test('event lists and readouts preserve recorded MET precision', async ({ page }) => {
