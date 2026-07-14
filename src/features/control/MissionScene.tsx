@@ -3,7 +3,7 @@ import { Canvas, useLoader, useThree } from '@react-three/fiber'
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader.js'
-import type { Group } from 'three'
+import { BufferGeometry, Float32BufferAttribute, type Group } from 'three'
 
 import { getEvent, mission } from '../../app/mission.ts'
 import type { ModelQuality } from '../../app/missionStore.ts'
@@ -23,6 +23,76 @@ type SceneMode =
   | 'rendezvous'
   | 'return'
   | 'entry'
+
+function seededUnitRandom(seed: number): () => number {
+  let value = seed >>> 0
+  return () => {
+    value = (Math.imul(value, 1_664_525) + 1_013_904_223) >>> 0
+    return value / 4_294_967_296
+  }
+}
+
+function createStarGeometry(count: number, seed: number): BufferGeometry {
+  const random = seededUnitRandom(seed)
+  const positions = new Float32Array(count * 3)
+
+  for (let index = 0; index < count; index += 1) {
+    const vertical = random() * 2 - 1
+    const azimuth = random() * Math.PI * 2
+    const radius = 42 + random() * 24
+    const horizontal = Math.sqrt(1 - vertical * vertical)
+    const offset = index * 3
+    positions[offset] = horizontal * Math.cos(azimuth) * radius
+    positions[offset + 1] = vertical * radius
+    positions[offset + 2] = horizontal * Math.sin(azimuth) * radius
+  }
+
+  const geometry = new BufferGeometry()
+  geometry.setAttribute('position', new Float32BufferAttribute(positions, 3))
+  return geometry
+}
+
+function SchematicStarField({ quality }: { quality: Exclude<ModelQuality, 'fallback'> }) {
+  const [faintCount, brightCount] =
+    quality === 'high' ? [420, 48] : quality === 'medium' ? [280, 32] : [150, 18]
+  const faint = useMemo(() => createStarGeometry(faintCount, 0x6d2b79f5), [faintCount])
+  const bright = useMemo(() => createStarGeometry(brightCount, 0x1b56c4e9), [brightCount])
+
+  useEffect(
+    () => () => {
+      faint.dispose()
+      bright.dispose()
+    },
+    [bright, faint],
+  )
+
+  return (
+    <group>
+      <points geometry={faint} frustumCulled={false}>
+        <pointsMaterial
+          color="#879088"
+          size={1}
+          sizeAttenuation={false}
+          transparent
+          opacity={0.38}
+          depthWrite={false}
+          toneMapped={false}
+        />
+      </points>
+      <points geometry={bright} frustumCulled={false}>
+        <pointsMaterial
+          color="#d8ddd1"
+          size={1.55}
+          sizeAttenuation={false}
+          transparent
+          opacity={0.72}
+          depthWrite={false}
+          toneMapped={false}
+        />
+      </points>
+    </group>
+  )
+}
 
 function modelUrl(name: string, quality: Exclude<ModelQuality, 'fallback'>): string {
   return `${MODEL_ROOT}/apollo11-${name}-${quality}.glb`
@@ -364,6 +434,7 @@ function SceneContents({
   return (
     <>
       <color attach="background" args={['#050706']} />
+      <SchematicStarField quality={quality} />
       <ambientLight intensity={1.15} />
       <directionalLight position={[8, 7, 10]} intensity={2.5} color="#f3ead8" />
       <directionalLight position={[-6, 2, -4]} intensity={0.7} color="#758a83" />

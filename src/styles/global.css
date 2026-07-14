@@ -1472,8 +1472,14 @@ html[data-mode='control'] .mode-nav a.active {
 }
 
 .scene-corner.top-left {
+  display: grid;
+  gap: 3px;
   top: 10px;
   left: 10px;
+}
+
+.scene-corner.top-left span:last-child {
+  color: #6f786f;
 }
 
 .scene-corner.bottom-right {

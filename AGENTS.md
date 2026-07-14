@@ -53,6 +53,7 @@ Phases 0–6 complete — source freeze, mission core, Apollo 11 mission pack,
 reproducible model/celestial assets, Launch / Earth Orbit / TLI, and the
 Translunar / Lunar / Return replay through splashdown, plus complete Archive /
 Mission Control UI. Phase 7 release audit remains pending.
+Phase 7 audit work is in progress; release-candidate status remains pending.
 
 ```
 pnpm install                # install dev tools (node 22, pnpm)

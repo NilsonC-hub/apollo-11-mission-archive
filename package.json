@@ -1,7 +1,7 @@
 {
   "name": "apollo-11-mission-archive",
   "private": true,
-  "version": "0.0.0-phase6",
+  "version": "0.0.0-phase7-dev",
   "type": "module",
   "description": "Apollo 11 Mission Archive + Historical Replay — a verifiable digital archive and MET-driven historical replay of AS-506.",
   "scripts": {

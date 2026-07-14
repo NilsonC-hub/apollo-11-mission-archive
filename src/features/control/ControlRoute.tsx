@@ -509,9 +509,12 @@ export function Component() {
               <MissionScene met={met} quality={quality} />
             </Suspense>
             <div className="scene-corner top-left">
-              {mode === 'descent' || mode === 'surface' || mode === 'rendezvous'
-                ? 'LOCAL VIEW / SCHEMATIC · NO POSITION CLAIM'
-                : 'VISUAL REFERENCE / SCHEMATIC'}
+              <span>
+                {mode === 'descent' || mode === 'surface' || mode === 'rendezvous'
+                  ? 'LOCAL VIEW / SCHEMATIC · NO POSITION CLAIM'
+                  : 'VISUAL REFERENCE / SCHEMATIC'}
+              </span>
+              <span>STAR FIELD / SCHEMATIC · NOT NAVIGATION</span>
             </div>
             <div className="scene-corner bottom-left">{copy.body}</div>
             <div className="scene-corner bottom-right">MODEL TRUTH / SEE ARCHIVE 05–11</div>

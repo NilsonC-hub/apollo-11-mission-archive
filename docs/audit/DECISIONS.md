@@ -116,3 +116,33 @@ Full-resolution Moon textures, Blue Marble texture, and full audio archive are d
 **Consequence**: The final 3D models may show generic markings unless Phase 3 explicitly adds AS-506 / Eagle-specific decals. OPEN QUESTION 1 in `RISK-LOG.md` asks the owner how AS-506 / LM-5 accurate the final models must be.
 
 **Alternatives considered**: (a) assume GLBs are AS-506 / LM-5 — rejected, not certified by NASA; (b) refuse to use the GLBs — rejected, they are the spec-named primary candidates.
+
+### ADR-P7-001 — Use a static schematic star field; omit nearby celestial spectacle
+
+**Date**: 2026-07-14
+**Context**: Phase 7 visual review considered adding nearby planet or nebula
+miniatures, animated starlight, atmospheric effects, or a telescope mode to
+the Mission Control scene. Without a time-resolved attitude, field of view,
+star catalog projection, and observation model, those features would imply a
+historical sky or navigation solution that the source pack does not contain.
+Nebula fog, lens effects, and exaggerated planet proximity would also conflict
+with the restrained archive direction in Production Spec §20 and §26.
+
+**Decision**: Add a low-density, deterministic point-star layer generated from
+fixed seeds. It is static, depth-occluded by scene geometry, quality-scaled,
+and continuously labelled `STAR FIELD / SCHEMATIC · NOT NAVIGATION`. Do not
+add nebulae, nearby planet thumbnails, lens flare, atmospheric haze, twinkling,
+parallax, or a telescope interaction.
+
+**Consequence**: The scene gains restrained depth without new source assets,
+runtime randomness, continuous animation, or astronomical claims. A future
+historical sky or telescope view requires a separate sourced implementation
+with observation MET, vehicle attitude, field of view, catalog epoch, and
+projection method.
+
+**Alternatives considered**: (a) decorative nebula/planet miniatures — rejected
+because they imply false proximity and push the product toward a cinematic or
+game interface; (b) animated twinkling or atmospheric haze — rejected because
+it is physically inappropriate for an exterior space view and violates the
+motion rules; (c) a telescope mode — deferred until it can be a sourced archive
+instrument rather than an unsourced visual toy.

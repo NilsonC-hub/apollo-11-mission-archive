@@ -28,6 +28,7 @@ mission pack), Phase 3 (model/celestial asset pipeline), Phase 4
 (Launch / Earth Orbit / TLI), Phase 5 (Translunar / Lunar / Return), and Phase
 6 (complete Archive / Mission Control UI) are complete. The deterministic
 replay spans launch through splashdown; Phase 7 release audit remains pending.
+Phase 7 audit work is now in progress; no release-candidate status is claimed.
 See
 [`docs/audit/PHASE-0-REPORT.md`](./docs/audit/PHASE-0-REPORT.md),
 [`docs/audit/PHASE-1-REPORT.md`](./docs/audit/PHASE-1-REPORT.md), and
