@@ -142,11 +142,40 @@ test('inspection is unavailable until one runtime semantic target is ready', () 
   assert.equal(useMissionStore.getState().interaction.mode, 'inspect')
 })
 
+test('changing inspected components restores guided focus without changing the close transaction', () => {
+  useMissionStore.setState({ playing: true, interaction: { mode: 'free-look' } })
+  enableInspection('s-ic', 's-ii')
+  useMissionStore.getState().inspectComponent('s-ic')
+  useMissionStore.getState().enterFreeLook()
+  useMissionStore.getState().inspectComponent('s-ii')
+
+  assert.deepEqual(useMissionStore.getState().interaction, {
+    mode: 'inspect',
+    componentId: 's-ii',
+    returnMode: 'free-look',
+    resumePlaybackOnClose: true,
+    cameraControl: 'guided-focus',
+  })
+})
+
 test('control MET URLs use stable source-compatible precision', () => {
-  assert.equal(controlMetPath(369_939.9), '/control/met/102%3A45%3A39.9')
+  assert.equal(controlMetPath(369_939.9), '/control/met/s369939.9')
   for (const met of [161.66, 699.3, 360_720, 393_855.0, 705_000.125]) {
     const path = controlMetPath(met)
     assert.equal(metForControlPath(path), met, `${met} must survive a URL round trip`)
+  }
+})
+
+test('control MET URLs canonically round-trip playback doubles over the replay range', () => {
+  const boundary = 223_971.499_240_796_3
+  assert.equal(metForControlPath(controlMetPath(boundary)), boundary)
+
+  let seed = 0x51f15e
+  for (let index = 0; index < 4_096; index += 1) {
+    seed = (Math.imul(seed, 1_664_525) + 1_013_904_223) >>> 0
+    const whole = (seed / 0x1_0000_0000) * replayEndMet
+    const met = index % 3 === 0 ? whole : whole + (index % 10) / 10
+    assert.equal(metForControlPath(controlMetPath(met)), met, `round trip ${met}`)
   }
 })
 
@@ -161,6 +190,10 @@ test('terminal vehicle components cannot remain burning', () => {
   for (const [componentId, component] of Object.entries(terminal.components)) {
     if (component.lifecycle === 'discarded' || component.lifecycle === 'landed') {
       assert.notEqual(component.engineMode, 'burning', componentId)
+      if (component.engineStateBasis === 'terminal') {
+        assert.equal(component.engineMode, undefined, componentId)
+        assert.ok(component.lastKnownEngineMode, `${componentId} retains its last-known mode`)
+      }
     }
   }
 
@@ -192,7 +225,7 @@ test('terminal vehicle components cannot remain burning', () => {
   )
 })
 
-test('ignition-only facts remain point events instead of indefinite burns', () => {
+test('ignition-only facts produce an unknown current mode with last-known provenance', () => {
   const ignitionOnly = [
     'a11-tli-ignition',
     'a11-mcc1-ignition',
@@ -214,11 +247,14 @@ test('ignition-only facts remain point events instead of indefinite burns', () =
       eventId,
     )
     const componentId = ignitionRecords[0].componentId
-    assert.notEqual(
-      stateAtMet(mission, event.metSeconds + 0.001).components[componentId].engineMode,
-      'ignition',
-      `${eventId} must not leave a persistent ignition state`,
-    )
+    const component = stateAtMet(mission, event.metSeconds + 0.001).components[componentId] as {
+      engineMode?: string
+      engineStateBasis?: string
+      lastKnownEngineMode?: string
+    }
+    assert.equal(component.engineMode, 'unknown', eventId)
+    assert.equal(component.engineStateBasis, 'point-event', eventId)
+    assert.ok(component.lastKnownEngineMode, `${eventId} must retain a last-known mode`)
   }
 
   assert.equal(
@@ -229,6 +265,11 @@ test('ignition-only facts remain point events instead of indefinite burns', () =
   assert.equal(
     stateAtMet(mission, getEvent('a11-touchdown').metSeconds).components['lm-descent-stage']
       .engineMode,
-    'cutoff',
+    undefined,
+  )
+  assert.equal(
+    stateAtMet(mission, getEvent('a11-touchdown').metSeconds).components['lm-descent-stage']
+      .engineStateBasis,
+    'terminal',
   )
 })

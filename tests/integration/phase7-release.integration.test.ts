@@ -46,17 +46,24 @@ test('storyTime remains the playback driver across authored pauses and mission c
   assert.equal(replayEndMet, getEvent('a11-splashdown').metSeconds)
 })
 
-test('source MET URLs and ignition records preserve event truth across app and mission-core', () => {
+test('source MET URLs and ignition records preserve unknown and last-known truth', () => {
   for (const event of replayEvents) {
     assert.equal(metForControlPath(controlMetPath(event.metSeconds)), event.metSeconds, event.id)
     for (const action of event.actions) {
       if (action.type !== 'record-engine-ignition') continue
       const before = stateAtMet(mission, event.metSeconds - 0.000_001)
       const after = stateAtMet(mission, event.metSeconds + 0.000_001)
+      const component = after.components[action.componentId] as {
+        engineMode?: string
+        engineStateBasis?: string
+        lastKnownEngineMode?: string
+      }
+      assert.equal(component.engineMode, 'unknown', event.id)
+      assert.equal(component.engineStateBasis, 'point-event', event.id)
+      const prior = before.components[action.componentId]
       assert.equal(
-        after.components[action.componentId].engineMode,
-        before.components[action.componentId].engineMode,
-        `${event.id} must not create a persistent engine mode`,
+        component.lastKnownEngineMode,
+        prior.engineMode === 'unknown' ? prior.lastKnownEngineMode : prior.engineMode,
       )
     }
   }

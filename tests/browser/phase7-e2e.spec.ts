@@ -1,13 +1,18 @@
 import { expect, test } from '@playwright/test'
 
-import { formatEventMet } from '../../src/mission-core/index.ts'
-import { getEvent } from '../../src/app/mission.ts'
+import { getEvent, replayEndMet } from '../../src/app/mission.ts'
+import { formatEventMet, parseMet } from '../../src/mission-core/index.ts'
 import {
   appendixEventIds,
   assertNoRootOverflow,
   waitForInspectionCamera,
   waitForScene,
 } from './helpers.ts'
+
+async function displayedMetSeconds(page: import('@playwright/test').Page): Promise<number> {
+  const value = await page.locator('.met-display').textContent()
+  return parseMet(value ?? '')
+}
 
 test('Archive cold route remains isolated from Three, R3F, models, textures, and decoders', async ({
   page,
@@ -102,6 +107,14 @@ test('explicit and unavailable-WebGL fallbacks retain the readable mission shell
   await expect(page.getByText('WEBGL OR MODEL DECODER UNAVAILABLE')).toBeVisible()
   await expect(page.locator('canvas')).toHaveCount(0)
   await expect(page.locator('.met-display')).toHaveText('102:45:39.9')
+})
+
+test('a ready WebGL scene does not mount or announce fallback content', async ({ page }) => {
+  await page.goto('/control/event/a11-liftoff')
+  await waitForScene(page)
+  await expect(page.locator('html')).toHaveAttribute('data-control-scene', 'ready')
+  await expect(page.getByRole('img', { name: 'Static vehicle structure fallback' })).toHaveCount(0)
+  await expect(page.getByText('WEBGL OR MODEL DECODER UNAVAILABLE')).toHaveCount(0)
 })
 
 test('browser WebGL unavailability is detected before Canvas is created', async ({ page }) => {
@@ -215,6 +228,27 @@ test('guided camera yields to user input and exposes keyboard camera alternative
   await expect(page.locator('html')).toHaveAttribute('data-camera-command', 'rotate-left')
 })
 
+test('a model drag above the shared threshold never opens inspection', async ({ page }) => {
+  await page.goto('/control/event/a11-liftoff')
+  await waitForScene(page)
+  const frame = page.locator('.scene-frame')
+  const box = await frame.boundingBox()
+  expect(box).not.toBeNull()
+  const x = box!.x + box!.width * 0.5
+  const y = box!.y + box!.height * 0.7
+  await page.mouse.click(x, y)
+  await expect(page.locator('#component-inspection-title')).toHaveText('S-IC FIRST STAGE')
+  await page.getByRole('button', { name: 'CLOSE DOSSIER' }).click()
+
+  await page.mouse.move(x, y)
+  await page.mouse.down()
+  await page.mouse.move(x + 5, y)
+  await page.mouse.up()
+
+  await expect(page.locator('.camera-mode b')).toHaveText('FREE LOOK')
+  await expect(page.getByText('COMPONENT INSPECTION · REPLAY PAUSED')).toHaveCount(0)
+})
+
 test('component inspection pauses, focuses, and resumes exactly once', async ({ page }) => {
   await page.goto('/control/event/a11-liftoff')
   await waitForScene(page)
@@ -282,25 +316,156 @@ test('inspection status names include the visible component state and use one ru
   await waitForInspectionCamera(page, 's-ic')
 })
 
-test('focus loss pauses without applying hidden time and requires explicit resume', async ({
+test('changing inspected components refocuses while preserving the original return mode', async ({
   page,
 }) => {
   await page.goto('/control/event/a11-liftoff')
   await waitForScene(page)
+  await page.getByRole('button', { name: /Inspect S-IC FIRST STAGE/ }).click()
+  await waitForInspectionCamera(page, 's-ic')
+
+  const frame = page.locator('.scene-frame')
+  const box = await frame.boundingBox()
+  expect(box).not.toBeNull()
+  await page.mouse.move(box!.x + 20, box!.y + 20)
+  await page.mouse.down()
+  await page.mouse.move(box!.x + 50, box!.y + 25)
+  await page.mouse.up()
+  await expect(page.getByRole('button', { name: 'REFOCUS COMPONENT' })).toBeVisible()
+
+  await page.getByRole('button', { name: /Inspect S-II SECOND STAGE/ }).click()
+  await waitForInspectionCamera(page, 's-ii')
+  await expect(page.locator('#component-inspection-title')).toHaveText('S-II SECOND STAGE')
+  await page.getByRole('button', { name: 'CLOSE DOSSIER' }).click()
+  await expect(page.locator('.camera-mode b')).toHaveText('GUIDED VIEW')
+
+  await page.getByRole('button', { name: 'ROTATE −', exact: true }).click()
+  await page.getByRole('button', { name: /Inspect S-IC FIRST STAGE/ }).click()
+  await page.getByRole('button', { name: 'CLOSE DOSSIER' }).click()
+  await expect(page.locator('.camera-mode b')).toHaveText('FREE LOOK')
+})
+
+test('lunar liftoff exposes unique ascent and descent runtime inspection targets', async ({
+  page,
+}) => {
+  await page.goto('/control/event/a11-lunar-liftoff')
+  await waitForScene(page)
+  await page.getByRole('button', { name: /Inspect LM ASCENT STAGE/ }).click()
+  await waitForInspectionCamera(page, 'lm-ascent-stage')
+  await page.getByRole('button', { name: 'CLOSE DOSSIER' }).click()
+  await page.getByRole('button', { name: /Inspect LM DESCENT STAGE/ }).click()
+  await waitForInspectionCamera(page, 'lm-descent-stage')
+})
+
+test('non-fallback LOD changes republish ready controls and unique targets', async ({ page }) => {
+  await page.goto('/control/event/a11-liftoff')
+  await waitForScene(page)
+  const quality = page.getByLabel('QUALITY')
+  for (const option of ['high', 'low']) {
+    await quality.selectOption(option)
+    await expect(page.locator('html')).toHaveAttribute('data-control-scene', 'ready')
+    const inspect = page.getByRole('button', { name: /Inspect S-IC FIRST STAGE/ })
+    await expect(inspect).toBeEnabled()
+    await inspect.click()
+    await waitForInspectionCamera(page, 's-ic')
+    await page.getByRole('button', { name: 'CLOSE DOSSIER' }).click()
+  }
+})
+
+test('real browser focus loss flushes URL and pauses without applying hidden time', async ({
+  page,
+  context,
+}) => {
+  await page.goto('/control/event/a11-liftoff')
+  await waitForScene(page)
+  const historyBefore = await page.evaluate(() => history.length)
+  await page.getByRole('button', { name: '1000×', exact: true }).click()
   await page.getByRole('button', { name: 'PLAY', exact: true }).click()
-  await page.waitForTimeout(100)
-  await page.evaluate(() => window.dispatchEvent(new Event('blur')))
+  await expect.poll(() => displayedMetSeconds(page)).toBeGreaterThan(30)
+  const beforeBlur = page.url()
+  await page.bringToFront()
+  await expect.poll(() => page.evaluate(() => document.hasFocus())).toBe(true)
+  const session = await context.newCDPSession(page)
+  await session.send('Emulation.setFocusEmulationEnabled', { enabled: false })
+  await page.evaluate(() => {
+    window.addEventListener(
+      'blur',
+      () => {
+        document.documentElement.dataset.testBlur = 'observed'
+      },
+      { once: true },
+    )
+  })
+  const other = await context.newPage()
+  await other.goto('about:blank')
+  await other.bringToFront()
+  await other.evaluate(
+    () =>
+      new Promise<void>((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+      }),
+  )
+  const blurState = await session.send('Runtime.evaluate', {
+    expression: 'document.documentElement.dataset.testBlur',
+    returnByValue: true,
+  })
+  expect(blurState.result.value).toBe('observed')
 
   await expect(page.getByText('REPLAY PAUSED SAFELY')).toBeVisible()
+  expect(page.url()).not.toBe(beforeBlur)
+  expect(await page.evaluate(() => history.length)).toBe(historyBefore)
   const frozen = await page.locator('.met-display').textContent()
-  await page.waitForTimeout(300)
-  await expect(page.locator('.met-display')).toHaveText(frozen ?? '')
-  await page.evaluate(() => window.dispatchEvent(new Event('focus')))
-  await page.waitForTimeout(150)
+  await expect.poll(() => page.locator('.met-display').textContent()).toBe(frozen)
   await expect(page.locator('.met-display')).toHaveText(frozen ?? '')
 
+  await session.send('Emulation.setFocusEmulationEnabled', { enabled: true })
+  await other.close()
+  await page.bringToFront()
   await page.getByRole('button', { name: 'RESUME REPLAY', exact: true }).click()
   await expect.poll(() => page.locator('.met-display').textContent()).not.toBe(frozen)
+})
+
+test('real reload and Archive route Back preserve the final played position', async ({ page }) => {
+  await page.goto('/control/event/a11-liftoff')
+  await waitForScene(page)
+  const historyBefore = await page.evaluate(() => history.length)
+  await page.getByRole('button', { name: '1000×', exact: true }).click()
+  await page.getByRole('button', { name: 'PLAY', exact: true }).click()
+  await expect.poll(() => displayedMetSeconds(page)).toBeGreaterThan(120)
+  const beforeReload = await displayedMetSeconds(page)
+
+  await page.reload()
+  await waitForScene(page)
+  expect(await displayedMetSeconds(page)).toBeGreaterThanOrEqual(beforeReload)
+  await expect(page).toHaveURL(/\/control\/met\/s/)
+  expect(await page.evaluate(() => history.length)).toBe(historyBefore)
+
+  await page.getByRole('button', { name: '1000×', exact: true }).click()
+  await page.getByRole('button', { name: 'PLAY', exact: true }).click()
+  await expect.poll(() => displayedMetSeconds(page)).toBeGreaterThan(beforeReload + 30)
+  const beforeArchive = await displayedMetSeconds(page)
+  await page.getByRole('link', { name: '01 ARCHIVE', exact: true }).click()
+  await page.goBack()
+  await waitForScene(page)
+  expect(await displayedMetSeconds(page)).toBeGreaterThanOrEqual(beforeArchive)
+  await expect(page).toHaveURL(/\/control\/met\/s/)
+})
+
+test('natural replay completion flushes the terminal URL before reload', async ({ page }) => {
+  await page.goto(`/control/met/${encodeURIComponent('195:18:34')}`)
+  await waitForScene(page)
+  const historyBefore = await page.evaluate(() => history.length)
+  await page.getByRole('button', { name: '1000×', exact: true }).click()
+  await page.getByRole('button', { name: 'PLAY', exact: true }).click()
+  await expect(page.getByText('MISSION COMPLETE')).toBeVisible()
+  await expect(page).toHaveURL(/\/control\/met\/s/)
+  expect(await page.evaluate(() => history.length)).toBe(historyBefore)
+  expect(await displayedMetSeconds(page)).toBe(replayEndMet)
+  const terminalUrl = page.url()
+  await page.reload()
+  await waitForScene(page)
+  expect(page.url()).toBe(terminalUrl)
+  expect(await displayedMetSeconds(page)).toBe(replayEndMet)
 })
 
 test('event, phase, keyboard, scrub, refresh, Back, and Forward preserve URL state', async ({
@@ -334,7 +499,7 @@ test('event, phase, keyboard, scrub, refresh, Back, and Forward preserve URL sta
   await slider.fill('360720')
   await slider.fill('360721')
   await slider.fill('360720')
-  await expect(page).toHaveURL(/\/control\/met\/100%3A12%3A00$/)
+  await expect(page).toHaveURL(/\/control\/met\/s360720$/)
   expect(await page.evaluate(() => history.length)).toBe(historyBefore)
   await expect(page.locator('.met-display')).toHaveText('100:12:00')
   await page.reload()
@@ -342,9 +507,7 @@ test('event, phase, keyboard, scrub, refresh, Back, and Forward preserve URL sta
   await expect(page.locator('.met-display')).toHaveText('100:12:00')
 })
 
-test('MET URLs are lossless and final playback state flushes without adding history', async ({
-  page,
-}) => {
+test('MET URLs are canonical and pause flushes without adding history', async ({ page }) => {
   await page.goto('/control/met/000%3A02%3A41.66')
   await waitForScene(page)
   await expect(page).toHaveURL(/000%3A02%3A41.66$/)
@@ -358,26 +521,38 @@ test('MET URLs are lossless and final playback state flushes without adding hist
   await page.reload()
   await waitForScene(page)
   expect(page.url()).toBe(pausedUrl)
-
-  await page.getByRole('button', { name: 'PLAY', exact: true }).click()
-  await page.waitForTimeout(160)
-  const beforePageHide = page.url()
-  await page.evaluate(() => window.dispatchEvent(new Event('pagehide')))
-  await expect(page.getByText('REPLAY PAUSED SAFELY')).toBeVisible()
-  expect(page.url()).not.toBe(beforePageHide)
-  expect(await page.evaluate(() => history.length)).toBe(historyBefore)
 })
 
-test('ignition-only records do not persist as an engine mode', async ({ page }) => {
+test('ignition-only records transition to an explicit unknown engine mode', async ({ page }) => {
   await page.goto('/control/event/a11-tli-ignition')
   await waitForScene(page)
   await expect(
-    page.getByRole('button', { name: /S-IVB THIRD STAGE IGNITION EVENT · MODE N\/A/ }),
+    page.getByRole('button', { name: /S-IVB THIRD STAGE IGNITION EVENT · DURATION N\/A/ }),
   ).toBeVisible()
-  await page.goto('/control/met/000%3A11%3A40.3')
+  await page.goto(`/control/met/s${getEvent('a11-tli-ignition').metSeconds + 0.1}`)
   await waitForScene(page)
-  await expect(page.getByRole('button', { name: /S-IVB THIRD STAGE CUTOFF/ })).toBeVisible()
-  await expect(page.getByText('IGNITION EVENT · MODE N/A')).toHaveCount(0)
+  await expect(
+    page.getByRole('button', { name: /S-IVB THIRD STAGE ENGINE MODE UNKNOWN · LAST KNOWN CUTOFF/ }),
+  ).toBeVisible()
+})
+
+test('CM/SM separation renders command-only CSM before entry and survives refresh', async ({
+  page,
+}) => {
+  await page.goto('/control/event/a11-cm-sm-separation')
+  await waitForScene(page)
+  await page.evaluate(() => window.dispatchEvent(new Event('apollo11:renderer-audit')))
+  await expect(page.locator('html')).toHaveAttribute(
+    'data-rendered-csm-configurations',
+    'command-only',
+  )
+  await page.reload()
+  await waitForScene(page)
+  await page.evaluate(() => window.dispatchEvent(new Event('apollo11:renderer-audit')))
+  await expect(page.locator('html')).toHaveAttribute(
+    'data-rendered-csm-configurations',
+    'command-only',
+  )
 })
 
 test('event lists and readouts preserve recorded MET precision', async ({ page }) => {

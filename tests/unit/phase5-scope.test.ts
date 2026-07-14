@@ -25,7 +25,9 @@ test('Phase 5 lunar configuration changes preserve both active and discarded sta
   const touchdown = at('a11-touchdown')
   assert.equal(touchdown.phaseId, 'surface')
   assert.equal(touchdown.components['lm-descent-stage'].lifecycle, 'landed')
-  assert.equal(touchdown.components['lm-descent-stage'].engineMode, 'cutoff')
+  assert.equal(touchdown.components['lm-descent-stage'].engineMode, undefined)
+  assert.equal(touchdown.components['lm-descent-stage'].engineStateBasis, 'terminal')
+  assert.equal(touchdown.components['lm-descent-stage'].lastKnownEngineMode, 'cutoff')
 
   const liftoff = at('a11-lunar-liftoff')
   assert.equal(liftoff.phaseId, 'ascent-rendezvous')

@@ -57,3 +57,19 @@ test('candidate validation rejects ignition as a persistent engine state', () =>
     ),
   )
 })
+
+test('candidate event actions reject set-engine-mode ignition directly', () => {
+  const candidate = structuredClone(minimalMission) as unknown as Record<string, unknown>
+  const events = candidate.events as Array<{ actions: Array<Record<string, unknown>> }>
+  events[0].actions[0] = {
+    type: 'set-engine-mode',
+    componentId: 'fixture-carrier',
+    engineMode: 'ignition',
+  }
+  const issues = validateMissionDefinitionCandidate(candidate)
+  assert.ok(
+    issues.some(
+      (issue) => issue.code === 'SCHEMA_TYPE' && issue.path === '$.events[0].actions[0].engineMode',
+    ),
+  )
+})
