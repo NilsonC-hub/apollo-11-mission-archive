@@ -168,14 +168,35 @@ test('control MET URLs use stable source-compatible precision', () => {
 
 test('control MET URLs canonically round-trip playback doubles over the replay range', () => {
   const boundary = 223_971.499_240_796_3
-  assert.equal(metForControlPath(controlMetPath(boundary)), boundary)
+  assert.ok(Object.is(metForControlPath(controlMetPath(boundary)), boundary))
+
+  for (const met of [
+    -0,
+    0,
+    Number.MIN_VALUE,
+    -Number.MIN_VALUE,
+    2.225_073_858_507_201_4e-308,
+    -2.225_073_858_507_201_4e-308,
+    Number.MAX_VALUE,
+    -Number.MAX_VALUE,
+  ]) {
+    assert.ok(
+      Object.is(metForControlPath(controlMetPath(met)), met),
+      `${Object.is(met, -0) ? '-0' : met} must survive a strict URL round trip`,
+    )
+  }
+  assert.equal(controlMetPath(-0), '/control/met/s-0')
+  assert.ok(
+    Object.is(metForControlPath('/control/met/s0'), 0),
+    'the existing s0 URL stays readable',
+  )
 
   let seed = 0x51f15e
   for (let index = 0; index < 4_096; index += 1) {
     seed = (Math.imul(seed, 1_664_525) + 1_013_904_223) >>> 0
     const whole = (seed / 0x1_0000_0000) * replayEndMet
     const met = index % 3 === 0 ? whole : whole + (index % 10) / 10
-    assert.equal(metForControlPath(controlMetPath(met)), met, `round trip ${met}`)
+    assert.ok(Object.is(metForControlPath(controlMetPath(met)), met), `round trip ${met}`)
   }
 })
 

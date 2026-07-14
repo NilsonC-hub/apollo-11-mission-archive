@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 
+import { metForControlPath } from '../../src/app/controlDeepLink.ts'
 import { getEvent, replayEndMet } from '../../src/app/mission.ts'
 import { formatEventMet, parseMet } from '../../src/mission-core/index.ts'
 import {
@@ -379,9 +380,9 @@ test('real browser focus loss flushes URL and pauses without applying hidden tim
   await page.goto('/control/event/a11-liftoff')
   await waitForScene(page)
   const historyBefore = await page.evaluate(() => history.length)
-  await page.getByRole('button', { name: '1000×', exact: true }).click()
+  await page.getByRole('button', { name: '10×', exact: true }).click()
   await page.getByRole('button', { name: 'PLAY', exact: true }).click()
-  await expect.poll(() => displayedMetSeconds(page)).toBeGreaterThan(30)
+  await expect.poll(() => displayedMetSeconds(page)).toBeGreaterThan(5)
   const beforeBlur = page.url()
   await page.bringToFront()
   await expect.poll(() => page.evaluate(() => document.hasFocus())).toBe(true)
@@ -414,18 +415,33 @@ test('real browser focus loss flushes URL and pauses without applying hidden tim
   await expect(page.getByText('REPLAY PAUSED SAFELY')).toBeVisible()
   expect(page.url()).not.toBe(beforeBlur)
   expect(await page.evaluate(() => history.length)).toBe(historyBefore)
-  const frozen = await page.locator('.met-display').textContent()
-  await expect.poll(() => page.locator('.met-display').textContent()).toBe(frozen)
-  await expect(page.locator('.met-display')).toHaveText(frozen ?? '')
+  const frozenRead = await session.send('Runtime.evaluate', {
+    expression: 'document.querySelector(".met-display")?.textContent',
+    returnByValue: true,
+  })
+  const frozen = frozenRead.result.value as string
+  const frozenSeconds = parseMet(frozen)
+  const hiddenStartedAt = Date.now()
+  await other.waitForTimeout(900)
+  expect(Date.now() - hiddenStartedAt).toBeGreaterThanOrEqual(850)
+  const hiddenRead = await session.send('Runtime.evaluate', {
+    expression: 'document.querySelector(".met-display")?.textContent',
+    returnByValue: true,
+  })
+  expect(hiddenRead.result.value).toBe(frozen)
 
   await session.send('Emulation.setFocusEmulationEnabled', { enabled: true })
   await other.close()
   await page.bringToFront()
   await page.getByRole('button', { name: 'RESUME REPLAY', exact: true }).click()
-  await expect.poll(() => page.locator('.met-display').textContent()).not.toBe(frozen)
+  await expect.poll(() => displayedMetSeconds(page)).toBeGreaterThan(frozenSeconds)
+  const resumedSeconds = await displayedMetSeconds(page)
+  expect(resumedSeconds - frozenSeconds).toBeLessThan(4)
 })
 
-test('real reload and Archive route Back preserve the final played position', async ({ page }) => {
+test('fast real reload and Archive route Back preserve the final played position', async ({
+  page,
+}) => {
   await page.goto('/control/event/a11-liftoff')
   await waitForScene(page)
   const historyBefore = await page.evaluate(() => history.length)
@@ -449,6 +465,36 @@ test('real reload and Archive route Back preserve the final played position', as
   await waitForScene(page)
   expect(await displayedMetSeconds(page)).toBeGreaterThanOrEqual(beforeArchive)
   await expect(page).toHaveURL(/\/control\/met\/s/)
+})
+
+test('real reload after a periodic URL sync restores the final unload position', async ({
+  page,
+}) => {
+  await page.goto('/control/event/a11-liftoff')
+  await waitForScene(page)
+  const historyBefore = await page.evaluate(() => history.length)
+  const eventUrl = page.url()
+  await page.getByRole('button', { name: '10×', exact: true }).click()
+  await page.getByRole('button', { name: 'PLAY', exact: true }).click()
+  const playbackStartedAt = Date.now()
+
+  await page.waitForTimeout(1_050)
+  await expect.poll(() => page.url()).toMatch(/\/control\/met\/s/)
+  expect(Date.now() - playbackStartedAt).toBeGreaterThanOrEqual(1_000)
+  expect(page.url()).not.toBe(eventUrl)
+
+  await page.waitForTimeout(150)
+  const reloadSourceUrl = page.url()
+  const syncedMet = metForControlPath(new URL(reloadSourceUrl).pathname)
+  expect(syncedMet).toBeDefined()
+  const beforeReload = await displayedMetSeconds(page)
+  expect(beforeReload).toBeGreaterThan(syncedMet!)
+
+  await page.reload()
+  await waitForScene(page)
+  expect(await displayedMetSeconds(page)).toBeGreaterThanOrEqual(beforeReload)
+  await expect(page).toHaveURL(/\/control\/met\/s/)
+  expect(await page.evaluate(() => history.length)).toBe(historyBefore)
 })
 
 test('natural replay completion flushes the terminal URL before reload', async ({ page }) => {
