@@ -552,6 +552,20 @@ test('Back leaving Control and Forward restore the final state of the same histo
   await expect(page).toHaveURL(/\/control\/met\/s/)
   await expect(page.getByText('REPLAY PAUSED ON MODE CHANGE')).toBeVisible()
   expect(await page.evaluate(() => history.length)).toBe(historyWithControl)
+
+  const reboundEntry = await page.evaluate(() => ({
+    id: history.state?.__apollo11ControlEntryId as string | undefined,
+    key: history.state?.key as string | undefined,
+  }))
+  expect(reboundEntry.id).toMatch(new RegExp(`^control:${reboundEntry.key}:`))
+  const firstRestoreMet = await displayedMetSeconds(page)
+  await page.goBack()
+  await expect(page).toHaveURL(/\/archive$/)
+  await page.goForward()
+  await waitForScene(page)
+  expect(await displayedMetSeconds(page)).toBeGreaterThanOrEqual(firstRestoreMet)
+  await expect(page.getByText('REPLAY PAUSED ON MODE CHANGE')).toBeVisible()
+  expect(await page.evaluate(() => history.length)).toBe(historyWithControl)
 })
 
 test('a new history entry at the same Control pathname does not consume an old entry snapshot', async ({
@@ -580,6 +594,15 @@ test('a new history entry at the same Control pathname does not consume an old e
     anchor.id = 'same-path-new-entry'
     anchor.href = pathname
     anchor.textContent = 'Open same Control pathname in a new entry'
+    Object.assign(anchor.style, {
+      background: 'white',
+      color: 'black',
+      left: '0',
+      padding: '16px',
+      position: 'fixed',
+      top: '0',
+      zIndex: '2147483647',
+    })
     document.body.append(anchor)
   }, oldEntryPath)
   await page.locator('#same-path-new-entry').click()

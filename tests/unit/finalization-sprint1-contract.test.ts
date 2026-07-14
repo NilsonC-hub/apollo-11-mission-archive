@@ -110,6 +110,17 @@ test('focus interruption pauses safely and requires an explicit resume', () => {
   assert.equal(useMissionStore.getState().resumeAvailable, false)
 })
 
+test('route traversal restore preserves the mode-switch interruption transaction', () => {
+  useMissionStore.setState({ playing: true, resumeAvailable: false, pauseReason: null })
+  useMissionStore.getState().pauseForModeSwitch()
+
+  useMissionStore.getState().restoreTraversalMet(20)
+
+  assert.equal(useMissionStore.getState().playing, false)
+  assert.equal(useMissionStore.getState().resumeAvailable, true)
+  assert.equal(useMissionStore.getState().pauseReason, 'mode-switch')
+})
+
 test('user camera input interrupts guided mode immediately', () => {
   assert.equal(useMissionStore.getState().interaction.mode, 'guided')
   useMissionStore.getState().enterFreeLook()

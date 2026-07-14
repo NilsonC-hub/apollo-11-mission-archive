@@ -50,6 +50,7 @@ interface MissionUiState {
   cameraCommand: CameraCommand | null
   setStoryTime: (storyTimeMs: number) => void
   setMet: (metSeconds: number) => void
+  restoreTraversalMet: (metSeconds: number) => void
   advancePlayback: (wallDeltaMs: number) => void
   setPlaying: (playing: boolean) => void
   togglePlaying: () => void
@@ -116,6 +117,12 @@ export const useMissionStore = create<MissionUiState>((set, get) => ({
       resumeAvailable: false,
       pauseReason: null,
       editorialPauseSegmentId: null,
+    }),
+  restoreTraversalMet: (metSeconds) =>
+    set({
+      storyTimeMs: storyTimeAtMet(mission.narrative, clampMet(metSeconds)),
+      visualTimeMs: 0,
+      playing: false,
     }),
   advancePlayback: (wallDeltaMs) => {
     if (!Number.isFinite(wallDeltaMs) || wallDeltaMs < 0) {

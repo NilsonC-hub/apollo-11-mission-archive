@@ -1,12 +1,22 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useLayoutEffect, useRef } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 
+import { metAtStoryTime } from '../mission-core/index.ts'
+import {
+  currentControlHistoryEntryId,
+  ensureControlHistoryEntryId,
+  recordControlTraversalSnapshot,
+} from './controlDeepLink.ts'
+import { mission } from './mission.ts'
 import { useMissionStore } from './missionStore.ts'
 
 export function RootLayout() {
   const location = useLocation()
   const control = location.pathname.startsWith('/control')
-  const wasControl = useRef(control)
+  const previousRoute = useRef({
+    control,
+    entryId: control ? currentControlHistoryEntryId(location.key) : null,
+  })
 
   useEffect(() => {
     document.documentElement.dataset.mode = control ? 'control' : 'archive'
@@ -15,10 +25,18 @@ export function RootLayout() {
       ?.setAttribute('content', control ? '#070908' : '#e7e1d4')
   }, [control])
 
-  useEffect(() => {
-    if (wasControl.current && !control) useMissionStore.getState().pauseForModeSwitch()
-    wasControl.current = control
-  }, [control])
+  useLayoutEffect(() => {
+    if (previousRoute.current.control && !control && previousRoute.current.entryId) {
+      const store = useMissionStore.getState()
+      const metSeconds = metAtStoryTime(mission.narrative, store.storyTimeMs)
+      recordControlTraversalSnapshot(previousRoute.current.entryId, metSeconds)
+      store.pauseForModeSwitch()
+    }
+    previousRoute.current = {
+      control,
+      entryId: control ? ensureControlHistoryEntryId(location.key) : null,
+    }
+  }, [control, location.key])
 
   return (
     <>

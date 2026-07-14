@@ -3,10 +3,13 @@ import { useLocation, useNavigate } from 'react-router-dom'
 
 import {
   clearControlReloadSnapshot,
+  clearControlTraversalSnapshot,
   consumeControlReloadSnapshot,
   controlEventPath,
   controlMetPath,
+  currentControlHistoryEntryId,
   metForControlPath,
+  readControlTraversalSnapshot,
   type ControlPlaybackSnapshot,
 } from '../../app/controlDeepLink.ts'
 import {
@@ -127,28 +130,52 @@ function useControlDeepLink(): number | undefined {
   const location = useLocation()
   const navigate = useNavigate()
   const appliedPath = useRef<string | null>(null)
-  const reloadSnapshot = useRef<ControlPlaybackSnapshot | null | undefined>(undefined)
-  if (reloadSnapshot.current === undefined) {
-    reloadSnapshot.current = consumeControlReloadSnapshot(location.pathname) ?? null
+  const restoreSnapshot = useRef<
+    | {
+        kind: 'reload' | 'traversal'
+        entryId?: string
+        snapshot: Pick<ControlPlaybackSnapshot, 'path' | 'metSeconds'>
+      }
+    | null
+    | undefined
+  >(undefined)
+  if (restoreSnapshot.current === undefined) {
+    const reload = consumeControlReloadSnapshot(location.pathname)
+    if (reload) {
+      restoreSnapshot.current = { kind: 'reload', snapshot: reload }
+    } else {
+      const entryId = currentControlHistoryEntryId(location.key)
+      const traversal = readControlTraversalSnapshot(entryId)
+      restoreSnapshot.current = traversal
+        ? { kind: 'traversal', entryId, snapshot: traversal }
+        : null
+    }
   }
-  const effectivePath = reloadSnapshot.current?.path ?? location.pathname
-  const targetMet = reloadSnapshot.current?.metSeconds ?? metForControlPath(location.pathname)
+  const effectivePath = restoreSnapshot.current?.snapshot.path ?? location.pathname
+  const targetMet =
+    restoreSnapshot.current?.snapshot.metSeconds ?? metForControlPath(location.pathname)
   const pendingMet = appliedPath.current === effectivePath ? undefined : targetMet
 
   useLayoutEffect(() => {
     appliedPath.current = effectivePath
-    if (targetMet !== undefined) {
+    if (pendingMet !== undefined) {
       const store = useMissionStore.getState()
-      store.setMet(targetMet)
-      store.setPlaying(false)
+      if (restoreSnapshot.current?.kind === 'traversal') {
+        store.restoreTraversalMet(pendingMet)
+      } else {
+        store.setMet(pendingMet)
+        store.setPlaying(false)
+      }
     }
-    if (reloadSnapshot.current) {
-      const restoredPath = reloadSnapshot.current.path
-      reloadSnapshot.current = null
-      clearControlReloadSnapshot()
+    if (restoreSnapshot.current) {
+      const restore = restoreSnapshot.current
+      const restoredPath = restore.snapshot.path
+      restoreSnapshot.current = null
+      if (restore.kind === 'reload') clearControlReloadSnapshot()
+      else if (restore.entryId) clearControlTraversalSnapshot(restore.entryId)
       if (restoredPath !== location.pathname) void navigate(restoredPath, { replace: true })
     }
-  }, [effectivePath, location.pathname, navigate, targetMet])
+  }, [effectivePath, location.pathname, navigate, pendingMet])
 
   return pendingMet
 }
