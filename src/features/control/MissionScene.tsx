@@ -452,6 +452,38 @@ function LoadingScene() {
   )
 }
 
+function RendererAuditProbe() {
+  const renderer = useThree((state) => state.gl)
+  const scene = useThree((state) => state.scene)
+
+  useEffect(() => {
+    const report = () => {
+      const materials = new Set<unknown>()
+      scene.traverse((object) => {
+        const material = (object as { material?: unknown | unknown[] }).material
+        for (const entry of Array.isArray(material) ? material : [material]) {
+          if (entry) materials.add(entry)
+        }
+      })
+      document.documentElement.dataset.rendererGeometries = String(renderer.info.memory.geometries)
+      document.documentElement.dataset.rendererTextures = String(renderer.info.memory.textures)
+      document.documentElement.dataset.rendererPrograms = String(
+        renderer.info.programs?.length ?? 0,
+      )
+      document.documentElement.dataset.rendererMaterials = String(materials.size)
+      document.documentElement.dataset.rendererFrames = String(renderer.info.render.frame)
+      document.documentElement.dataset.rendererCalls = String(renderer.info.render.calls)
+      document.documentElement.dataset.rendererTriangles = String(renderer.info.render.triangles)
+    }
+
+    report()
+    window.addEventListener('apollo11:renderer-audit', report)
+    return () => window.removeEventListener('apollo11:renderer-audit', report)
+  }, [renderer, scene])
+
+  return null
+}
+
 class SceneErrorBoundary extends Component<
   { children: React.ReactNode; fallback: React.ReactNode },
   { failed: boolean }
@@ -483,8 +515,20 @@ export function StaticVehicleFallback() {
   )
 }
 
+let cachedWebglAvailability: boolean | undefined
+
+function webglAvailable(): boolean {
+  if (cachedWebglAvailability !== undefined) return cachedWebglAvailability
+
+  const canvas = document.createElement('canvas')
+  const context = canvas.getContext('webgl2') ?? canvas.getContext('webgl')
+  cachedWebglAvailability = Boolean(context)
+  context?.getExtension('WEBGL_lose_context')?.loseContext()
+  return cachedWebglAvailability
+}
+
 export function MissionScene({ met, quality }: { met: number; quality: ModelQuality }) {
-  if (quality === 'fallback') return <StaticVehicleFallback />
+  if (quality === 'fallback' || !webglAvailable()) return <StaticVehicleFallback />
 
   return (
     <SceneErrorBoundary fallback={<StaticVehicleFallback />}>
@@ -495,6 +539,7 @@ export function MissionScene({ met, quality }: { met: number; quality: ModelQual
         gl={{ antialias: quality !== 'low', powerPreference: 'high-performance' }}
         fallback={<StaticVehicleFallback />}
       >
+        <RendererAuditProbe />
         <Suspense fallback={<LoadingScene />}>
           <SceneContents met={met} quality={quality} />
         </Suspense>

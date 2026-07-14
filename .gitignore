@@ -7,6 +7,7 @@ dist-ssr
 .turbo
 .tools/
 .playwright-cli/
+output/
 tmp/
 
 # Env
@@ -36,6 +37,7 @@ assets/raw/NASA-MODEL-SATV-STL-extracted/
 # Screenshots
 *.png
 !docs/media/*.png
+!tests/browser/__screenshots__/*.png
 
 # Audio (large files — tracked via manifest)
 assets/raw/**/*.mp3

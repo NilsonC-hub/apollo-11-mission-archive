@@ -1,5 +1,7 @@
-import { lazy, Suspense, useEffect } from 'react'
+import { lazy, Suspense, useEffect, useLayoutEffect, useRef } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 
+import { metForControlPath } from '../../app/controlDeepLink.ts'
 import {
   currentReplayEvent,
   eventsForPhase,
@@ -15,6 +17,7 @@ import { type ModelQuality, type PlaybackSpeed, useMissionStore } from '../../ap
 import {
   formatMet,
   isMissingValue,
+  metAtStoryTime,
   sampleTelemetryAtMet,
   stateAtMet,
   type MissionState,
@@ -98,7 +101,22 @@ function useControlKeyboard(): void {
   }, [])
 }
 
+function useControlDeepLink(): number | undefined {
+  const location = useLocation()
+  const appliedPath = useRef<string | null>(null)
+  const targetMet = metForControlPath(location.pathname)
+  const pendingMet = appliedPath.current === location.pathname ? undefined : targetMet
+
+  useLayoutEffect(() => {
+    appliedPath.current = location.pathname
+    if (targetMet !== undefined) useMissionStore.getState().setMet(targetMet)
+  }, [location.pathname, targetMet])
+
+  return pendingMet
+}
+
 function EventLog({ met, phaseId }: { met: number; phaseId: string }) {
+  const navigate = useNavigate()
   const setMet = useMissionStore((state) => state.setMet)
   const current = currentReplayEvent(met)
   const events = eventsForPhase(phaseId)
@@ -113,7 +131,13 @@ function EventLog({ met, phaseId }: { met: number; phaseId: string }) {
           const passed = event.metSeconds <= met
           return (
             <li key={event.id} className={event.id === current?.id ? 'is-current' : undefined}>
-              <button type="button" onClick={() => setMet(event.metSeconds)}>
+              <button
+                type="button"
+                onClick={() => {
+                  setMet(event.metSeconds)
+                  void navigate(`/control/event/${event.id}`)
+                }}
+              >
                 <time>{formatMet(event.metSeconds)}</time>
                 <span>{event.label}</span>
                 <i>{passed ? 'REC' : 'QUE'}</i>
@@ -224,6 +248,7 @@ const missingRowsByMode: Record<ConsoleMode, Array<[string, string]>> = {
 }
 
 function TranscriptRecords({ met }: { met: number }) {
+  const navigate = useNavigate()
   const setMet = useMissionStore((state) => state.setMet)
   return (
     <div className="transcript-records">
@@ -236,7 +261,10 @@ function TranscriptRecords({ met }: { met: number }) {
           type="button"
           key={record.id}
           className={record.metSeconds <= met ? 'is-passed' : undefined}
-          onClick={() => setMet(record.metSeconds)}
+          onClick={() => {
+            setMet(record.metSeconds)
+            void navigate(`/control/met/${encodeURIComponent(formatMet(record.metSeconds))}`)
+          }}
         >
           <span>
             {formatMet(record.metSeconds)} · {record.speaker}
@@ -305,6 +333,7 @@ function PhaseDataPanel({ met, mode }: { met: number; mode: ConsoleMode }) {
 
 function PlaybackControls({ met }: { met: number }) {
   const playing = useMissionStore((state) => state.playing)
+  const editorialPause = useMissionStore((state) => state.editorialPauseSegmentId)
   const speed = useMissionStore((state) => state.speed)
   const setMet = useMissionStore((state) => state.setMet)
   const togglePlaying = useMissionStore((state) => state.togglePlaying)
@@ -319,7 +348,7 @@ function PlaybackControls({ met }: { met: number }) {
           ←
         </button>
         <button className="play-button" type="button" onClick={togglePlaying}>
-          {playing ? 'PAUSE' : 'PLAY'}
+          {editorialPause ? 'CONTINUE REPLAY' : playing ? 'PAUSE' : 'PLAY'}
         </button>
         <button type="button" onClick={nextEvent} aria-label="Next event">
           →
@@ -373,7 +402,7 @@ function sceneCopy(mode: ConsoleMode): { heading: string; truth: string; body: s
   if (mode === 'lunar-orbit' || mode === 'descent' || mode === 'surface') {
     return {
       heading: 'VIEW / LUNAR OPERATIONS',
-      truth: 'LM: GENERIC NASA VISUALIZATION · NOT CERTIFIED LM-5',
+      truth: 'LM: GENERIC NASA VISUALIZATION · NOT CERTIFIED LM-5 · STAGE SPLIT RECONSTRUCTED',
       body: 'MOON TEXTURE / MODERN NASA LRO PRODUCT · COLOR ONLY',
     }
   }
@@ -392,15 +421,21 @@ function sceneCopy(mode: ConsoleMode): { heading: string; truth: string; body: s
 }
 
 export function Component() {
+  const deepLinkMet = useControlDeepLink()
   useMissionPlayback()
   useControlKeyboard()
 
-  const met = useMissionStore((state) => state.metSeconds)
+  const storyTimeMs = useMissionStore((state) => state.storyTimeMs)
+  const storeMet = metAtStoryTime(mission.narrative, storyTimeMs)
+  const met = deepLinkMet ?? storeMet
   const quality = useMissionStore((state) => state.quality)
   const setQuality = useMissionStore((state) => state.setQuality)
   const resumeAvailable = useMissionStore((state) => state.resumeAvailable)
+  const editorialPause = useMissionStore((state) => state.editorialPauseSegmentId)
+  const playing = useMissionStore((state) => state.playing)
   const resumeAfterModeSwitch = useMissionStore((state) => state.resumeAfterModeSwitch)
   const dismissResume = useMissionStore((state) => state.dismissResume)
+  const continueEditorialPause = useMissionStore((state) => state.continueEditorialPause)
   const currentEvent = currentReplayEvent(met)
   const state = stateAtMet(mission, met)
   const phase = phasesById.get(state.phaseId)
@@ -434,7 +469,7 @@ export function Component() {
         <div className="record-status">
           <span>REPLAY BASIS</span>
           <b>
-            <i /> SOURCE-BOUND
+            <i /> EDITED / SOURCE-BOUND
           </b>
         </div>
       </section>
@@ -451,6 +486,32 @@ export function Component() {
           <button type="button" onClick={dismissResume}>
             KEEP PAUSED
           </button>
+        </section>
+      )}
+
+      {editorialPause && (
+        <section className="editorial-pause-notice" aria-labelledby="editorial-pause-title">
+          <div>
+            <span id="editorial-pause-title">EVENT PAUSE — EDITORIAL</span>
+            <b>{currentEvent?.label ?? phase?.label}</b>
+            <p>
+              MET IS FROZEN FOR REVIEW · HISTORICAL AUDIO NOT AVAILABLE · TRANSCRIPT RECORDS REMAIN
+              AVAILABLE
+            </p>
+          </div>
+          <button type="button" onClick={continueEditorialPause}>
+            CONTINUE REPLAY
+          </button>
+        </section>
+      )}
+
+      {met >= replayEndMet && !playing && !editorialPause && (
+        <section className="mission-complete" aria-labelledby="mission-complete-title">
+          <div>
+            <span id="mission-complete-title">MISSION COMPLETE</span>
+            <b>SPLASHDOWN · {formatMet(replayEndMet)}</b>
+          </div>
+          <p>ACTUAL MISSION RESULT · SOURCE LOCATOR AVAILABLE IN THE EVENT RECORD</p>
         </section>
       )}
 

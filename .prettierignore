@@ -2,6 +2,7 @@ assets/raw/**
 assets/derived/**
 public/missions/apollo11/decoders/**
 dist
+output
 node_modules
 pnpm-lock.yaml
 # Original NASA HTML snapshots are archive content — never reformat

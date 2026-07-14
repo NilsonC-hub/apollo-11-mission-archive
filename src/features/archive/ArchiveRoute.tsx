@@ -139,6 +139,8 @@ export function Component() {
               <img
                 src="/missions/apollo11/plates/phase3-apollo11-saturn-v.png"
                 alt="Processed side view of the NASA-released Saturn V visualization model"
+                decoding="async"
+                fetchPriority="high"
               />
               <figcaption>
                 <span>PLATE 05-A</span>
@@ -294,6 +296,8 @@ export function Component() {
               <img
                 src="/missions/apollo11/plates/phase3-apollo11-saturn-v.png"
                 alt="Saturn V model processing plate with component bands"
+                decoding="async"
+                loading="lazy"
               />
               <figcaption>
                 <span>MODEL RECORD / SATURN V</span>
@@ -330,6 +334,8 @@ export function Component() {
               <img
                 src="/missions/apollo11/plates/phase3-apollo11-command-service-module.png"
                 alt="Processed command and service module reconstruction"
+                decoding="async"
+                loading="lazy"
               />
               <figcaption>
                 <span>COLUMBIA / CSM-107</span>
@@ -341,6 +347,8 @@ export function Component() {
               <img
                 src="/missions/apollo11/plates/phase3-apollo11-lunar-module.png"
                 alt="Processed NASA-released generic Apollo lunar module model"
+                decoding="async"
+                loading="lazy"
               />
               <figcaption>
                 <span>EAGLE / LM-5 IDENTITY</span>
@@ -521,6 +529,8 @@ export function Component() {
               <img
                 src="/missions/apollo11/plates/NASA-A11-MOON-VIEW.jpg"
                 alt="Apollo 11 photograph AS11-44-6665 showing the Moon during the return leg"
+                decoding="async"
+                loading="lazy"
               />
               <figcaption>
                 <span>AS11-44-6665 / RETURN-LEG PLATE</span>

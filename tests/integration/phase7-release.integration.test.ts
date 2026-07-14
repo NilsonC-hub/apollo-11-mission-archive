@@ -1,0 +1,41 @@
+import assert from 'node:assert/strict'
+import { test } from 'node:test'
+
+import {
+  getEvent,
+  mission,
+  replayEndMet,
+  replayEndStoryTime,
+  replayEvents,
+  replayNarrative,
+} from '../../src/app/mission.ts'
+import { metAtStoryTime, stateAtMet, storyTimeAtMet } from '../../src/mission-core/index.ts'
+
+test('published Apollo 11 events reconstruct one deterministic end-to-end journey', () => {
+  assert.equal(replayEvents.length, 37)
+
+  let previousMet = Number.NEGATIVE_INFINITY
+  for (const event of replayEvents) {
+    assert.ok(event.metSeconds >= previousMet, `${event.id} must remain MET-sorted`)
+    assert.deepEqual(stateAtMet(mission, event.metSeconds), stateAtMet(mission, event.metSeconds))
+    previousMet = event.metSeconds
+  }
+
+  const recovered = stateAtMet(mission, replayEndMet)
+  assert.equal(recovered.phaseId, 'recovery')
+  assert.equal(recovered.components['command-module']?.lifecycle, 'landed')
+  assert.equal(recovered.components['service-module']?.lifecycle, 'discarded')
+  assert.equal(recovered.components['lm-ascent-stage']?.lifecycle, 'discarded')
+  assert.equal(recovered.components['lm-descent-stage']?.lifecycle, 'landed')
+})
+
+test('storyTime remains the playback driver across authored pauses and mission completion', () => {
+  const pause = replayNarrative.find((segment) => (segment.presentationPauseMs ?? 0) > 0)
+  assert.ok(pause)
+
+  const frozenMet = metAtStoryTime(mission.narrative, pause.motionEndMs + 500)
+  assert.equal(frozenMet, pause.metEnd)
+  assert.equal(storyTimeAtMet(mission.narrative, pause.metEnd), pause.motionEndMs)
+  assert.equal(metAtStoryTime(mission.narrative, replayEndStoryTime), replayEndMet)
+  assert.equal(replayEndMet, getEvent('a11-splashdown').metSeconds)
+})

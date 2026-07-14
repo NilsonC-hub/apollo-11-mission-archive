@@ -1,0 +1,56 @@
+Apollo 11 Mission Archive + Historical Replay
+Copyright (c) 2026 Apollo 11 Mission Archive contributors
+
+This repository's original software is licensed under the MIT License in
+LICENSE.
+
+Prototype attribution
+---------------------
+
+This project was informed by the architecture and interaction lessons of
+redradman/artemis:
+
+  https://github.com/redradman/artemis
+
+That project is MIT-licensed, Copyright (c) 2026 Radman Rakhshandehroo. The
+Apollo 11 Mission Archive is a separate codebase and product. The retained
+attribution does not imply endorsement by the original author.
+
+NASA and historical material
+----------------------------
+
+This is an independent, unofficial historical archive. It is not a NASA
+product, and NASA does not endorse it. NASA names and mission identifiers are
+used descriptively. The NASA Insignia, Logotype, and Seal are not used as this
+project's brand identifiers.
+
+Many source photographs, recordings, documents, data products, models, and
+textures in or referenced by this repository are U.S. government works or
+NASA-released public-domain material. That statement does not apply
+automatically to contractor-authored diagrams, third-party editorial text,
+curation, or other separately protected contributions. The authoritative
+per-record rights statement, source URL, local path, hash, and processing note
+is src/missions/apollo11/source-manifest.json. The Phase 7 rights audit records
+any unresolved distribution boundary.
+
+Model and texture truth boundaries
+----------------------------------
+
+- Saturn V: NASA-released generic visualization model with reconstructed
+  semantic splits. It is not certified AS-506 flight CAD.
+- Lunar Module: NASA-released generic Apollo LM visualization model with a
+  reconstructed stage split. It is not certified LM-5 Eagle geometry.
+- Command/Service Module: reconstructed from NASA-published references and a
+  NASA-released print kit. It is not NASA CAD and is not certified Columbia
+  CSM-107 geometry.
+- Earth and Moon textures: modern NASA imagery-based composites. They are not
+  instantaneous reconstructions of the appearance at a 1969 mission time.
+
+Reproducible processing recipes, hashes, LODs, and decoder versions are indexed
+in docs/audit/MODEL-PROCESSING-NOTES.md and the asset manifest.
+
+Third-party software
+--------------------
+
+Third-party packages retain their own licenses. Their exact resolved versions
+are recorded in pnpm-lock.yaml; direct dependencies are listed in package.json.

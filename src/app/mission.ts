@@ -1,4 +1,9 @@
-import { eventAtOrBefore, type CitationRef, type MissionEvent } from '../mission-core/index.ts'
+import {
+  compileNarrative,
+  eventAtOrBefore,
+  type CitationRef,
+  type MissionEvent,
+} from '../mission-core/index.ts'
 import { apollo11MissionPack } from '../missions/apollo11/mission.ts'
 
 export const mission = apollo11MissionPack.definition
@@ -29,6 +34,9 @@ export const phase4EndMet = phase4Events.at(-1)!.metSeconds
 export const replayEvents = mission.events
 export const replayStartMet = 0
 export const replayEndMet = getEvent('a11-splashdown').metSeconds
+export const replayNarrative = compileNarrative(mission.narrative)
+export const replayStartStoryTime = replayNarrative[0].storyStartMs
+export const replayEndStoryTime = replayNarrative.at(-1)!.storyEndMs
 
 export const factsById = new Map(mission.facts.map((fact) => [fact.id, fact]))
 export const sourcesById = new Map(mission.sources.sources.map((source) => [source.id, source]))

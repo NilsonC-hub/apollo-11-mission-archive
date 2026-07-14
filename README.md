@@ -27,16 +27,20 @@ Phase 0 (baseline/source freeze), Phase 1 (mission core), Phase 2 (Apollo 11
 mission pack), Phase 3 (model/celestial asset pipeline), Phase 4
 (Launch / Earth Orbit / TLI), Phase 5 (Translunar / Lunar / Return), and Phase
 6 (complete Archive / Mission Control UI) are complete. The deterministic
-replay spans launch through splashdown; Phase 7 release audit remains pending.
-Phase 7 audit work is now in progress; no release-candidate status is claimed.
-See
+replay spans launch through splashdown. The Phase 7 release audit suite and
+evidence package have been implemented, but the current verdict is **NO-GO**:
+this repository remains `0.0.0-phase7-dev` and no release-candidate status is
+claimed. See
 [`docs/audit/PHASE-0-REPORT.md`](./docs/audit/PHASE-0-REPORT.md),
 [`docs/audit/PHASE-1-REPORT.md`](./docs/audit/PHASE-1-REPORT.md), and
 [`docs/audit/PHASE-2-REPORT.md`](./docs/audit/PHASE-2-REPORT.md), and
 [`docs/audit/PHASE-3-REPORT.md`](./docs/audit/PHASE-3-REPORT.md), and
 [`docs/audit/PHASE-4-REPORT.md`](./docs/audit/PHASE-4-REPORT.md), and
 [`docs/audit/PHASE-5-REPORT.md`](./docs/audit/PHASE-5-REPORT.md), and
-[`docs/audit/PHASE-6-REPORT.md`](./docs/audit/PHASE-6-REPORT.md).
+[`docs/audit/PHASE-6-REPORT.md`](./docs/audit/PHASE-6-REPORT.md). Phase 7 results,
+measured performance, accessibility evidence, visual baselines, provenance,
+and remaining release blockers are recorded in
+[`docs/audit/PHASE-7-REPORT.md`](./docs/audit/PHASE-7-REPORT.md).
 
 The separate `prototype/` directory is a labelled, non-production visual and
 interaction study. It is not imported by the production build; the production
@@ -82,16 +86,35 @@ pnpm validate:mission       # verify event table + fact coverage
 pnpm validate:models         # verify Node Manifests + GLB parseability
 pnpm validate:decoders      # offline-decode GLBs and validate KTX2 assets
 pnpm test:unit              # run source/core/pack/asset/Phase 4–6 regression tests
+pnpm test:integration       # run the end-to-end mission/core integration journey
+pnpm test:e2e               # run browser deep-link, responsive, fallback, and a11y flows
+pnpm test:visual            # compare 18 deterministic Phase 7 screenshots to baselines
+pnpm perf:budget            # measure route transfer, scene budgets, FPS, and renderer memory
 pnpm bootstrap:ktx          # provision pinned project-local Khronos tools
 pnpm optimize:models        # reproducibly generate three vehicle LOD sets
 pnpm optimize:textures      # reproducibly generate Earth/Moon 1K/2K/4K KTX2
 node scripts/inspect-glb.ts <glb-path>   # inspect a single GLB
 ```
 
-## License
+## Release-audit known gaps
 
-MIT for this project's own code (see [LICENSE](./LICENSE)). NASA works are
-public-domain U.S. government works where original.
+- The MissionScene chunk remains above the configured 900 kB minified warning threshold, although
+  it is route-isolated and 275.77 kB gzip in the audited build.
+- Mobile Archive Lighthouse LCP is 5.31 s under the audit's simulated throttling profile.
+- Historical audio remains unavailable because no verified local bytes, hash, and channel/clip
+  alignment have been approved; transcript records remain available.
+- Contractor/editorial rights boundaries and the exhaustive Appendix C.9 cross-product visual
+  matrix are not closed. These are release blockers, not silent deferrals.
+
+## License and notices
+
+MIT for this project's own code (see [LICENSE](./LICENSE)). Attribution,
+non-endorsement, model/texture truth boundaries, and NASA/third-party material
+notices are in [NOTICE](./NOTICE). Per-record rights status is authoritative in
+the Source Manifest; NASA-hosted contractor or editorial material is not
+automatically treated as public domain. Model recipes and processing records are
+indexed in
+[`docs/audit/MODEL-PROCESSING-NOTES.md`](./docs/audit/MODEL-PROCESSING-NOTES.md).
 
 Project conventions for AI / human collaborators are documented in
 [`AGENTS.md`](./AGENTS.md). The complete build contract is in

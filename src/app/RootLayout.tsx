@@ -26,7 +26,7 @@ export function RootLayout() {
         Skip to content
       </a>
       <header className="global-header">
-        <NavLink className="wordmark" to="/archive" aria-label="Apollo 11 Mission Archive">
+        <NavLink className="wordmark" to="/archive">
           <span className="wordmark-mark" aria-hidden="true">
             A11
           </span>

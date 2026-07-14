@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 
-import { replayEndMet } from '../../app/mission.ts'
+import { replayEndStoryTime, replayNarrative } from '../../app/mission.ts'
 import { useMissionStore } from '../../app/missionStore.ts'
 
 export function useMissionPlayback(): void {
@@ -8,8 +8,9 @@ export function useMissionPlayback(): void {
   const previous = useRef<number | null>(null)
   const playing = useMissionStore((state) => state.playing)
   const speed = useMissionStore((state) => state.speed)
-  const setMet = useMissionStore((state) => state.setMet)
+  const setStoryTime = useMissionStore((state) => state.setStoryTime)
   const setPlaying = useMissionStore((state) => state.setPlaying)
+  const beginEditorialPause = useMissionStore((state) => state.beginEditorialPause)
 
   useEffect(() => {
     if (!playing) {
@@ -20,12 +21,21 @@ export function useMissionPlayback(): void {
     const tick = (now: number) => {
       const prior = previous.current ?? now
       previous.current = now
-      const deltaSeconds = (now - prior) / 1000
+      const current = useMissionStore.getState().storyTimeMs
+      const next = Math.min(replayEndStoryTime, current + (now - prior) * speed)
+      const pauseSegment = replayNarrative.find(
+        (segment) =>
+          (segment.presentationPauseMs ?? 0) > 0 &&
+          current <= segment.motionEndMs &&
+          next > segment.motionEndMs,
+      )
+      if (pauseSegment) {
+        beginEditorialPause(pauseSegment.id, pauseSegment.motionEndMs + 0.001)
+        return
+      }
 
-      const current = useMissionStore.getState().metSeconds
-      const next = Math.min(replayEndMet, current + deltaSeconds * speed)
-      setMet(next)
-      if (next >= replayEndMet) {
+      setStoryTime(next)
+      if (next >= replayEndStoryTime) {
         setPlaying(false)
         return
       }
@@ -37,5 +47,5 @@ export function useMissionPlayback(): void {
       if (frame.current !== null) cancelAnimationFrame(frame.current)
       previous.current = null
     }
-  }, [playing, setMet, setPlaying, speed])
+  }, [beginEditorialPause, playing, setPlaying, setStoryTime, speed])
 }

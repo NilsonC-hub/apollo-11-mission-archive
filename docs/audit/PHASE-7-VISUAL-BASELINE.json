@@ -1,0 +1,159 @@
+{
+  "baselineVersion": 1,
+  "capturedAt": "2026-07-14",
+  "browser": "Google Chrome 150.0.7871.101 (headless, Windows)",
+  "runner": "@playwright/test 1.61.1",
+  "comparison": {
+    "animations": "disabled",
+    "caret": "hidden",
+    "threshold": 0.2,
+    "maxDiffPixelRatio": 0.01
+  },
+  "determinism": "Fixed-seed static star field; source-bound deep links; no wall-clock visual fixture; Reduced Motion captured separately.",
+  "items": [
+    {
+      "file": "tests/browser/__screenshots__/archive-index-desktop.png",
+      "route": "/archive",
+      "state": "Archive Mission Index",
+      "viewport": "1440x900",
+      "bytes": 136960,
+      "sha256": "b408d96c41b35a76a7413c403ea375d20029d9937fde9270759a6689c686c326"
+    },
+    {
+      "file": "tests/browser/__screenshots__/archive-index-mobile-390.png",
+      "route": "/archive",
+      "state": "Archive Mission Index mobile",
+      "viewport": "390x844",
+      "bytes": 42818,
+      "sha256": "4dba096c9fe2fd06c5175a2f626079168f43b79b1bc38c9e96ff4e4eb66b2bac"
+    },
+    {
+      "file": "tests/browser/__screenshots__/archive-saturn-v.png",
+      "route": "/archive/saturn",
+      "state": "Saturn V dossier",
+      "viewport": "1440x900",
+      "bytes": 134973,
+      "sha256": "3fa2c76bde2a07639593b0c5a2ba54f935ae163483b0410b397511ef6a3a7919"
+    },
+    {
+      "file": "tests/browser/__screenshots__/archive-spacecraft.png",
+      "route": "/archive/spacecraft",
+      "state": "Columbia and Eagle dossier",
+      "viewport": "1440x900",
+      "bytes": 238406,
+      "sha256": "a8c7502ebcf3717b6d257745ee1883804bfcd5fcdb85079d8d8811c1755e82c6"
+    },
+    {
+      "file": "tests/browser/__screenshots__/control-a11-tli-ignition.png",
+      "route": "/control/event/a11-tli-ignition",
+      "state": "Translunar injection",
+      "viewport": "1440x900",
+      "bytes": 218473,
+      "sha256": "5917048c66d5a74a9e5d00480d27499cba8b0d7a66e31c75b65e3c4999945c3b"
+    },
+    {
+      "file": "tests/browser/__screenshots__/control-a11-loi-ignition.png",
+      "route": "/control/event/a11-loi-ignition",
+      "state": "Lunar orbit insertion",
+      "viewport": "1440x900",
+      "bytes": 196923,
+      "sha256": "e5ea23fc2250d1c4fa1ef0dcd5f34f28d371937f9f3d849a3df83e6c39bee6b3"
+    },
+    {
+      "file": "tests/browser/__screenshots__/control-a11-undocking.png",
+      "route": "/control/event/a11-undocking",
+      "state": "CSM and LM undocking",
+      "viewport": "1440x900",
+      "bytes": 236085,
+      "sha256": "786d8aec38ac04c49fc2b13f03c9cfbb4cf032226eac256bb0d5463b70db3858"
+    },
+    {
+      "file": "tests/browser/__screenshots__/control-a11-pdi-ignition.png",
+      "route": "/control/event/a11-pdi-ignition",
+      "state": "Powered descent",
+      "viewport": "1440x900",
+      "bytes": 233843,
+      "sha256": "132e89fc0f4be503ce8d629432beb6be48b5ad44a4913c4d054ce61b5471e5ce"
+    },
+    {
+      "file": "tests/browser/__screenshots__/control-a11-touchdown.png",
+      "route": "/control/event/a11-touchdown",
+      "state": "Touchdown and surface configuration",
+      "viewport": "1440x900",
+      "bytes": 232262,
+      "sha256": "be6078acc4076b2a9d4de7bd315d6040fafcd4831e88ef645415c573f95af9bc"
+    },
+    {
+      "file": "tests/browser/__screenshots__/control-a11-first-step.png",
+      "route": "/control/event/a11-first-step",
+      "state": "First step and lunar surface operations",
+      "viewport": "1440x900",
+      "bytes": 229968,
+      "sha256": "9a9bfcb7343b7962c8a9285e19522a61952786b7465a7d363577ce8b890ab259"
+    },
+    {
+      "file": "tests/browser/__screenshots__/control-a11-lunar-liftoff.png",
+      "route": "/control/event/a11-lunar-liftoff",
+      "state": "Lunar liftoff",
+      "viewport": "1440x900",
+      "bytes": 224013,
+      "sha256": "f26e1ed4bb669bafa364387e4b091b754f77fd69bc853d5619d1ac71ceb7cf9a"
+    },
+    {
+      "file": "tests/browser/__screenshots__/control-a11-tei-ignition.png",
+      "route": "/control/event/a11-tei-ignition",
+      "state": "Transearth injection",
+      "viewport": "1440x900",
+      "bytes": 113270,
+      "sha256": "863cfc5e7f28993a72009782853c98748692ec8b69370d33c76f7b73e6c1a92b"
+    },
+    {
+      "file": "tests/browser/__screenshots__/control-a11-entry-interface.png",
+      "route": "/control/event/a11-entry-interface",
+      "state": "Entry interface",
+      "viewport": "1440x900",
+      "bytes": 240627,
+      "sha256": "953298b4f1a0f5823c396c8161d45899a954e3fe6a8061e61c7024cac5a972bc"
+    },
+    {
+      "file": "tests/browser/__screenshots__/control-a11-splashdown.png",
+      "route": "/control/event/a11-splashdown",
+      "state": "Mission Complete and recovery",
+      "viewport": "1440x900",
+      "bytes": 239193,
+      "sha256": "6a085c415960887fbba8b22b6aace8fd15f5d0272fd78a585f6d0cb8639c268d"
+    },
+    {
+      "file": "tests/browser/__screenshots__/control-editorial-pause.png",
+      "route": "/control/event/a11-liftoff",
+      "state": "Editorial pause with unavailable audio and transcript status",
+      "viewport": "1440x900",
+      "bytes": 222204,
+      "sha256": "e7a7259fe9d22d1092fd8ee1965783ad178d8b65302692ea730f2e88c04e9452"
+    },
+    {
+      "file": "tests/browser/__screenshots__/control-webgl-fallback.png",
+      "route": "/control/event/a11-touchdown",
+      "state": "Explicit WebGL/model fallback",
+      "viewport": "1440x900",
+      "bytes": 117332,
+      "sha256": "3fd82ac004b54ac60bb09ee8244113c5b6859407d017e328534208063cc30713"
+    },
+    {
+      "file": "tests/browser/__screenshots__/control-reduced-motion.png",
+      "route": "/control/event/a11-tli-ignition",
+      "state": "Reduced Motion",
+      "viewport": "1440x900",
+      "bytes": 218473,
+      "sha256": "5917048c66d5a74a9e5d00480d27499cba8b0d7a66e31c75b65e3c4999945c3b"
+    },
+    {
+      "file": "tests/browser/__screenshots__/control-mobile-390-playback.png",
+      "route": "/control/event/a11-touchdown",
+      "state": "390 px deep link, playback, and editorial pause",
+      "viewport": "390x844",
+      "bytes": 82547,
+      "sha256": "75aed851ade7f017f6538ee5ed3bf32992ebe287117c5e2e6bb23a8b7c4e540a"
+    }
+  ]
+}
