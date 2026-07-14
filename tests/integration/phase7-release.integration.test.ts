@@ -9,6 +9,7 @@ import {
   replayEvents,
   replayNarrative,
 } from '../../src/app/mission.ts'
+import { controlMetPath, metForControlPath } from '../../src/app/controlDeepLink.ts'
 import { metAtStoryTime, stateAtMet, storyTimeAtMet } from '../../src/mission-core/index.ts'
 
 test('published Apollo 11 events reconstruct one deterministic end-to-end journey', () => {
@@ -43,4 +44,20 @@ test('storyTime remains the playback driver across authored pauses and mission c
   assert.equal(storyTimeAtMet(mission.narrative, pause.metEnd), pause.motionEndMs)
   assert.equal(metAtStoryTime(mission.narrative, replayEndStoryTime), replayEndMet)
   assert.equal(replayEndMet, getEvent('a11-splashdown').metSeconds)
+})
+
+test('source MET URLs and ignition records preserve event truth across app and mission-core', () => {
+  for (const event of replayEvents) {
+    assert.equal(metForControlPath(controlMetPath(event.metSeconds)), event.metSeconds, event.id)
+    for (const action of event.actions) {
+      if (action.type !== 'record-engine-ignition') continue
+      const before = stateAtMet(mission, event.metSeconds - 0.000_001)
+      const after = stateAtMet(mission, event.metSeconds + 0.000_001)
+      assert.equal(
+        after.components[action.componentId].engineMode,
+        before.components[action.componentId].engineMode,
+        `${event.id} must not create a persistent engine mode`,
+      )
+    }
+  }
 })

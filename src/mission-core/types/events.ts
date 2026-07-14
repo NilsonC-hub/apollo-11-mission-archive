@@ -7,6 +7,7 @@ export type MissionAction =
   | { type: 'set-component-parent'; componentId: string; parentId: string | null }
   | { type: 'set-component-visibility'; componentId: string; visible: boolean }
   | { type: 'set-engine-mode'; componentId: string; engineMode: EngineMode }
+  | { type: 'record-engine-ignition'; componentId: string }
 
 export interface MissionEvent {
   id: string

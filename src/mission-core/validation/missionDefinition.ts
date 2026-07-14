@@ -139,6 +139,7 @@ function actionTarget(action: MissionAction): string {
   if (action.type === 'set-component-lifecycle') return `${action.componentId}:lifecycle`
   if (action.type === 'set-component-parent') return `${action.componentId}:parent`
   if (action.type === 'set-component-visibility') return `${action.componentId}:visibility`
+  if (action.type === 'record-engine-ignition') return `${action.componentId}:ignition-record`
   return `${action.componentId}:engine`
 }
 

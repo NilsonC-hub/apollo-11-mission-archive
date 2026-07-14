@@ -1,6 +1,7 @@
 import type { Object3D } from 'three'
 
 import { mission } from '../../app/mission.ts'
+import type { MissionState } from '../../mission-core/index.ts'
 import csmManifest from '../../missions/apollo11/node-manifests/apollo11-command-service-module.json' with { type: 'json' }
 import lunarModuleManifest from '../../missions/apollo11/node-manifests/apollo11-lunar-module.json' with { type: 'json' }
 import saturnManifest from '../../missions/apollo11/node-manifests/apollo11-saturn-v.json' with { type: 'json' }
@@ -66,4 +67,36 @@ export function inspectableComponentIds(): string[] {
   return mission.vehicle.components
     .filter((component) => component.nodeBinding)
     .map((component) => component.id)
+}
+
+function isActuallyVisible(object: Object3D): boolean {
+  let current: Object3D | null = object
+  while (current) {
+    if (!current.visible) return false
+    current = current.parent
+  }
+  return true
+}
+
+export function findInspectableComponentNodes(
+  root: Object3D,
+  componentId: string,
+  state: MissionState,
+): Object3D[] {
+  const component = state.components[componentId]
+  if (!component || !component.visible || component.lifecycle === 'discarded') return []
+
+  const matches: Object3D[] = []
+  root.traverse((object) => {
+    if (object.userData.semanticComponentId === componentId && isActuallyVisible(object)) {
+      matches.push(object)
+    }
+  })
+  return matches
+}
+
+export function runtimeInspectableComponentIds(root: Object3D, state: MissionState): string[] {
+  return inspectableComponentIds().filter(
+    (componentId) => findInspectableComponentNodes(root, componentId, state).length === 1,
+  )
 }

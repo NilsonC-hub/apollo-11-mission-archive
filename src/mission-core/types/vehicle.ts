@@ -1,7 +1,7 @@
 import type { EvidenceClass } from './provenance.ts'
 
 export type ComponentLifecycle = 'attached' | 'separating' | 'free' | 'discarded' | 'landed'
-export type EngineMode = 'off' | 'ignition' | 'burning' | 'cutoff'
+export type EngineMode = 'off' | 'burning' | 'cutoff'
 
 export interface VehicleComponentState {
   lifecycle: ComponentLifecycle

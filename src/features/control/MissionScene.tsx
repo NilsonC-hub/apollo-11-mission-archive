@@ -1,4 +1,4 @@
-import { Component, Suspense, useEffect, useMemo, useRef } from 'react'
+import { Component, Suspense, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import { Canvas, useLoader, useThree, type ThreeEvent } from '@react-three/fiber'
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
@@ -22,7 +22,12 @@ import {
   type ModelQuality,
 } from '../../app/missionStore.ts'
 import { stateAtMet, visualStateAtStoryTime } from '../../mission-core/index.ts'
-import { resolveComponentNode, resolveSemanticNode } from './modelNodeLookup.ts'
+import {
+  findInspectableComponentNodes,
+  resolveComponentNode,
+  resolveSemanticNode,
+  runtimeInspectableComponentIds,
+} from './modelNodeLookup.ts'
 
 const MODEL_ROOT = '/missions/apollo11/models'
 const DRACO_ROOT = '/missions/apollo11/decoders/three-draco/'
@@ -172,7 +177,7 @@ function SaturnStack({
   const state = stateAtMet(mission, met)
   const postCsmSeparation = met >= getEvent('a11-csm-sivb-separation').metSeconds
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const separatingComponents = [
       's-ic',
       's-ic-s-ii-interstage',
@@ -224,7 +229,7 @@ function CsmModel({
   const gltf = useGlb(modelUrl('command-service-module', quality))
   const scene = useMemo(() => gltf.scene.clone(true), [gltf.scene])
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     setComponentPresentation(scene, 'service-module', configuration === 'full')
     setComponentPresentation(scene, 'command-module', true)
   }, [configuration, scene])
@@ -250,7 +255,7 @@ function LunarModuleModel({
   const gltf = useGlb(modelUrl('lunar-module', quality))
   const scene = useMemo(() => gltf.scene.clone(true), [gltf.scene])
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     setComponentPresentation(scene, 'lm-ascent-stage', stage !== 'descent')
     setComponentPresentation(scene, 'lm-descent-stage', stage !== 'ascent')
   }, [scene, stage])
@@ -461,9 +466,11 @@ const guidedCameraTarget = new Vector3(0, 0, 0)
 const verticalAxis = new Vector3(0, 1, 0)
 
 function CameraRig({
+  met,
   interaction,
   cameraCommand,
 }: {
+  met: number
   interaction: ControlInteractionState
   cameraCommand: CameraCommand | null
 }) {
@@ -473,27 +480,49 @@ function CameraRig({
   const invalidate = useThree((state) => state.invalidate)
   const controls = useMemo(() => new OrbitControls(camera, gl.domElement), [camera, gl.domElement])
   const tweenFrame = useRef<number | null>(null)
+  const settleFrame = useRef<number | null>(null)
+  const pointerStart = useRef<{ id: number; x: number; y: number } | null>(null)
+  const metRef = useRef(met)
+  metRef.current = met
 
   useEffect(() => {
     controls.enableDamping = false
     controls.enablePan = true
     controls.minDistance = 1.2
     controls.maxDistance = 80
-    const onStart = () => useMissionStore.getState().enterFreeLook()
     const onChange = () => invalidate()
-    const onDirectInput = () => useMissionStore.getState().enterFreeLook()
-    controls.addEventListener('start', onStart)
+    const onPointerDown = (event: PointerEvent) => {
+      pointerStart.current = { id: event.pointerId, x: event.clientX, y: event.clientY }
+    }
+    const onPointerMove = (event: PointerEvent) => {
+      const start = pointerStart.current
+      if (!start || start.id !== event.pointerId) return
+      if (Math.hypot(event.clientX - start.x, event.clientY - start.y) >= 4) {
+        useMissionStore.getState().enterFreeLook()
+        pointerStart.current = null
+      }
+    }
+    const onPointerEnd = () => {
+      pointerStart.current = null
+    }
+    const onWheel = () => useMissionStore.getState().enterFreeLook()
+    const onTouchMove = () => useMissionStore.getState().enterFreeLook()
     controls.addEventListener('change', onChange)
-    gl.domElement.addEventListener('pointerdown', onDirectInput, { capture: true })
-    gl.domElement.addEventListener('wheel', onDirectInput, { capture: true, passive: true })
-    gl.domElement.addEventListener('touchstart', onDirectInput, { capture: true, passive: true })
+    gl.domElement.addEventListener('pointerdown', onPointerDown, { capture: true })
+    gl.domElement.addEventListener('pointermove', onPointerMove, { capture: true })
+    gl.domElement.addEventListener('pointerup', onPointerEnd, { capture: true })
+    gl.domElement.addEventListener('pointercancel', onPointerEnd, { capture: true })
+    gl.domElement.addEventListener('wheel', onWheel, { capture: true, passive: true })
+    gl.domElement.addEventListener('touchmove', onTouchMove, { capture: true, passive: true })
     controls.update()
     return () => {
-      controls.removeEventListener('start', onStart)
       controls.removeEventListener('change', onChange)
-      gl.domElement.removeEventListener('pointerdown', onDirectInput, { capture: true })
-      gl.domElement.removeEventListener('wheel', onDirectInput, { capture: true })
-      gl.domElement.removeEventListener('touchstart', onDirectInput, { capture: true })
+      gl.domElement.removeEventListener('pointerdown', onPointerDown, { capture: true })
+      gl.domElement.removeEventListener('pointermove', onPointerMove, { capture: true })
+      gl.domElement.removeEventListener('pointerup', onPointerEnd, { capture: true })
+      gl.domElement.removeEventListener('pointercancel', onPointerEnd, { capture: true })
+      gl.domElement.removeEventListener('wheel', onWheel, { capture: true })
+      gl.domElement.removeEventListener('touchmove', onTouchMove, { capture: true })
       controls.dispose()
     }
   }, [controls, invalidate])
@@ -525,6 +554,10 @@ function CameraRig({
 
   useEffect(() => {
     if (tweenFrame.current !== null) cancelAnimationFrame(tweenFrame.current)
+    if (settleFrame.current !== null) cancelAnimationFrame(settleFrame.current)
+    delete document.documentElement.dataset.cameraSettled
+    delete document.documentElement.dataset.inspectTarget
+    delete document.documentElement.dataset.inspectTargetCount
 
     let targetPosition: Vector3 | undefined
     let targetLookAt: Vector3 | undefined
@@ -532,13 +565,15 @@ function CameraRig({
       targetPosition = guidedCameraPosition.clone()
       targetLookAt = guidedCameraTarget.clone()
     } else if (interaction.mode === 'inspect' && interaction.cameraControl === 'guided-focus') {
-      let targetObject: Group | undefined
-      scene.traverse((object) => {
-        if (object.userData.semanticComponentId === interaction.componentId) {
-          targetObject = object as Group
-        }
-      })
+      const targets = findInspectableComponentNodes(
+        scene,
+        interaction.componentId,
+        stateAtMet(mission, metRef.current),
+      )
+      document.documentElement.dataset.inspectTargetCount = String(targets.length)
+      const targetObject = targets.length === 1 ? targets[0] : undefined
       if (targetObject) {
+        document.documentElement.dataset.inspectTarget = interaction.componentId
         const sphere = new Box3().setFromObject(targetObject).getBoundingSphere(new Sphere())
         const direction = camera.position.clone().sub(controls.target).normalize()
         const distance = Math.max(3.5, sphere.radius * 5)
@@ -562,14 +597,55 @@ function CameraRig({
       controls.update()
       invalidate()
       if (progress < 1) tweenFrame.current = requestAnimationFrame(update)
-      else tweenFrame.current = null
+      else {
+        tweenFrame.current = null
+        const settledLabel =
+          interaction.mode === 'inspect' ? interaction.componentId : interaction.mode
+        settleFrame.current = requestAnimationFrame(() => {
+          invalidate()
+          settleFrame.current = requestAnimationFrame(() => {
+            document.documentElement.dataset.cameraSettled = settledLabel
+            settleFrame.current = null
+          })
+        })
+      }
     }
     tweenFrame.current = requestAnimationFrame(update)
     return () => {
       if (tweenFrame.current !== null) cancelAnimationFrame(tweenFrame.current)
+      if (settleFrame.current !== null) cancelAnimationFrame(settleFrame.current)
       tweenFrame.current = null
+      settleFrame.current = null
     }
   }, [camera, controls, interaction, invalidate, scene])
+
+  return null
+}
+
+function RuntimeSceneState({
+  state,
+  configurationKey,
+}: {
+  state: ReturnType<typeof stateAtMet>
+  configurationKey: string
+}) {
+  const scene = useThree((three) => three.scene)
+  const invalidate = useThree((three) => three.invalidate)
+  const stateRef = useRef(state)
+  stateRef.current = state
+
+  useEffect(() => {
+    const html = document.documentElement
+    html.dataset.controlScene = 'loading'
+    useMissionStore.getState().setSceneRuntime('loading')
+    const inspectable = runtimeInspectableComponentIds(scene, stateRef.current)
+    useMissionStore.getState().setSceneRuntime('ready', inspectable)
+    html.dataset.controlScene = 'ready'
+    invalidate()
+    return () => {
+      delete html.dataset.controlScene
+    }
+  }, [configurationKey, invalidate, scene])
 
   return null
 }
@@ -588,6 +664,13 @@ function SceneContents({
   quality: Exclude<ModelQuality, 'fallback'>
 }) {
   const phaseProgress = visualStateAtStoryTime(mission.narrative, storyTimeMs).progress
+  const runtimeState = stateAtMet(mission, met)
+  const configurationKey = `${sceneModeAtMet(met)}:${Object.entries(runtimeState.components)
+    .map(
+      ([id, component]) =>
+        `${id}:${component.lifecycle}:${component.parentId ?? '-'}:${component.visible}`,
+    )
+    .join('|')}`
   return (
     <>
       <color attach="background" args={['#050706']} />
@@ -596,12 +679,17 @@ function SceneContents({
       <directionalLight position={[8, 7, 10]} intensity={2.5} color="#f3ead8" />
       <directionalLight position={[-6, 2, -4]} intensity={0.7} color="#758a83" />
       <MissionConfiguration met={met} phaseProgress={phaseProgress} quality={quality} />
-      <CameraRig interaction={interaction} cameraCommand={cameraCommand} />
+      <CameraRig met={met} interaction={interaction} cameraCommand={cameraCommand} />
+      <RuntimeSceneState state={runtimeState} configurationKey={configurationKey} />
     </>
   )
 }
 
 function LoadingScene() {
+  useEffect(() => {
+    document.documentElement.dataset.controlScene = 'loading'
+    useMissionStore.getState().setSceneRuntime('loading')
+  }, [])
   return (
     <mesh>
       <octahedronGeometry args={[0.34, 0]} />
@@ -658,6 +746,14 @@ class SceneErrorBoundary extends Component<
 }
 
 export function StaticVehicleFallback() {
+  useEffect(() => {
+    const html = document.documentElement
+    html.dataset.controlScene = 'fallback'
+    useMissionStore.getState().setSceneRuntime('fallback')
+    return () => {
+      delete html.dataset.controlScene
+    }
+  }, [])
   return (
     <div
       className="static-vehicle-fallback"

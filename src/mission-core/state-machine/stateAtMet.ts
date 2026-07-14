@@ -44,6 +44,8 @@ export function applyMissionAction(state: MissionState, action: MissionAction): 
     case 'set-engine-mode':
       components[action.componentId].engineMode = action.engineMode
       break
+    case 'record-engine-ignition':
+      return state
   }
   return { ...state, components }
 }

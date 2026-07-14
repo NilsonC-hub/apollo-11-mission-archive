@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { afterEach, test } from 'node:test'
 
 import { getEvent, mission, replayEndMet, replayNarrative } from '../../src/app/mission.ts'
-import { controlMetPath } from '../../src/app/controlDeepLink.ts'
+import { controlMetPath, metForControlPath } from '../../src/app/controlDeepLink.ts'
 import { useMissionStore } from '../../src/app/missionStore.ts'
 import { formatEventMet, stateAtMet } from '../../src/mission-core/index.ts'
 
@@ -11,6 +11,10 @@ const initialState = useMissionStore.getState()
 afterEach(() => {
   useMissionStore.setState(initialState, true)
 })
+
+function enableInspection(...componentIds: string[]): void {
+  useMissionStore.getState().setSceneRuntime('ready', componentIds)
+}
 
 test('storyTime and visualTime advance in separate domains', () => {
   useMissionStore.setState({
@@ -83,6 +87,7 @@ test('user camera input interrupts guided mode immediately', () => {
 
 test('inspect pauses, focuses, and resumes playback exactly once on close', () => {
   useMissionStore.setState({ playing: true })
+  enableInspection('s-ic')
 
   useMissionStore.getState().inspectComponent('s-ic')
   assert.equal(useMissionStore.getState().playing, false)
@@ -104,6 +109,7 @@ test('inspect pauses, focuses, and resumes playback exactly once on close', () =
 
 test('visibility interruption cancels inspect auto-resume', () => {
   useMissionStore.setState({ playing: true })
+  enableInspection('s-ic')
   useMissionStore.getState().inspectComponent('s-ic')
 
   useMissionStore.getState().pauseForInterruption('visibility')
@@ -117,13 +123,31 @@ test('visibility interruption cancels inspect auto-resume', () => {
 
 test('inspect entered while paused remains paused on close', () => {
   useMissionStore.setState({ playing: false })
+  enableInspection('s-ic')
   useMissionStore.getState().inspectComponent('s-ic')
   useMissionStore.getState().closeInspection()
   assert.equal(useMissionStore.getState().playing, false)
 })
 
+test('inspection is unavailable until one runtime semantic target is ready', () => {
+  useMissionStore.getState().inspectComponent('s-ic')
+  assert.equal(useMissionStore.getState().interaction.mode, 'guided')
+
+  useMissionStore.getState().setSceneRuntime('ready', [])
+  useMissionStore.getState().inspectComponent('s-ic')
+  assert.equal(useMissionStore.getState().interaction.mode, 'guided')
+
+  enableInspection('s-ic')
+  useMissionStore.getState().inspectComponent('s-ic')
+  assert.equal(useMissionStore.getState().interaction.mode, 'inspect')
+})
+
 test('control MET URLs use stable source-compatible precision', () => {
   assert.equal(controlMetPath(369_939.9), '/control/met/102%3A45%3A39.9')
+  for (const met of [161.66, 699.3, 360_720, 393_855.0, 705_000.125]) {
+    const path = controlMetPath(met)
+    assert.equal(metForControlPath(path), met, `${met} must survive a URL round trip`)
+  }
 })
 
 test('event MET formatting preserves source precision', () => {
@@ -179,11 +203,21 @@ test('ignition-only facts remain point events instead of indefinite burns', () =
   ]
   for (const eventId of ignitionOnly) {
     const event = getEvent(eventId)
-    const engineActions = event.actions.filter((action) => action.type === 'set-engine-mode')
-    assert.ok(engineActions.length > 0, eventId)
+    const ignitionRecords = event.actions.filter(
+      (action) => action.type === 'record-engine-ignition',
+    )
+    assert.ok(ignitionRecords.length > 0, eventId)
     assert.ok(
-      engineActions.every((action) => action.engineMode === 'ignition'),
+      event.actions.every(
+        (action) => action.type !== 'set-engine-mode' || action.engineMode !== 'ignition',
+      ),
       eventId,
+    )
+    const componentId = ignitionRecords[0].componentId
+    assert.notEqual(
+      stateAtMet(mission, event.metSeconds + 0.001).components[componentId].engineMode,
+      'ignition',
+      `${eventId} must not leave a persistent ignition state`,
     )
   }
 

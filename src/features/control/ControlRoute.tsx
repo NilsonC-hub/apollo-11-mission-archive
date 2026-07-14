@@ -86,6 +86,13 @@ function useControlKeyboard(): void {
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null
+      if (event.key === 'Escape') {
+        const protectsTextEntry = target?.matches(
+          'textarea, [contenteditable="true"], input:not([type]), input[type="text"], input[type="search"], input[type="email"], input[type="url"], input[type="tel"], input[type="password"]',
+        )
+        if (!protectsTextEntry) useMissionStore.getState().closeInspection()
+        return
+      }
       if (target?.matches('input, select, textarea, button, a, summary')) return
       const store = useMissionStore.getState()
       if (event.key.toLowerCase() === 'k') store.togglePlaying()
@@ -97,7 +104,6 @@ function useControlKeyboard(): void {
         const targetMet = store.nextEvent()
         if (targetMet !== undefined) void navigate(controlMetPath(targetMet))
       }
-      if (event.key === 'Escape') store.closeInspection()
       if (event.key === '[' || event.key === ']') {
         const index = speeds.indexOf(store.speed)
         const nextIndex =
@@ -108,20 +114,6 @@ function useControlKeyboard(): void {
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [navigate])
-}
-
-function usePlaybackUrlSync(met: number, playing: boolean): void {
-  const latestMet = useRef(met)
-  latestMet.current = met
-
-  useEffect(() => {
-    if (!playing) return
-    const interval = window.setInterval(() => {
-      if (!window.location.pathname.startsWith('/control')) return
-      window.history.replaceState(window.history.state, '', controlMetPath(latestMet.current))
-    }, 1_000)
-    return () => window.clearInterval(interval)
-  }, [playing])
 }
 
 function useControlDeepLink(): number | undefined {
@@ -193,11 +185,16 @@ function enginePresentation(
   met: number,
 ): { label: string; tone: 'on' | 'off' | 'unknown' } {
   const component = state.components[componentId]
+  const isIgnitionRecord = replayEvents.some(
+    (event) =>
+      Math.abs(event.metSeconds - met) < 0.000_01 &&
+      event.actions.some(
+        (action) => action.type === 'record-engine-ignition' && action.componentId === componentId,
+      ),
+  )
+  if (isIgnitionRecord) return { label: 'IGNITION EVENT · MODE N/A', tone: 'unknown' }
   if (component.lifecycle === 'discarded') return { label: 'DISCARDED', tone: 'off' }
   if (component.lifecycle === 'landed') return { label: 'LANDED', tone: 'on' }
-  if (component.engineMode === 'ignition') {
-    return { label: 'IGNITION EVENT · MODE N/A', tone: 'unknown' }
-  }
   if (component.engineMode !== 'burning') {
     return {
       label: (component.engineMode ?? component.lifecycle).toUpperCase(),
@@ -322,6 +319,8 @@ function PhaseDataPanel({
   mode: ConsoleMode
   jump: ControlJump
 }) {
+  const sceneAvailability = useMissionStore((store) => store.sceneAvailability)
+  const runtimeInspectable = useMissionStore((store) => store.runtimeInspectableComponentIds)
   const state = stateAtMet(mission, met)
   const touchdownChannel = mission.telemetry.find(
     (channel) => channel.id === 'a11-touchdown-vertical-speed',
@@ -340,15 +339,23 @@ function PhaseDataPanel({
         {componentsByMode[mode].map((id) => {
           const definition = mission.vehicle.components.find((component) => component.id === id)!
           const presentation = enginePresentation(id, state, met)
+          const inspectionAvailable =
+            sceneAvailability === 'ready' && runtimeInspectable.includes(id)
           return (
             <button
               key={id}
               type="button"
               className="system-row"
               onClick={() => useMissionStore.getState().inspectComponent(id)}
-              aria-label={`Inspect ${definition.label}`}
+              disabled={!inspectionAvailable}
+              title={
+                inspectionAvailable ? undefined : '3D inspection unavailable in the current view'
+              }
             >
-              <span>{definition.label}</span>
+              <span>
+                <span className="sr-only">Inspect </span>
+                {definition.label}
+              </span>
               <b>{presentation.label}</b>
               <i className={`status-${presentation.tone}`} />
             </button>
@@ -495,6 +502,7 @@ export function Component() {
   const storeMet = metAtStoryTime(mission.narrative, storyTimeMs)
   const met = deepLinkMet ?? storeMet
   const quality = useMissionStore((state) => state.quality)
+  const sceneAvailability = useMissionStore((state) => state.sceneAvailability)
   const setQuality = useMissionStore((state) => state.setQuality)
   const resumeAvailable = useMissionStore((state) => state.resumeAvailable)
   const editorialPause = useMissionStore((state) => state.editorialPauseSegmentId)
@@ -522,8 +530,7 @@ export function Component() {
     interaction.mode === 'inspect'
       ? mission.vehicle.components.find((component) => component.id === interaction.componentId)
       : undefined
-
-  usePlaybackUrlSync(met, playing)
+  const sceneInteractive = quality !== 'fallback' && sceneAvailability === 'ready'
 
   useEffect(() => {
     if (
@@ -686,19 +693,39 @@ export function Component() {
             </label>
           </div>
           <div className="camera-tools" aria-label="Camera controls">
-            <button type="button" onClick={() => requestCameraCommand('rotate-left')}>
+            <button
+              type="button"
+              disabled={!sceneInteractive}
+              onClick={() => requestCameraCommand('rotate-left')}
+            >
               ROTATE −
             </button>
-            <button type="button" onClick={() => requestCameraCommand('rotate-right')}>
+            <button
+              type="button"
+              disabled={!sceneInteractive}
+              onClick={() => requestCameraCommand('rotate-right')}
+            >
               ROTATE +
             </button>
-            <button type="button" onClick={() => requestCameraCommand('zoom-in')}>
+            <button
+              type="button"
+              disabled={!sceneInteractive}
+              onClick={() => requestCameraCommand('zoom-in')}
+            >
               ZOOM +
             </button>
-            <button type="button" onClick={() => requestCameraCommand('zoom-out')}>
+            <button
+              type="button"
+              disabled={!sceneInteractive}
+              onClick={() => requestCameraCommand('zoom-out')}
+            >
               ZOOM −
             </button>
-            <button type="button" onClick={() => requestCameraCommand('reset')}>
+            <button
+              type="button"
+              disabled={!sceneInteractive}
+              onClick={() => requestCameraCommand('reset')}
+            >
               RESET VIEW
             </button>
             {interaction.mode === 'free-look' && (
@@ -714,10 +741,9 @@ export function Component() {
           </div>
           <div
             className="scene-frame"
-            tabIndex={0}
-            onPointerDown={enterFreeLook}
-            onWheel={enterFreeLook}
-            onTouchStart={enterFreeLook}
+            tabIndex={sceneInteractive ? 0 : -1}
+            aria-disabled={!sceneInteractive}
+            onWheel={sceneInteractive ? enterFreeLook : undefined}
             onKeyDown={(event) => {
               const command =
                 event.key === 'ArrowLeft'
@@ -731,11 +757,15 @@ export function Component() {
                         : event.key === 'Home'
                           ? 'reset'
                           : undefined
-              if (!command) return
+              if (!command || !sceneInteractive) return
               event.preventDefault()
               requestCameraCommand(command)
             }}
-            aria-label="Interactive vehicle camera; use arrow keys to rotate, plus or minus to zoom, and Home to reset"
+            aria-label={
+              sceneInteractive
+                ? 'Interactive vehicle camera; use arrow keys to rotate, plus or minus to zoom, and Home to reset'
+                : 'Static vehicle view; interactive camera unavailable'
+            }
           >
             <Suspense fallback={<div className="scene-loading outside">INITIALIZING 3D VIEW</div>}>
               <MissionScene

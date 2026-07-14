@@ -15,6 +15,7 @@ export type PlaybackSpeed = 1 | 10 | 100 | 1000
 export type PlaybackPolicy = 'guided' | 'procedure'
 export type PlaybackPauseReason = 'mode-switch' | 'visibility' | 'page-hide' | 'focus-loss'
 export type ModelQuality = 'high' | 'medium' | 'low' | 'fallback'
+export type SceneAvailability = 'loading' | 'ready' | 'fallback'
 export type CameraCommandKind = 'rotate-left' | 'rotate-right' | 'zoom-in' | 'zoom-out' | 'reset'
 
 export type ControlInteractionState =
@@ -43,6 +44,8 @@ interface MissionUiState {
   playbackPolicy: PlaybackPolicy
   speed: PlaybackSpeed
   quality: ModelQuality
+  sceneAvailability: SceneAvailability
+  runtimeInspectableComponentIds: readonly string[]
   interaction: ControlInteractionState
   cameraCommand: CameraCommand | null
   setStoryTime: (storyTimeMs: number) => void
@@ -53,6 +56,10 @@ interface MissionUiState {
   setPlaybackPolicy: (policy: PlaybackPolicy) => void
   setSpeed: (speed: PlaybackSpeed) => void
   setQuality: (quality: ModelQuality) => void
+  setSceneRuntime: (
+    availability: SceneAvailability,
+    inspectableComponentIds?: readonly string[],
+  ) => void
   pauseForInterruption: (reason: PlaybackPauseReason) => void
   pauseForModeSwitch: () => void
   resumeInterruptedPlayback: () => void
@@ -97,6 +104,8 @@ export const useMissionStore = create<MissionUiState>((set, get) => ({
   playbackPolicy: 'guided',
   speed: 100,
   quality: 'medium',
+  sceneAvailability: 'loading',
+  runtimeInspectableComponentIds: [],
   interaction: { mode: 'guided' },
   cameraCommand: null,
   setStoryTime: (storyTimeMs) => set({ storyTimeMs: clampStoryTime(storyTimeMs) }),
@@ -157,6 +166,22 @@ export const useMissionStore = create<MissionUiState>((set, get) => ({
   setPlaybackPolicy: (playbackPolicy) => set({ playbackPolicy }),
   setSpeed: (speed) => set({ speed }),
   setQuality: (quality) => set({ quality }),
+  setSceneRuntime: (sceneAvailability, componentIds = []) =>
+    set((state) => {
+      const runtimeInspectableComponentIds = [...new Set(componentIds)].sort()
+      if (
+        state.interaction.mode === 'inspect' &&
+        !runtimeInspectableComponentIds.includes(state.interaction.componentId)
+      ) {
+        return {
+          sceneAvailability,
+          runtimeInspectableComponentIds,
+          interaction: { mode: state.interaction.returnMode },
+          playing: state.interaction.resumePlaybackOnClose,
+        }
+      }
+      return { sceneAvailability, runtimeInspectableComponentIds }
+    }),
   pauseForInterruption: (pauseReason) => {
     const state = get()
     const inspectWouldResume =
@@ -225,6 +250,12 @@ export const useMissionStore = create<MissionUiState>((set, get) => ({
     })),
   inspectComponent: (componentId) =>
     set((state) => {
+      if (
+        state.sceneAvailability !== 'ready' ||
+        !state.runtimeInspectableComponentIds.includes(componentId)
+      ) {
+        return state
+      }
       if (state.interaction.mode === 'inspect') {
         return { interaction: { ...state.interaction, componentId } }
       }

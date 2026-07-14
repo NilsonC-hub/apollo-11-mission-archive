@@ -153,6 +153,7 @@ function validateAction(value: unknown, path: string, issues: ValidationIssue[])
       'set-component-parent',
       'set-component-visibility',
       'set-engine-mode',
+      'record-engine-ignition',
     ],
     `${path}.type`,
     issues,
@@ -174,12 +175,7 @@ function validateAction(value: unknown, path: string, issues: ValidationIssue[])
   } else if (action.type === 'set-component-visibility') {
     booleanAt(action.visible, `${path}.visible`, issues)
   } else if (action.type === 'set-engine-mode') {
-    enumAt(
-      action.engineMode,
-      ['off', 'ignition', 'burning', 'cutoff'],
-      `${path}.engineMode`,
-      issues,
-    )
+    enumAt(action.engineMode, ['off', 'burning', 'cutoff'], `${path}.engineMode`, issues)
   }
 }
 
@@ -309,7 +305,7 @@ function validateMissionShape(candidate: unknown): ValidationIssue[] {
       if (state.engineMode !== undefined) {
         enumAt(
           state.engineMode,
-          ['off', 'ignition', 'burning', 'cutoff'],
+          ['off', 'burning', 'cutoff'],
           `${path}.initialState.engineMode`,
           issues,
         )

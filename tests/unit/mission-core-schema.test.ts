@@ -41,3 +41,19 @@ test('candidate validation rejects invalid enums before semantic validation', ()
     issues.some((issue) => issue.code === 'SCHEMA_TYPE' && issue.path === '$.telemetry[0].unit'),
   )
 })
+
+test('candidate validation rejects ignition as a persistent engine state', () => {
+  const candidate = structuredClone(minimalMission) as unknown as Record<string, unknown>
+  const vehicle = candidate.vehicle as {
+    components: Array<{ initialState: { engineMode: string } }>
+  }
+  vehicle.components[0].initialState.engineMode = 'ignition'
+  const issues = validateMissionDefinitionCandidate(candidate)
+  assert.ok(
+    issues.some(
+      (issue) =>
+        issue.code === 'SCHEMA_TYPE' &&
+        issue.path === '$.vehicle.components[0].initialState.engineMode',
+    ),
+  )
+})
