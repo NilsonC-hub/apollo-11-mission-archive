@@ -673,6 +673,28 @@ test('the Mission Control NavLink snapshots its outgoing Control history entry b
   expect(restoredEntry.id).toMatch(new RegExp(`^control:${restoredEntry.key}:`))
 })
 
+test('event traversal preserves First Docking deep link across inverse mapping noise', async ({
+  page,
+}) => {
+  await page.goto('/control/event/a11-first-docking')
+  await waitForScene(page)
+  await expect(page.locator('.met-display')).toHaveText(
+    formatEventMet(getEvent('a11-first-docking')),
+  )
+
+  await page.getByRole('link', { name: '02 MISSION CONTROL', exact: true }).click()
+  await expect(page).toHaveURL(/\/control$/)
+  await page.locator('.timeline-slider input').fill('500')
+  await expect(page).toHaveURL(/\/control\/met\/s5/)
+  await page.goBack()
+  await waitForScene(page)
+
+  await expect(page).toHaveURL(/\/control\/event\/a11-first-docking$/)
+  await expect(page.locator('.met-display')).toHaveText(
+    formatEventMet(getEvent('a11-first-docking')),
+  )
+})
+
 test('adjacent event button and keyboard navigation land on target and pause replay', async ({
   page,
 }) => {

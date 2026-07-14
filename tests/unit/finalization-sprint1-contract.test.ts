@@ -1,11 +1,18 @@
 import assert from 'node:assert/strict'
 import { afterEach, test } from 'node:test'
 
-import { getEvent, mission, replayEndMet, replayNarrative } from '../../src/app/mission.ts'
+import {
+  getEvent,
+  mission,
+  replayEndMet,
+  replayEvents,
+  replayNarrative,
+} from '../../src/app/mission.ts'
 import {
   clearControlReloadSnapshot,
   clearControlTraversalSnapshot,
   consumeControlReloadSnapshot,
+  controlEventPath,
   controlMetPath,
   createControlReloadSnapshotConsumer,
   metForControlPath,
@@ -18,7 +25,7 @@ import {
   snapshotAndPauseActiveControlHistoryEntry,
 } from '../../src/app/controlTraversal.ts'
 import { useMissionStore } from '../../src/app/missionStore.ts'
-import { formatEventMet, stateAtMet } from '../../src/mission-core/index.ts'
+import { formatEventMet, metAtStoryTime, stateAtMet } from '../../src/mission-core/index.ts'
 
 const initialState = useMissionStore.getState()
 
@@ -262,6 +269,37 @@ test('route traversal snapshots are isolated by history entry key, not pathname'
 
     clearControlTraversalSnapshot('control-entry-a')
     assert.equal(readControlTraversalSnapshot('control-entry-a'), undefined)
+  })
+})
+
+test('preferred event paths survive story-time inverse noise but real progress becomes MET', () => {
+  withMemorySessionStorage(() => {
+    for (const event of replayEvents) {
+      useMissionStore.getState().setMet(event.metSeconds)
+      const reconstructedMet = metAtStoryTime(
+        mission.narrative,
+        useMissionStore.getState().storyTimeMs,
+      )
+      const entryId = `event-round-trip:${event.id}`
+      recordControlTraversalSnapshot(entryId, reconstructedMet, controlEventPath(event.id))
+      assert.equal(
+        readControlTraversalSnapshot(entryId)?.path,
+        controlEventPath(event.id),
+        event.id,
+      )
+    }
+
+    const docking = getEvent('a11-first-docking')
+    const progressedMet = docking.metSeconds + 0.000_001
+    recordControlTraversalSnapshot(
+      'event-round-trip:real-progress',
+      progressedMet,
+      controlEventPath(docking.id),
+    )
+    assert.equal(
+      readControlTraversalSnapshot('event-round-trip:real-progress')?.path,
+      controlMetPath(progressedMet),
+    )
   })
 })
 

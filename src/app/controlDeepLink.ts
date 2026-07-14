@@ -5,6 +5,11 @@ const CONTROL_RELOAD_SNAPSHOT_KEY = 'apollo11.control.reload-snapshot.v1'
 const CONTROL_TRAVERSAL_SNAPSHOTS_KEY = 'apollo11.control.traversal-snapshots.v1'
 const CONTROL_HISTORY_ENTRY_ID_KEY = '__apollo11ControlEntryId'
 const MAX_CONTROL_TRAVERSAL_SNAPSHOTS = 32
+const CONTROL_MET_INVERSE_EPSILON_SECONDS = 1e-9
+
+function controlMetSemanticallyEqual(left: number, right: number): boolean {
+  return Math.abs(left - right) <= CONTROL_MET_INVERSE_EPSILON_SECONDS
+}
 
 function controlReloadBootPathname(): string | null {
   if (
@@ -170,7 +175,7 @@ export function recordControlTraversalSnapshot(
   const path =
     preferredPathname !== undefined &&
     preferredMet !== undefined &&
-    Object.is(preferredMet, metSeconds)
+    controlMetSemanticallyEqual(preferredMet, metSeconds)
       ? preferredPathname
       : controlMetPath(metSeconds)
   snapshots.push({ entryId, path })
