@@ -433,10 +433,32 @@ test('real browser focus loss flushes URL and pauses without applying hidden tim
   await session.send('Emulation.setFocusEmulationEnabled', { enabled: true })
   await other.close()
   await page.bringToFront()
+  await page.evaluate((expected) => {
+    const target = document.querySelector('.met-display')
+    if (!target) throw new Error('MET display is unavailable')
+    ;(
+      window as typeof window & {
+        firstResumedMet?: Promise<string>
+      }
+    ).firstResumedMet = new Promise((resolve) => {
+      const observer = new MutationObserver(() => {
+        const current = target.textContent ?? ''
+        if (current === expected) return
+        observer.disconnect()
+        resolve(current)
+      })
+      observer.observe(target, { characterData: true, childList: true, subtree: true })
+    })
+  }, frozen)
   await page.getByRole('button', { name: 'RESUME REPLAY', exact: true }).click()
-  await expect.poll(() => displayedMetSeconds(page)).toBeGreaterThan(frozenSeconds)
-  const resumedSeconds = await displayedMetSeconds(page)
-  expect(resumedSeconds - frozenSeconds).toBeLessThan(4)
+  const firstResumedMet = await page.evaluate(
+    () =>
+      (window as typeof window & { firstResumedMet?: Promise<string> }).firstResumedMet ??
+      Promise.reject(new Error('First resumed MET probe is unavailable')),
+  )
+  const resumedDelta = parseMet(firstResumedMet) - frozenSeconds
+  expect(resumedDelta).toBeGreaterThan(0)
+  expect(resumedDelta).toBeLessThan(4)
 })
 
 test('fast real reload and Archive route Back preserve the final played position', async ({
@@ -495,6 +517,41 @@ test('real reload after a periodic URL sync restores the final unload position',
   expect(await displayedMetSeconds(page)).toBeGreaterThanOrEqual(beforeReload)
   await expect(page).toHaveURL(/\/control\/met\/s/)
   expect(await page.evaluate(() => history.length)).toBe(historyBefore)
+})
+
+test('Back leaving Control and Forward restore the final state of the same history entry', async ({
+  page,
+}) => {
+  await page.goto('/archive')
+  const historyAtArchive = await page.evaluate(() => history.length)
+  await page.getByRole('link', { name: '02 MISSION CONTROL', exact: true }).click()
+  await waitForScene(page)
+  const historyWithControl = await page.evaluate(() => history.length)
+  expect(historyWithControl).toBe(historyAtArchive + 1)
+
+  await page.getByRole('button', { name: '10×', exact: true }).click()
+  await page.getByRole('button', { name: 'PLAY', exact: true }).click()
+  const playbackStartedAt = Date.now()
+  await page.waitForTimeout(1_050)
+  await expect.poll(() => page.url()).toMatch(/\/control\/met\/s/)
+  expect(Date.now() - playbackStartedAt).toBeGreaterThanOrEqual(1_000)
+  await page.waitForTimeout(200)
+
+  const periodicUrlMet = metForControlPath(new URL(page.url()).pathname)
+  expect(periodicUrlMet).toBeDefined()
+  const beforeBack = await displayedMetSeconds(page)
+  expect(beforeBack).toBeGreaterThan(periodicUrlMet!)
+
+  await page.goBack()
+  await expect(page).toHaveURL(/\/archive$/)
+  expect(await page.evaluate(() => history.length)).toBe(historyWithControl)
+
+  await page.goForward()
+  await waitForScene(page)
+  expect(await displayedMetSeconds(page)).toBeGreaterThanOrEqual(beforeBack)
+  await expect(page).toHaveURL(/\/control\/met\/s/)
+  await expect(page.getByText('REPLAY PAUSED ON MODE CHANGE')).toBeVisible()
+  expect(await page.evaluate(() => history.length)).toBe(historyWithControl)
 })
 
 test('natural replay completion flushes the terminal URL before reload', async ({ page }) => {

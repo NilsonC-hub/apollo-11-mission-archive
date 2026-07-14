@@ -2,7 +2,13 @@ import assert from 'node:assert/strict'
 import { afterEach, test } from 'node:test'
 
 import { getEvent, mission, replayEndMet, replayNarrative } from '../../src/app/mission.ts'
-import { controlMetPath, metForControlPath } from '../../src/app/controlDeepLink.ts'
+import {
+  clearControlTraversalSnapshot,
+  controlMetPath,
+  metForControlPath,
+  readControlTraversalSnapshot,
+  recordControlTraversalSnapshot,
+} from '../../src/app/controlDeepLink.ts'
 import { useMissionStore } from '../../src/app/missionStore.ts'
 import { formatEventMet, stateAtMet } from '../../src/mission-core/index.ts'
 
@@ -14,6 +20,31 @@ afterEach(() => {
 
 function enableInspection(...componentIds: string[]): void {
   useMissionStore.getState().setSceneRuntime('ready', componentIds)
+}
+
+function withMemorySessionStorage(run: () => void): void {
+  const original = Object.getOwnPropertyDescriptor(globalThis, 'sessionStorage')
+  const entries = new Map<string, string>()
+  const storage = {
+    get length() {
+      return entries.size
+    },
+    clear: () => entries.clear(),
+    getItem: (key: string) => entries.get(key) ?? null,
+    key: (index: number) => [...entries.keys()][index] ?? null,
+    removeItem: (key: string) => entries.delete(key),
+    setItem: (key: string, value: string) => entries.set(key, value),
+  }
+  Object.defineProperty(globalThis, 'sessionStorage', {
+    configurable: true,
+    value: storage,
+  })
+  try {
+    run()
+  } finally {
+    if (original) Object.defineProperty(globalThis, 'sessionStorage', original)
+    else delete (globalThis as typeof globalThis & { sessionStorage?: unknown }).sessionStorage
+  }
 }
 
 test('storyTime and visualTime advance in separate domains', () => {
@@ -198,6 +229,21 @@ test('control MET URLs canonically round-trip playback doubles over the replay r
     const met = index % 3 === 0 ? whole : whole + (index % 10) / 10
     assert.ok(Object.is(metForControlPath(controlMetPath(met)), met), `round trip ${met}`)
   }
+})
+
+test('route traversal snapshots are isolated by history entry key, not pathname', () => {
+  withMemorySessionStorage(() => {
+    recordControlTraversalSnapshot('control-entry-a', 20)
+
+    assert.equal(readControlTraversalSnapshot('control-entry-b'), undefined)
+    assert.deepEqual(readControlTraversalSnapshot('control-entry-a'), {
+      path: '/control/met/s20',
+      metSeconds: 20,
+    })
+
+    clearControlTraversalSnapshot('control-entry-a')
+    assert.equal(readControlTraversalSnapshot('control-entry-a'), undefined)
+  })
 })
 
 test('event MET formatting preserves source precision', () => {
