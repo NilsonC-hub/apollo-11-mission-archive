@@ -1,0 +1,94 @@
+{
+  "assetId": "apollo11-saturn-v",
+  "version": 1,
+  "sourceIds": ["NASA-MODEL-SATV", "NASA-A11-SATV-FE"],
+  "rawSha256": "6c44497bce54ee0b09d0edb8e33a6f484762a320dab1c54b383e434f5bba06b5",
+  "derived": {
+    "high": {
+      "sha256": "4206c3c82c5173b716c84e5fc4a8580fce60bd22704993c4cf43c263025b4087",
+      "triangles": 34814
+    },
+    "medium": {
+      "sha256": "ccd4517230672148e36c20d8c198d2e8f6ec53acff0e2f2f041a2fa9e31f93d7",
+      "triangles": 19147
+    },
+    "low": {
+      "sha256": "3cfa51e4b523fc0e8552ee22acb2d45f1b9277fb60b2888ec29b82a6844cd356",
+      "triangles": 7718
+    }
+  },
+  "units": "meter",
+  "coordinateSystem": { "up": "+Y", "forward": "+Z" },
+  "normalization": {
+    "scale": 8.516330785441053,
+    "rotation": [0, 0, 0],
+    "translation": "center X/Z; base at Y=0",
+    "method": "Uniformly scaled to the documented Saturn V overall height; raw NASA visualization Y axis retained as runtime +Y."
+  },
+  "geometryTruth": "NASA-RELEASED VISUALIZATION MODEL — SEMANTIC SPLIT RECONSTRUCTED; NOT NASA CAD OR CERTIFIED AS-506 GEOMETRY",
+  "semanticSplit": "Each source triangle is assigned by raw face-centroid Y to a documented, versioned height band. Bands are editorial reconstruction and do not assert manufacturing interfaces.",
+  "overallBoundsMeters": { "min": [-8.5772, 0, -8.5772], "max": [8.5772, 110.6, 8.5772] },
+  "nodes": {
+    "launchVehicle.sic": {
+      "path": "/Scene/apollo11-saturn-v/s-ic",
+      "required": true,
+      "detachable": true
+    },
+    "launchVehicle.sicSiiInterstage": {
+      "path": "/Scene/apollo11-saturn-v/s-ic-s-ii-interstage",
+      "required": true,
+      "detachable": true
+    },
+    "launchVehicle.sii": {
+      "path": "/Scene/apollo11-saturn-v/s-ii",
+      "required": true,
+      "detachable": true
+    },
+    "launchVehicle.siiSivbInterstage": {
+      "path": "/Scene/apollo11-saturn-v/s-ii-s-ivb-interstage",
+      "required": true,
+      "detachable": true
+    },
+    "launchVehicle.sivb": {
+      "path": "/Scene/apollo11-saturn-v/s-ivb",
+      "required": true,
+      "detachable": true
+    },
+    "launchVehicle.instrumentUnit": {
+      "path": "/Scene/apollo11-saturn-v/instrument-unit",
+      "required": true,
+      "detachable": false
+    },
+    "spacecraft.sla": {
+      "path": "/Scene/apollo11-saturn-v/spacecraft-lm-adapter",
+      "required": true,
+      "detachable": true
+    },
+    "spacecraft.csmLaunchRepresentation": {
+      "path": "/Scene/apollo11-saturn-v/command-service-module",
+      "required": true,
+      "detachable": true
+    },
+    "spacecraft.launchEscapeSystem": {
+      "path": "/Scene/apollo11-saturn-v/launch-escape-system",
+      "required": true,
+      "detachable": true
+    }
+  },
+  "anchors": {
+    "exhaust.sic": { "path": "/Scene/apollo11-saturn-v/anchor-sic-exhaust", "required": true },
+    "exhaust.sii": { "path": "/Scene/apollo11-saturn-v/anchor-sii-exhaust", "required": true },
+    "exhaust.sivb": { "path": "/Scene/apollo11-saturn-v/anchor-sivb-exhaust", "required": true },
+    "docking.csm": { "path": "/Scene/apollo11-saturn-v/anchor-csm-docking", "required": true },
+    "cameraFocus.stack": {
+      "path": "/Scene/apollo11-saturn-v/anchor-camera-focus",
+      "required": true
+    }
+  },
+  "lodStrategy": "high=user component review; medium=desktop replay default; low=mobile, distant view and first load; projected-size selection with hysteresis is Phase 4 renderer work.",
+  "processing": {
+    "script": "scripts/blender/process_apollo11_assets.py",
+    "blender": "4.3.2",
+    "geometryCompression": "Draco level 6"
+  }
+}

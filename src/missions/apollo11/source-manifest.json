@@ -678,12 +678,37 @@
           "sha256": "b246064f217f8d479df78c49c7c8595a8f5fbda008a72fd539978d2e121e0109",
           "bytes": 139068,
           "purpose": "1K color map sample — verify color space and pole handling before adopting as runtime Moon texture."
+        },
+        {
+          "name": "lroc_color_poles_8k.tif",
+          "localPath": "assets/raw/NASA-MOON-CGI-8k.tif",
+          "sha256": "4af8b0cd4d50c30851359d98e7e72040240dd8d03256b58b345b5b76e9edb4ef",
+          "bytes": 50641970,
+          "purpose": "8K equirectangular LRO color source for deterministic 4K/2K/1K KTX2 runtime derivatives."
         }
       ],
-      "notes": "svs.gsfc.nasa.gov has an EXPIRED TLS certificate as of 2026-07-13 (SEC_E_CERT_EXPIRED). All downloads from this host require -k (insecure) flag. CRITICAL: Phase 3 must (a) verify certificate status before re-fetching, (b) download full-resolution variants: lroc_color_poles_8k.tif or _16k.tif for desktop, _2k.tif or _4k.tif for mobile, (c) download DEM variants: ldem_4.tif or ldem_16.tif for displacement/normal mapping, (d) record each variant's SHA-256. Full resolution variants are large (TIF) — not fetched in Phase 0 to bound disk usage. OPEN QUESTION: is the SVS cert expiry transient or persistent? If persistent, escalate to NASA contact.",
+      "notes": "Phase 3 re-probed svs.gsfc.nasa.gov on 2026-07-14: TLS validation succeeded and the 8K TIFF returned HTTP 200 without an insecure bypass. The 8K color source is archived and hash-verified. Runtime 1K/2K/4K ETC1S KTX2 variants are derived by scripts/prepare-textures.ts. DEM remains out of scope for the Phase 4 launch/Earth-orbit/TLI scene and must not be implied by the color-only sphere.",
       "contentAssertions": {
         "htmlCanonicalMarker": "CGI Moon Kit"
       }
+    },
+    {
+      "id": "NASA-MOON-CGI-COLOR-8K",
+      "kind": "image",
+      "title": "NASA SVS CGI Moon Kit — LRO color with pole fill, 8K",
+      "publisher": "NASA GSFC Scientific Visualization Studio",
+      "publicationDate": "2018",
+      "originalUrl": "https://svs.gsfc.nasa.gov/4720/",
+      "effectiveDownloadUrl": "https://svs.gsfc.nasa.gov/vis/a000000/a004700/a004720/lroc_color_poles_8k.tif",
+      "accessedAt": "2026-07-14",
+      "rightsStatus": "NASA imagery — public domain; modern LRO product, not 1969 visual",
+      "purpose": "8K equirectangular color source for deterministic 4K/2K/1K Moon KTX2 runtime derivatives.",
+      "localPath": "assets/raw/NASA-MOON-CGI-8k.tif",
+      "sha256": "4af8b0cd4d50c30851359d98e7e72040240dd8d03256b58b345b5b76e9edb4ef",
+      "bytes": 50641970,
+      "format": "tif",
+      "status": "downloaded",
+      "notes": "Includes pole handling for a complete sphere. UI truth label: NASA IMAGERY-BASED TEXTURE — MODERN LRO PRODUCT. Color-only asset; no elevation claim."
     },
     {
       "id": "NASA-A11-MOON-VIEW",
@@ -764,6 +789,24 @@
       "contentAssertions": {
         "htmlCanonicalMarker": "Blue Marble"
       }
+    },
+    {
+      "id": "NASA-EARTH-BLUE-MARBLE-SVS",
+      "kind": "image",
+      "title": "NASA SVS — Blue Marble flat Earth 8K composite",
+      "publisher": "NASA GSFC Scientific Visualization Studio",
+      "publicationDate": "2002 source imagery / SVS product published before 2009-07-14",
+      "originalUrl": "https://svs.gsfc.nasa.gov/3615/",
+      "effectiveDownloadUrl": "https://svs.gsfc.nasa.gov/vis/a000000/a003600/a003615/flat_earth_Largest_still.0330.tif",
+      "accessedAt": "2026-07-14",
+      "rightsStatus": "NASA imagery — public domain; modern global composite, not a 1969 same-instant photograph",
+      "purpose": "8K equirectangular source for deterministic 4K/2K/1K Earth KTX2 runtime derivatives.",
+      "localPath": "assets/raw/NASA-EARTH-BLUE-MARBLE-8k.tif",
+      "sha256": "d36bc094b710505441a0f61b84094c736f2a2cc8c3e998ecdec376b02cc5b58b",
+      "bytes": 41807641,
+      "format": "tif",
+      "status": "downloaded",
+      "notes": "Selected in Phase 3 as the canonical day-map source. UI truth label: NASA IMAGERY-BASED TEXTURE — MODERN COMPOSITE. Do not imply that cloud cover, illumination or Earth appearance is the instantaneous Apollo 11 view at any MET."
     },
     {
       "id": "NASA-MEDIA-RULES",

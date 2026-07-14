@@ -1,0 +1,624 @@
+{
+  "file": {
+    "name": "apollo11-saturn-v-high.glb",
+    "bytes": 235356,
+    "bytesHuman": "229.8 KiB",
+    "ext": ".glb",
+    "sha256": "4206c3c82c5173b716c84e5fc4a8580fce60bd22704993c4cf43c263025b4087"
+  },
+  "summary": {
+    "scenes": 1,
+    "nodes": 15,
+    "meshes": 9,
+    "primitives": 30,
+    "triangles": 34814,
+    "vertices": 104442,
+    "materials": 13,
+    "textures": 4,
+    "skins": 0,
+    "animations": 0,
+    "cameras": 0
+  },
+  "sceneBounds": {
+    "min": [
+      -8.577230453491211,
+      0,
+      -8.577230453491211
+    ],
+    "max": [
+      8.577230453491211,
+      110.5999984741211,
+      8.577230453491211
+    ],
+    "size": [
+      17.154460906982422,
+      110.5999984741211,
+      17.154460906982422
+    ]
+  },
+  "nodes": [
+    {
+      "name": "apollo11-saturn-v",
+      "path": "/Scene/apollo11-saturn-v",
+      "depth": 0,
+      "hasMesh": false,
+      "hasTransform": false,
+      "isRoot": true,
+      "childCount": 14
+    },
+    {
+      "name": "anchor-camera-focus",
+      "path": "/Scene/apollo11-saturn-v/anchor-camera-focus",
+      "depth": 1,
+      "hasMesh": false,
+      "hasTransform": true,
+      "isRoot": false,
+      "childCount": 0
+    },
+    {
+      "name": "anchor-csm-docking",
+      "path": "/Scene/apollo11-saturn-v/anchor-csm-docking",
+      "depth": 1,
+      "hasMesh": false,
+      "hasTransform": true,
+      "isRoot": false,
+      "childCount": 0
+    },
+    {
+      "name": "anchor-sic-exhaust",
+      "path": "/Scene/apollo11-saturn-v/anchor-sic-exhaust",
+      "depth": 1,
+      "hasMesh": false,
+      "hasTransform": false,
+      "isRoot": false,
+      "childCount": 0
+    },
+    {
+      "name": "anchor-sii-exhaust",
+      "path": "/Scene/apollo11-saturn-v/anchor-sii-exhaust",
+      "depth": 1,
+      "hasMesh": false,
+      "hasTransform": true,
+      "isRoot": false,
+      "childCount": 0
+    },
+    {
+      "name": "anchor-sivb-exhaust",
+      "path": "/Scene/apollo11-saturn-v/anchor-sivb-exhaust",
+      "depth": 1,
+      "hasMesh": false,
+      "hasTransform": true,
+      "isRoot": false,
+      "childCount": 0
+    },
+    {
+      "name": "command-service-module",
+      "path": "/Scene/apollo11-saturn-v/command-service-module",
+      "depth": 1,
+      "hasMesh": true,
+      "hasTransform": false,
+      "isRoot": false,
+      "childCount": 0,
+      "triangleCount": 160,
+      "vertexCount": 140,
+      "primitiveCount": 2,
+      "materialNames": [
+        "blinn1SG",
+        "blinn2SG"
+      ],
+      "worldBounds": {
+        "min": [
+          -0.45560652017593384,
+          100.77619171142578,
+          -0.47085094451904297
+        ],
+        "max": [
+          0.48567312955856323,
+          108.6722412109375,
+          0.4699993133544922
+        ]
+      }
+    },
+    {
+      "name": "instrument-unit",
+      "path": "/Scene/apollo11-saturn-v/instrument-unit",
+      "depth": 1,
+      "hasMesh": true,
+      "hasTransform": false,
+      "isRoot": false,
+      "childCount": 0,
+      "triangleCount": 40,
+      "vertexCount": 40,
+      "primitiveCount": 1,
+      "materialNames": [
+        "blinn1SG"
+      ],
+      "worldBounds": {
+        "min": [
+          -3.4861257076263428,
+          88.22655487060547,
+          -3.501404047012329
+        ],
+        "max": [
+          3.5160610675811768,
+          94.93340301513672,
+          3.5007827281951904
+        ]
+      }
+    },
+    {
+      "name": "launch-escape-system",
+      "path": "/Scene/apollo11-saturn-v/launch-escape-system",
+      "depth": 1,
+      "hasMesh": true,
+      "hasTransform": false,
+      "isRoot": false,
+      "childCount": 0,
+      "triangleCount": 180,
+      "vertexCount": 121,
+      "primitiveCount": 2,
+      "materialNames": [
+        "blinn1SG",
+        "blinn5SG"
+      ],
+      "worldBounds": {
+        "min": [
+          -0.455683171749115,
+          108.67221069335938,
+          -0.47091007232666016
+        ],
+        "max": [
+          0.4858454465866089,
+          110.5999984741211,
+          0.46994155645370483
+        ]
+      }
+    },
+    {
+      "name": "s-ic",
+      "path": "/Scene/apollo11-saturn-v/s-ic",
+      "depth": 1,
+      "hasMesh": true,
+      "hasTransform": false,
+      "isRoot": false,
+      "childCount": 0,
+      "triangleCount": 32354,
+      "vertexCount": 20332,
+      "primitiveCount": 11,
+      "materialNames": [
+        "blinn6SG",
+        "blinn1SG",
+        "blinn2SG",
+        "fin_blinn2SG",
+        "fin_blinn1SG",
+        "blinn5SG",
+        "blinn4SG",
+        "blinn9SG",
+        "blinn8SG",
+        "blinn11SG",
+        "initialShadingGr"
+      ],
+      "worldBounds": {
+        "min": [
+          -8.577230453491211,
+          0,
+          -8.577230453491211
+        ],
+        "max": [
+          8.577230453491211,
+          42.60969161987305,
+          8.577230453491211
+        ]
+      }
+    },
+    {
+      "name": "s-ic-s-ii-interstage",
+      "path": "/Scene/apollo11-saturn-v/s-ic-s-ii-interstage",
+      "depth": 1,
+      "hasMesh": true,
+      "hasTransform": false,
+      "isRoot": false,
+      "childCount": 0,
+      "triangleCount": 40,
+      "vertexCount": 60,
+      "primitiveCount": 2,
+      "materialNames": [
+        "blinn1SG",
+        "blinn2SG"
+      ],
+      "worldBounds": {
+        "min": [
+          -5.264309883117676,
+          42.60969161987305,
+          -5.279656410217285
+        ],
+        "max": [
+          5.294244289398193,
+          47.53742980957031,
+          5.2789506912231445
+        ]
+      }
+    },
+    {
+      "name": "s-ii",
+      "path": "/Scene/apollo11-saturn-v/s-ii",
+      "depth": 1,
+      "hasMesh": true,
+      "hasTransform": false,
+      "isRoot": false,
+      "childCount": 0,
+      "triangleCount": 620,
+      "vertexCount": 642,
+      "primitiveCount": 5,
+      "materialNames": [
+        "blinn1SG",
+        "blinn2SG",
+        "blinn3SG",
+        "blinn4SG",
+        "blinn10SG"
+      ],
+      "worldBounds": {
+        "min": [
+          -5.510406494140625,
+          47.5374870300293,
+          -5.525753021240234
+        ],
+        "max": [
+          5.540985107421875,
+          70.14073181152344,
+          5.525457382202148
+        ]
+      }
+    },
+    {
+      "name": "s-ii-s-ivb-interstage",
+      "path": "/Scene/apollo11-saturn-v/s-ii-s-ivb-interstage",
+      "depth": 1,
+      "hasMesh": true,
+      "hasTransform": false,
+      "isRoot": false,
+      "childCount": 0,
+      "triangleCount": 40,
+      "vertexCount": 120,
+      "primitiveCount": 2,
+      "materialNames": [
+        "blinn1SG",
+        "blinn2SG"
+      ],
+      "worldBounds": {
+        "min": [
+          -5.264309883117676,
+          67.13512420654297,
+          -5.279656410217285
+        ],
+        "max": [
+          5.294597148895264,
+          72.96456146240234,
+          5.2789506912231445
+        ]
+      }
+    },
+    {
+      "name": "s-ivb",
+      "path": "/Scene/apollo11-saturn-v/s-ivb",
+      "depth": 1,
+      "hasMesh": true,
+      "hasTransform": false,
+      "isRoot": false,
+      "childCount": 0,
+      "triangleCount": 540,
+      "vertexCount": 540,
+      "primitiveCount": 3,
+      "materialNames": [
+        "blinn1SG",
+        "blinn2SG",
+        "blinn5SG"
+      ],
+      "worldBounds": {
+        "min": [
+          -4.417148113250732,
+          70.14071655273438,
+          -4.432486057281494
+        ],
+        "max": [
+          4.447360038757324,
+          88.22660827636719,
+          4.431615829467773
+        ]
+      }
+    },
+    {
+      "name": "spacecraft-lm-adapter",
+      "path": "/Scene/apollo11-saturn-v/spacecraft-lm-adapter",
+      "depth": 1,
+      "hasMesh": true,
+      "hasTransform": false,
+      "isRoot": false,
+      "childCount": 0,
+      "triangleCount": 840,
+      "vertexCount": 676,
+      "primitiveCount": 2,
+      "materialNames": [
+        "blinn1SG",
+        "blinn5SG"
+      ],
+      "worldBounds": {
+        "min": [
+          -2.578131675720215,
+          94.93318176269531,
+          -2.4948930740356445
+        ],
+        "max": [
+          2.547729015350342,
+          100.77622985839844,
+          2.630967617034912
+        ]
+      }
+    }
+  ],
+  "materials": [
+    {
+      "name": "blinn1SG",
+      "alphaMode": "OPAQUE",
+      "doubleSided": true,
+      "hasBaseColorTexture": false,
+      "hasNormalTexture": false,
+      "hasMetalRoughTexture": false,
+      "hasEmissiveTexture": false,
+      "baseColorFactor": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "metallicFactor": 0,
+      "roughnessFactor": 0.4099999964237213
+    },
+    {
+      "name": "blinn2SG",
+      "alphaMode": "OPAQUE",
+      "doubleSided": true,
+      "hasBaseColorTexture": false,
+      "hasNormalTexture": false,
+      "hasMetalRoughTexture": false,
+      "hasEmissiveTexture": false,
+      "baseColorFactor": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "metallicFactor": 0,
+      "roughnessFactor": 0.4099999964237213
+    },
+    {
+      "name": "blinn5SG",
+      "alphaMode": "OPAQUE",
+      "doubleSided": true,
+      "hasBaseColorTexture": false,
+      "hasNormalTexture": false,
+      "hasMetalRoughTexture": false,
+      "hasEmissiveTexture": false,
+      "baseColorFactor": [
+        0.800000011920929,
+        0.800000011920929,
+        0.800000011920929,
+        1
+      ],
+      "metallicFactor": 0,
+      "roughnessFactor": 0.4099999964237213
+    },
+    {
+      "name": "blinn6SG",
+      "alphaMode": "OPAQUE",
+      "doubleSided": true,
+      "hasBaseColorTexture": false,
+      "hasNormalTexture": false,
+      "hasMetalRoughTexture": false,
+      "hasEmissiveTexture": false,
+      "baseColorFactor": [
+        0.6196078658103943,
+        0.6196078658103943,
+        0.6196078658103943,
+        1
+      ],
+      "metallicFactor": 0,
+      "roughnessFactor": 0.4099999964237213
+    },
+    {
+      "name": "fin_blinn2SG",
+      "alphaMode": "OPAQUE",
+      "doubleSided": true,
+      "hasBaseColorTexture": false,
+      "hasNormalTexture": false,
+      "hasMetalRoughTexture": false,
+      "hasEmissiveTexture": false,
+      "baseColorFactor": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "metallicFactor": 0,
+      "roughnessFactor": 1
+    },
+    {
+      "name": "fin_blinn1SG",
+      "alphaMode": "OPAQUE",
+      "doubleSided": true,
+      "hasBaseColorTexture": false,
+      "hasNormalTexture": false,
+      "hasMetalRoughTexture": false,
+      "hasEmissiveTexture": false,
+      "baseColorFactor": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "metallicFactor": 0,
+      "roughnessFactor": 1
+    },
+    {
+      "name": "blinn4SG",
+      "alphaMode": "OPAQUE",
+      "doubleSided": true,
+      "hasBaseColorTexture": false,
+      "hasNormalTexture": false,
+      "hasMetalRoughTexture": false,
+      "hasEmissiveTexture": false,
+      "baseColorFactor": [
+        0.8392156958580017,
+        0.8078431487083435,
+        0.7764706015586853,
+        1
+      ],
+      "metallicFactor": 0,
+      "roughnessFactor": 0.4099999964237213
+    },
+    {
+      "name": "blinn9SG",
+      "alphaMode": "OPAQUE",
+      "doubleSided": true,
+      "hasBaseColorTexture": true,
+      "hasNormalTexture": false,
+      "hasMetalRoughTexture": false,
+      "hasEmissiveTexture": false,
+      "baseColorFactor": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "metallicFactor": 0,
+      "roughnessFactor": 0.4099999964237213
+    },
+    {
+      "name": "blinn8SG",
+      "alphaMode": "OPAQUE",
+      "doubleSided": true,
+      "hasBaseColorTexture": true,
+      "hasNormalTexture": false,
+      "hasMetalRoughTexture": false,
+      "hasEmissiveTexture": false,
+      "baseColorFactor": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "metallicFactor": 0,
+      "roughnessFactor": 0.4099999964237213
+    },
+    {
+      "name": "blinn11SG",
+      "alphaMode": "OPAQUE",
+      "doubleSided": true,
+      "hasBaseColorTexture": true,
+      "hasNormalTexture": false,
+      "hasMetalRoughTexture": false,
+      "hasEmissiveTexture": false,
+      "baseColorFactor": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "metallicFactor": 0,
+      "roughnessFactor": 0.4099999964237213
+    },
+    {
+      "name": "initialShadingGr",
+      "alphaMode": "OPAQUE",
+      "doubleSided": true,
+      "hasBaseColorTexture": false,
+      "hasNormalTexture": false,
+      "hasMetalRoughTexture": false,
+      "hasEmissiveTexture": false,
+      "baseColorFactor": [
+        0.49803921580314636,
+        0.49803921580314636,
+        0.49803921580314636,
+        1
+      ],
+      "metallicFactor": 0,
+      "roughnessFactor": 0.4099999964237213
+    },
+    {
+      "name": "blinn3SG",
+      "alphaMode": "OPAQUE",
+      "doubleSided": true,
+      "hasBaseColorTexture": false,
+      "hasNormalTexture": false,
+      "hasMetalRoughTexture": false,
+      "hasEmissiveTexture": false,
+      "baseColorFactor": [
+        0.8784313797950745,
+        0.7882353067398071,
+        0.6666666865348816,
+        1
+      ],
+      "metallicFactor": 0,
+      "roughnessFactor": 0.4099999964237213
+    },
+    {
+      "name": "blinn10SG",
+      "alphaMode": "OPAQUE",
+      "doubleSided": true,
+      "hasBaseColorTexture": true,
+      "hasNormalTexture": false,
+      "hasMetalRoughTexture": false,
+      "hasEmissiveTexture": false,
+      "baseColorFactor": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "metallicFactor": 0,
+      "roughnessFactor": 0.4099999964237213
+    }
+  ],
+  "textures": [
+    {
+      "name": "SATURNVA",
+      "mimeType": "image/png",
+      "hasImage": true,
+      "uri": "",
+      "byteLength": 22370
+    },
+    {
+      "name": "SATURNVT",
+      "mimeType": "image/png",
+      "hasImage": true,
+      "uri": "",
+      "byteLength": 21716
+    },
+    {
+      "name": "SATURNVW",
+      "mimeType": "image/png",
+      "hasImage": true,
+      "uri": "",
+      "byteLength": 15590
+    },
+    {
+      "name": "SATURNVU",
+      "mimeType": "image/png",
+      "hasImage": true,
+      "uri": "",
+      "byteLength": 22011
+    }
+  ],
+  "animations": [],
+  "notes": {
+    "heuristicUnits": "likely-meters (Saturn V height ~110m)",
+    "hasSemanticSaturnStages": true,
+    "hasSemanticLMStages": false,
+    "monotoneRoot": 1,
+    "maxDepth": 1,
+    "nonIdentityTransformCount": 4,
+    "rootNames": [
+      "apollo11-saturn-v"
+    ]
+  }
+}

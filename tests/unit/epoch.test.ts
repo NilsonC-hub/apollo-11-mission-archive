@@ -6,6 +6,8 @@
 
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import { metSecondsToUtcMs } from '../../src/mission-core/index.ts'
+import type { MissionEpochs } from '../../src/mission-core/index.ts'
 
 // Per NASA-A11-MR Table 3-I header:
 //   "Range zero - 13:32:00 G.m.t., July 16, 1969"
@@ -16,20 +18,20 @@ import assert from 'node:assert/strict'
 //   liftoffMetSeconds = 0.6
 // UTC = rangeZeroUtc + metSeconds; liftoff UTC = 1969-07-16T13:32:00.600Z
 
-const RANGE_ZERO_UTC_MS = Date.UTC(1969, 6, 16, 13, 32, 0, 0) // July=6 (0-indexed)
 const LIFTOFF_MET_SECONDS = 0.6
-
-function metSecondsToUtcMs(metSeconds: number): number {
-  return RANGE_ZERO_UTC_MS + metSeconds * 1000
+const APOLLO_EPOCHS: MissionEpochs = {
+  rangeZeroUtc: '1969-07-16T13:32:00.000Z',
+  liftoffMetSeconds: LIFTOFF_MET_SECONDS,
+  displayPrecision: 'source-preserved',
 }
 
 test('Apollo 11 range zero is 1969-07-16T13:32:00.000Z', () => {
-  const d = new Date(RANGE_ZERO_UTC_MS)
+  const d = new Date(metSecondsToUtcMs(APOLLO_EPOCHS, 0))
   assert.equal(d.toISOString(), '1969-07-16T13:32:00.000Z')
 })
 
 test('Apollo 11 liftoff MET 0.6s maps to 1969-07-16T13:32:00.600Z', () => {
-  const liftoffUtcMs = metSecondsToUtcMs(LIFTOFF_MET_SECONDS)
+  const liftoffUtcMs = metSecondsToUtcMs(APOLLO_EPOCHS, LIFTOFF_MET_SECONDS)
   const d = new Date(liftoffUtcMs)
   assert.equal(d.toISOString(), '1969-07-16T13:32:00.600Z')
 })
@@ -37,7 +39,7 @@ test('Apollo 11 liftoff MET 0.6s maps to 1969-07-16T13:32:00.600Z', () => {
 test('Apollo 11 splashdown MET 195:18:35 maps to 1969-07-24T16:50:35.000Z', () => {
   // 195:18:35 = 195*3600 + 18*60 + 35 = 703115 seconds
   const splashdownMet = 703115
-  const splashdownUtcMs = metSecondsToUtcMs(splashdownMet)
+  const splashdownUtcMs = metSecondsToUtcMs(APOLLO_EPOCHS, splashdownMet)
   const d = new Date(splashdownUtcMs)
   // 1969-07-16 13:32:00 + 703115s = 1969-07-24 16:50:35 UTC
   assert.equal(d.toISOString(), '1969-07-24T16:50:35.000Z')
@@ -47,7 +49,7 @@ test('Apollo 11 MET to UTC is monotonic and reversible', () => {
   const metValues = [0.6, 161.7, 9856.2, 369939.9, 703115]
   let prev = -Infinity
   for (const met of metValues) {
-    const utc = metSecondsToUtcMs(met)
+    const utc = metSecondsToUtcMs(APOLLO_EPOCHS, met)
     assert.ok(utc > prev, `MET ${met} should map to UTC > previous`)
     prev = utc
   }

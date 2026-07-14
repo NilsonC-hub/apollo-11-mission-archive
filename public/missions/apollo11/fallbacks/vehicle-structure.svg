@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 540" role="img" aria-labelledby="title desc">
+  <title id="title">Apollo 11 vehicle structure fallback</title>
+  <desc id="desc">Static schematic showing Saturn V stages, the command and service module, and lunar module. Not to scale.</desc>
+  <rect width="960" height="540" fill="#f1efe8"/>
+  <path d="M54 52h852M54 488h852" stroke="#252a2d" stroke-width="2"/>
+  <g fill="none" stroke="#252a2d" stroke-width="2">
+    <path d="M186 420h104v42H186zM194 312h88v108h-88zM199 224h78v88h-78zM205 190h66v34h-66zM211 134h54v56h-54zM224 92h28l13 42h-54zM233 66h10l9 26h-28z"/>
+    <path d="M535 291h126v88H535zM556 224h84l21 67H535zM575 192h46l19 32h-84z"/>
+    <path d="M734 300l40-26 40 26 18 74-58 32-58-32zM741 374l-27 38M807 374l27 38M724 303l-39-17M824 303l39-17"/>
+  </g>
+  <g font-family="ui-monospace, SFMono-Regular, Consolas, monospace" fill="#252a2d">
+    <text x="54" y="35" font-size="16">APOLLO 11 / VEHICLE STRUCTURE</text>
+    <text x="906" y="35" text-anchor="end" font-size="12">STATIC FALLBACK</text>
+    <text x="320" y="446" font-size="14">S-IC</text>
+    <text x="320" y="370" font-size="14">S-II</text>
+    <text x="320" y="272" font-size="14">S-IVB / IU</text>
+    <text x="320" y="174" font-size="14">SLA / CSM / LES</text>
+    <text x="598" y="421" text-anchor="middle" font-size="14">CSM — RECONSTRUCTED</text>
+    <text x="774" y="450" text-anchor="middle" font-size="14">LUNAR MODULE</text>
+    <text x="54" y="516" font-size="12">SCHEMATIC — NOT TO SCALE · AVAILABLE WITHOUT WEBGL</text>
+  </g>
+</svg>

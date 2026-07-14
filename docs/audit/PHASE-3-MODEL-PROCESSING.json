@@ -1,0 +1,110 @@
+{
+  "recipeVersion": 1,
+  "blenderVersionRequired": "4.3.2",
+  "lodRatios": {
+    "high": 1.0,
+    "medium": 0.55,
+    "low": 0.22
+  },
+  "assets": [
+    {
+      "assetId": "apollo11-saturn-v",
+      "lod": "high",
+      "path": "assets/derived/models/apollo11-saturn-v-high.glb",
+      "bytes": 235356,
+      "sha256": "4206c3c82c5173b716c84e5fc4a8580fce60bd22704993c4cf43c263025b4087",
+      "triangles": 34814,
+      "normalizationScale": 8.516330785441053,
+      "semanticMethod": "face-centroid Y bands in raw NASA visualization model"
+    },
+    {
+      "assetId": "apollo11-saturn-v",
+      "lod": "medium",
+      "path": "assets/derived/models/apollo11-saturn-v-medium.glb",
+      "bytes": 203280,
+      "sha256": "ccd4517230672148e36c20d8c198d2e8f6ec53acff0e2f2f041a2fa9e31f93d7",
+      "triangles": 19147,
+      "normalizationScale": 8.516330785441053,
+      "semanticMethod": "face-centroid Y bands in raw NASA visualization model"
+    },
+    {
+      "assetId": "apollo11-saturn-v",
+      "lod": "low",
+      "path": "assets/derived/models/apollo11-saturn-v-low.glb",
+      "bytes": 140164,
+      "sha256": "3cfa51e4b523fc0e8552ee22acb2d45f1b9277fb60b2888ec29b82a6844cd356",
+      "triangles": 7718,
+      "normalizationScale": 8.516330785441053,
+      "semanticMethod": "face-centroid Y bands in raw NASA visualization model"
+    },
+    {
+      "assetId": "apollo11-lunar-module",
+      "lod": "high",
+      "path": "assets/derived/models/apollo11-lunar-module-high.glb",
+      "bytes": 428204,
+      "sha256": "8195b2144cb3ddf4218acfea7b66adb33ff00ae826bcb17a525391db9b1e4dc5",
+      "triangles": 97588,
+      "normalizationScale": 1.4700823888378145,
+      "semanticMethod": "face-centroid Y split at raw Y=2.50"
+    },
+    {
+      "assetId": "apollo11-lunar-module",
+      "lod": "medium",
+      "path": "assets/derived/models/apollo11-lunar-module-medium.glb",
+      "bytes": 374348,
+      "sha256": "2633e76e48ac759d0b4654d5f4b48c827684354509140c76388bdb83f3f8d674",
+      "triangles": 53671,
+      "normalizationScale": 1.4700823888378145,
+      "semanticMethod": "face-centroid Y split at raw Y=2.50"
+    },
+    {
+      "assetId": "apollo11-lunar-module",
+      "lod": "low",
+      "path": "assets/derived/models/apollo11-lunar-module-low.glb",
+      "bytes": 258892,
+      "sha256": "3c92bcab0174894860d38b52cb08ebcdb77bcb37d84bf694ad33d1e7bad31583",
+      "triangles": 21468,
+      "normalizationScale": 1.4700823888378145,
+      "semanticMethod": "face-centroid Y split at raw Y=2.50"
+    },
+    {
+      "assetId": "apollo11-command-service-module",
+      "lod": "high",
+      "path": "assets/derived/models/apollo11-command-service-module-high.glb",
+      "bytes": 530172,
+      "sha256": "7cf1b2c1d991f71f0a8b2a86a7ce41de2e1c9c5c59bc5496eeaef360ac274a48",
+      "triangles": 50234,
+      "normalizationScale": {
+        "serviceModuleUniform": 0.09249904969949158,
+        "commandModuleXYZ": [0.11523007419027863, 0.11523007419027863, 0.16059937319411574]
+      },
+      "semanticMethod": "NASA print-kit CM and SM assembled; CM dimensions normalized to NASA-CSM06-WB p1"
+    },
+    {
+      "assetId": "apollo11-command-service-module",
+      "lod": "medium",
+      "path": "assets/derived/models/apollo11-command-service-module-medium.glb",
+      "bytes": 317976,
+      "sha256": "1ae76b6778a36f0a9328605cf6f5987050cb9ec680537c6d1b40c056093f444c",
+      "triangles": 27628,
+      "normalizationScale": {
+        "serviceModuleUniform": 0.09249904969949158,
+        "commandModuleXYZ": [0.11523007419027863, 0.11523007419027863, 0.16059937319411574]
+      },
+      "semanticMethod": "NASA print-kit CM and SM assembled; CM dimensions normalized to NASA-CSM06-WB p1"
+    },
+    {
+      "assetId": "apollo11-command-service-module",
+      "lod": "low",
+      "path": "assets/derived/models/apollo11-command-service-module-low.glb",
+      "bytes": 156944,
+      "sha256": "34c297a90399e436d4608fafd8e16ada2127245e5c7838decf2b783b9c34e6fe",
+      "triangles": 11050,
+      "normalizationScale": {
+        "serviceModuleUniform": 0.09249904969949158,
+        "commandModuleXYZ": [0.11523007419027863, 0.11523007419027863, 0.16059937319411574]
+      },
+      "semanticMethod": "NASA print-kit CM and SM assembled; CM dimensions normalized to NASA-CSM06-WB p1"
+    }
+  ]
+}

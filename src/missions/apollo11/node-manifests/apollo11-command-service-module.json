@@ -1,0 +1,76 @@
+{
+  "assetId": "apollo11-command-service-module",
+  "version": 1,
+  "sourceIds": ["NASA-MODEL-SATV-STL", "NASA-CSM-NR"],
+  "rawParts": {
+    "commandModule": {
+      "file": "command moduel.stl",
+      "sha256": "12d6e8d1bc35a24fdc9f842fae54b7dfcb3790f9f49e92c9c3174b0cc5ee32b2"
+    },
+    "serviceModule": {
+      "file": "service module.stl",
+      "sha256": "1e7b612d310ba2b8ca6f16321888726afc4f081c8c44991fddd1997184e79fbe"
+    }
+  },
+  "derived": {
+    "high": {
+      "sha256": "7cf1b2c1d991f71f0a8b2a86a7ce41de2e1c9c5c59bc5496eeaef360ac274a48",
+      "triangles": 50234
+    },
+    "medium": {
+      "sha256": "1ae76b6778a36f0a9328605cf6f5987050cb9ec680537c6d1b40c056093f444c",
+      "triangles": 27628
+    },
+    "low": {
+      "sha256": "34c297a90399e436d4608fafd8e16ada2127245e5c7838decf2b783b9c34e6fe",
+      "triangles": 11050
+    }
+  },
+  "units": "meter",
+  "coordinateSystem": { "up": "+Y", "forward": "+Z" },
+  "normalization": {
+    "serviceModuleUniformScale": 0.09249904969949158,
+    "commandModuleScaleXYZ": [0.11523007419027863, 0.16059937319411574, 0.11523007419027863],
+    "method": "Print-kit long axis rotated to runtime +Y; CM normalized to 12 ft 10 in diameter and 10 ft 7 in height from NASA-CSM06-WB PDF p1 / printed p39; SM diameter matched to the same reference diameter, then CM stacked at the SM forward face."
+  },
+  "geometryTruth": "RECONSTRUCTED FROM NASA REFERENCES — ASSEMBLED FROM NASA PRINT-KIT STLS; NOT NASA CAD, NOT A CERTIFIED COLUMBIA DIGITAL TWIN",
+  "knownOmissions": [
+    "docking probe/tunnel detail",
+    "verified Apollo 11 exterior markings",
+    "full high-gain antenna articulation",
+    "interior geometry"
+  ],
+  "overallBoundsMeters": { "min": [-1.9558, 0, -1.9558], "max": [1.9558, 10.7525, 1.9557] },
+  "nodes": {
+    "spacecraft.commandModule": {
+      "path": "/Scene/apollo11-command-service-module/command-module",
+      "required": true,
+      "detachable": true
+    },
+    "spacecraft.serviceModule": {
+      "path": "/Scene/apollo11-command-service-module/service-module",
+      "required": true,
+      "detachable": true
+    }
+  },
+  "anchors": {
+    "exhaust.sps": {
+      "path": "/Scene/apollo11-command-service-module/anchor-sps-exhaust",
+      "required": true
+    },
+    "docking.csm": {
+      "path": "/Scene/apollo11-command-service-module/anchor-docking",
+      "required": true
+    },
+    "cameraFocus.csm": {
+      "path": "/Scene/apollo11-command-service-module/anchor-camera-focus",
+      "required": true
+    }
+  },
+  "lodStrategy": "high=user component review; medium=desktop replay default; low=mobile, distant view and first load.",
+  "processing": {
+    "script": "scripts/blender/process_apollo11_assets.py",
+    "blender": "4.3.2",
+    "geometryCompression": "Draco level 6"
+  }
+}

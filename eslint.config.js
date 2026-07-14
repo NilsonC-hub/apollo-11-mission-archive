@@ -2,10 +2,10 @@ import js from '@eslint/js'
 import tseslint from 'typescript-eslint'
 import globals from 'globals'
 
-// Phase 0: scripts + tests only. UI-specific linting added Phase 4+.
+// Phase-aware linting: Node globals for source tooling, browser globals for the Phase 4 UI.
 export default tseslint.config(
   {
-    ignores: ['assets/**', 'dist/**', 'node_modules/**', 'public/**'],
+    ignores: ['.tools/**', 'assets/**', 'dist/**', 'node_modules/**', 'public/**'],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
@@ -19,5 +19,9 @@ export default tseslint.config(
   {
     files: ['scripts/**/*.ts', 'tests/**/*.ts'],
     languageOptions: { globals: { ...globals.node } },
+  },
+  {
+    files: ['src/**/*.tsx'],
+    languageOptions: { globals: { ...globals.browser } },
   },
 )

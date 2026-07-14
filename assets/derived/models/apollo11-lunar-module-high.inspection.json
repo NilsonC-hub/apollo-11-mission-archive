@@ -1,0 +1,398 @@
+{
+  "file": {
+    "name": "apollo11-lunar-module-high.glb",
+    "bytes": 428204,
+    "bytesHuman": "418.2 KiB",
+    "ext": ".glb",
+    "sha256": "8195b2144cb3ddf4218acfea7b66adb33ff00ae826bcb17a525391db9b1e4dc5"
+  },
+  "summary": {
+    "scenes": 1,
+    "nodes": 7,
+    "meshes": 2,
+    "primitives": 19,
+    "triangles": 97588,
+    "vertices": 292764,
+    "materials": 12,
+    "textures": 3,
+    "skins": 0,
+    "animations": 0,
+    "cameras": 0
+  },
+  "sceneBounds": {
+    "min": [
+      -4.724400043487549,
+      0,
+      -4.723823547363281
+    ],
+    "max": [
+      4.724400043487549,
+      7.369098663330078,
+      4.723823547363281
+    ],
+    "size": [
+      9.448800086975098,
+      7.369098663330078,
+      9.447647094726562
+    ]
+  },
+  "nodes": [
+    {
+      "name": "apollo11-lunar-module",
+      "path": "/Scene/apollo11-lunar-module",
+      "depth": 0,
+      "hasMesh": false,
+      "hasTransform": false,
+      "isRoot": true,
+      "childCount": 6
+    },
+    {
+      "name": "anchor-aps-exhaust",
+      "path": "/Scene/apollo11-lunar-module/anchor-aps-exhaust",
+      "depth": 1,
+      "hasMesh": false,
+      "hasTransform": true,
+      "isRoot": false,
+      "childCount": 0
+    },
+    {
+      "name": "anchor-camera-focus",
+      "path": "/Scene/apollo11-lunar-module/anchor-camera-focus",
+      "depth": 1,
+      "hasMesh": false,
+      "hasTransform": true,
+      "isRoot": false,
+      "childCount": 0
+    },
+    {
+      "name": "anchor-docking",
+      "path": "/Scene/apollo11-lunar-module/anchor-docking",
+      "depth": 1,
+      "hasMesh": false,
+      "hasTransform": true,
+      "isRoot": false,
+      "childCount": 0
+    },
+    {
+      "name": "anchor-dps-exhaust",
+      "path": "/Scene/apollo11-lunar-module/anchor-dps-exhaust",
+      "depth": 1,
+      "hasMesh": false,
+      "hasTransform": false,
+      "isRoot": false,
+      "childCount": 0
+    },
+    {
+      "name": "lm-ascent-stage",
+      "path": "/Scene/apollo11-lunar-module/lm-ascent-stage",
+      "depth": 1,
+      "hasMesh": true,
+      "hasTransform": false,
+      "isRoot": false,
+      "childCount": 0,
+      "triangleCount": 50983,
+      "vertexCount": 32191,
+      "primitiveCount": 8,
+      "materialNames": [
+        "blinn1SG.002",
+        "blinn4SG.002",
+        "blinn2SG.002",
+        "blinn6SG.001",
+        "initialShadingGr.001",
+        "blinn3SG.001",
+        "blinn7SG.002",
+        "blinn10SG.001"
+      ],
+      "worldBounds": {
+        "min": [
+          -2.3531482219696045,
+          3.0706124305725098,
+          -2.222679853439331
+        ],
+        "max": [
+          2.5949978828430176,
+          7.369098663330078,
+          2.9046480655670166
+        ]
+      }
+    },
+    {
+      "name": "lm-descent-stage",
+      "path": "/Scene/apollo11-lunar-module/lm-descent-stage",
+      "depth": 1,
+      "hasMesh": true,
+      "hasTransform": false,
+      "isRoot": false,
+      "childCount": 0,
+      "triangleCount": 46605,
+      "vertexCount": 33214,
+      "primitiveCount": 11,
+      "materialNames": [
+        "blinn1SG.002",
+        "blinn4SG.002",
+        "blinn5SG.002",
+        "blinn2SG.002",
+        "blinn6SG.001",
+        "initialShadingGr.001",
+        "blinn9SG.001",
+        "blinn3SG.001",
+        "blinn7SG.002",
+        "blinn8SG.001",
+        "blinn12SG.001"
+      ],
+      "worldBounds": {
+        "min": [
+          -4.724400043487549,
+          0,
+          -4.723823547363281
+        ],
+        "max": [
+          4.724400043487549,
+          4.148970127105713,
+          4.723823547363281
+        ]
+      }
+    }
+  ],
+  "materials": [
+    {
+      "name": "blinn1SG.002",
+      "alphaMode": "OPAQUE",
+      "doubleSided": true,
+      "hasBaseColorTexture": false,
+      "hasNormalTexture": false,
+      "hasMetalRoughTexture": false,
+      "hasEmissiveTexture": false,
+      "baseColorFactor": [
+        0.7686274647712708,
+        0.529411792755127,
+        0.05882352963089943,
+        1
+      ],
+      "metallicFactor": 0,
+      "roughnessFactor": 0.4099999964237213
+    },
+    {
+      "name": "blinn4SG.002",
+      "alphaMode": "OPAQUE",
+      "doubleSided": true,
+      "hasBaseColorTexture": false,
+      "hasNormalTexture": false,
+      "hasMetalRoughTexture": false,
+      "hasEmissiveTexture": false,
+      "baseColorFactor": [
+        0.7490196228027344,
+        0.7490196228027344,
+        0.7490196228027344,
+        1
+      ],
+      "metallicFactor": 0,
+      "roughnessFactor": 0.4099999964237213
+    },
+    {
+      "name": "blinn2SG.002",
+      "alphaMode": "OPAQUE",
+      "doubleSided": true,
+      "hasBaseColorTexture": false,
+      "hasNormalTexture": false,
+      "hasMetalRoughTexture": false,
+      "hasEmissiveTexture": false,
+      "baseColorFactor": [
+        0.2666666805744171,
+        0.2666666805744171,
+        0.2666666805744171,
+        1
+      ],
+      "metallicFactor": 0,
+      "roughnessFactor": 0.4099999964237213
+    },
+    {
+      "name": "blinn6SG.001",
+      "alphaMode": "OPAQUE",
+      "doubleSided": true,
+      "hasBaseColorTexture": false,
+      "hasNormalTexture": false,
+      "hasMetalRoughTexture": false,
+      "hasEmissiveTexture": false,
+      "baseColorFactor": [
+        0.0470588244497776,
+        0.0470588244497776,
+        0.0470588244497776,
+        1
+      ],
+      "metallicFactor": 0,
+      "roughnessFactor": 0.4099999964237213
+    },
+    {
+      "name": "initialShadingGr.001",
+      "alphaMode": "OPAQUE",
+      "doubleSided": true,
+      "hasBaseColorTexture": false,
+      "hasNormalTexture": false,
+      "hasMetalRoughTexture": false,
+      "hasEmissiveTexture": false,
+      "baseColorFactor": [
+        0.49803921580314636,
+        0.49803921580314636,
+        0.49803921580314636,
+        1
+      ],
+      "metallicFactor": 0,
+      "roughnessFactor": 0.4099999964237213
+    },
+    {
+      "name": "blinn3SG.001",
+      "alphaMode": "OPAQUE",
+      "doubleSided": true,
+      "hasBaseColorTexture": false,
+      "hasNormalTexture": false,
+      "hasMetalRoughTexture": false,
+      "hasEmissiveTexture": false,
+      "baseColorFactor": [
+        0.6784313917160034,
+        0.6784313917160034,
+        0.6784313917160034,
+        1
+      ],
+      "metallicFactor": 0,
+      "roughnessFactor": 0.4099999964237213
+    },
+    {
+      "name": "blinn7SG.002",
+      "alphaMode": "OPAQUE",
+      "doubleSided": true,
+      "hasBaseColorTexture": false,
+      "hasNormalTexture": false,
+      "hasMetalRoughTexture": false,
+      "hasEmissiveTexture": false,
+      "baseColorFactor": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "metallicFactor": 0,
+      "roughnessFactor": 0.4099999964237213
+    },
+    {
+      "name": "blinn10SG.001",
+      "alphaMode": "OPAQUE",
+      "doubleSided": true,
+      "hasBaseColorTexture": false,
+      "hasNormalTexture": false,
+      "hasMetalRoughTexture": false,
+      "hasEmissiveTexture": false,
+      "baseColorFactor": [
+        0.9372549057006836,
+        0.9372549057006836,
+        0.5568627715110779,
+        1
+      ],
+      "metallicFactor": 0,
+      "roughnessFactor": 0.4099999964237213
+    },
+    {
+      "name": "blinn5SG.002",
+      "alphaMode": "OPAQUE",
+      "doubleSided": true,
+      "hasBaseColorTexture": true,
+      "hasNormalTexture": false,
+      "hasMetalRoughTexture": false,
+      "hasEmissiveTexture": false,
+      "baseColorFactor": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "metallicFactor": 0,
+      "roughnessFactor": 0.4099999964237213
+    },
+    {
+      "name": "blinn9SG.001",
+      "alphaMode": "OPAQUE",
+      "doubleSided": true,
+      "hasBaseColorTexture": false,
+      "hasNormalTexture": false,
+      "hasMetalRoughTexture": false,
+      "hasEmissiveTexture": false,
+      "baseColorFactor": [
+        0.6392157077789307,
+        0.3176470696926117,
+        0.019607843831181526,
+        1
+      ],
+      "metallicFactor": 0,
+      "roughnessFactor": 0.4099999964237213
+    },
+    {
+      "name": "blinn8SG.001",
+      "alphaMode": "OPAQUE",
+      "doubleSided": true,
+      "hasBaseColorTexture": true,
+      "hasNormalTexture": false,
+      "hasMetalRoughTexture": false,
+      "hasEmissiveTexture": false,
+      "baseColorFactor": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "metallicFactor": 0,
+      "roughnessFactor": 0.4099999964237213
+    },
+    {
+      "name": "blinn12SG.001",
+      "alphaMode": "OPAQUE",
+      "doubleSided": true,
+      "hasBaseColorTexture": true,
+      "hasNormalTexture": false,
+      "hasMetalRoughTexture": false,
+      "hasEmissiveTexture": false,
+      "baseColorFactor": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "metallicFactor": 0,
+      "roughnessFactor": 0.4099999964237213
+    }
+  ],
+  "textures": [
+    {
+      "name": "BOOSTER3",
+      "mimeType": "image/png",
+      "hasImage": true,
+      "uri": "",
+      "byteLength": 4399
+    },
+    {
+      "name": "TEXTUREA",
+      "mimeType": "image/png",
+      "hasImage": true,
+      "uri": "",
+      "byteLength": 26524
+    },
+    {
+      "name": "TEXTURE_",
+      "mimeType": "image/png",
+      "hasImage": true,
+      "uri": "",
+      "byteLength": 46775
+    }
+  ],
+  "animations": [],
+  "notes": {
+    "heuristicUnits": "maybe-meters-or-scaled",
+    "hasSemanticSaturnStages": false,
+    "hasSemanticLMStages": true,
+    "monotoneRoot": 1,
+    "maxDepth": 1,
+    "nonIdentityTransformCount": 3,
+    "rootNames": [
+      "apollo11-lunar-module"
+    ]
+  }
+}

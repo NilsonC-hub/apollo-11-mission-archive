@@ -1,0 +1,93 @@
+{
+  "recipeVersion": 1,
+  "tool": "Khronos toktx 4.4.2",
+  "encoder": {
+    "format": "KTX2 ETC1S",
+    "qlevel": 180,
+    "clevel": 2,
+    "mipmaps": true,
+    "filter": "lanczos4",
+    "threads": 1,
+    "transferFunction": "sRGB"
+  },
+  "assets": [
+    {
+      "assetId": "earth-blue-marble",
+      "sourceId": "NASA-EARTH-BLUE-MARBLE-SVS",
+      "truthLabel": "NASA IMAGERY-BASED TEXTURE — MODERN COMPOSITE",
+      "projection": "equirectangular",
+      "colorSpace": "sRGB",
+      "lod": "1k",
+      "width": 1024,
+      "height": 512,
+      "path": "assets/derived/textures/earth-blue-marble-1k.ktx2",
+      "bytes": 123284,
+      "sha256": "29d555c3890b6132c9dbe4803b1265ea94de15a75c51e7a3e2dcc6662f842cdf"
+    },
+    {
+      "assetId": "earth-blue-marble",
+      "sourceId": "NASA-EARTH-BLUE-MARBLE-SVS",
+      "truthLabel": "NASA IMAGERY-BASED TEXTURE — MODERN COMPOSITE",
+      "projection": "equirectangular",
+      "colorSpace": "sRGB",
+      "lod": "2k",
+      "width": 2048,
+      "height": 1024,
+      "path": "assets/derived/textures/earth-blue-marble-2k.ktx2",
+      "bytes": 402252,
+      "sha256": "296b676a40449d5da8732ba5fd39368d8d75e65b691e8af1d13caf3fd5a0ec60"
+    },
+    {
+      "assetId": "earth-blue-marble",
+      "sourceId": "NASA-EARTH-BLUE-MARBLE-SVS",
+      "truthLabel": "NASA IMAGERY-BASED TEXTURE — MODERN COMPOSITE",
+      "projection": "equirectangular",
+      "colorSpace": "sRGB",
+      "lod": "4k",
+      "width": 4096,
+      "height": 2048,
+      "path": "assets/derived/textures/earth-blue-marble-4k.ktx2",
+      "bytes": 1453276,
+      "sha256": "ce35ebeac64e09ac07d418396f0448d381112c445b6e35a2018adbeac3d46943"
+    },
+    {
+      "assetId": "moon-lro-color",
+      "sourceId": "NASA-MOON-CGI-COLOR-8K",
+      "truthLabel": "NASA IMAGERY-BASED TEXTURE — MODERN LRO PRODUCT",
+      "projection": "equirectangular",
+      "colorSpace": "sRGB",
+      "lod": "1k",
+      "width": 1024,
+      "height": 512,
+      "path": "assets/derived/textures/moon-lro-color-1k.ktx2",
+      "bytes": 106556,
+      "sha256": "b89a00c9cf047e0d915aa0ee34fb8b834209cd5c68d2d61f210c36a0d362c63f"
+    },
+    {
+      "assetId": "moon-lro-color",
+      "sourceId": "NASA-MOON-CGI-COLOR-8K",
+      "truthLabel": "NASA IMAGERY-BASED TEXTURE — MODERN LRO PRODUCT",
+      "projection": "equirectangular",
+      "colorSpace": "sRGB",
+      "lod": "2k",
+      "width": 2048,
+      "height": 1024,
+      "path": "assets/derived/textures/moon-lro-color-2k.ktx2",
+      "bytes": 366807,
+      "sha256": "876928cbf1fa291676ca9e6e7bddf2ecdd01ce43a3a6ae23abd9a930b26cfcc9"
+    },
+    {
+      "assetId": "moon-lro-color",
+      "sourceId": "NASA-MOON-CGI-COLOR-8K",
+      "truthLabel": "NASA IMAGERY-BASED TEXTURE — MODERN LRO PRODUCT",
+      "projection": "equirectangular",
+      "colorSpace": "sRGB",
+      "lod": "4k",
+      "width": 4096,
+      "height": 2048,
+      "path": "assets/derived/textures/moon-lro-color-4k.ktx2",
+      "bytes": 1398978,
+      "sha256": "dca8f26d8927b5d758b260178d60b03e72d5584aeae680bb7e9b38d530bb8b65"
+    }
+  ]
+}

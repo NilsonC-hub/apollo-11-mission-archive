@@ -3,47 +3,19 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Apollo 11 Mission Archive — Phase 0</title>
-    <style>
-      body {
-        font-family: 'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif;
-        background: #070908;
-        color: #d8ddd1;
-        margin: 0;
-        padding: 2rem;
-        line-height: 1.5;
-      }
-      h1 {
-        font-family: 'IBM Plex Sans Condensed', 'Helvetica Neue', Arial, sans-serif;
-        font-size: 28px;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        color: #a7b58f;
-        margin: 0 0 1rem 0;
-      }
-      p {
-        font-size: 16px;
-        color: #8c958b;
-        max-width: 60ch;
-      }
-      code {
-        font-family: 'IBM Plex Mono', 'Courier New', monospace;
-        background: #101410;
-        padding: 0.1em 0.3em;
-        border-radius: 2px;
-        color: #d0a45a;
-      }
-    </style>
+    <meta name="theme-color" content="#e7e1d4" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23151819'/%3E%3Ctext x='5' y='21' fill='%23e7e1d4' font-family='monospace' font-size='12'%3EA11%3C/text%3E%3C/svg%3E"
+    />
+    <meta
+      name="description"
+      content="Apollo 11 Mission Archive and source-bound historical replay"
+    />
+    <title>Apollo 11 Mission Archive</title>
   </head>
   <body>
-    <h1>Apollo 11 Mission Archive</h1>
-    <p>
-      Phase 0 placeholder. No UI is shipped in Phase 0. The build command (<code>pnpm build</code>)
-      emits this page so the gate passes, but the actual application loads in Phase 4+.
-    </p>
-    <p>
-      See <code>docs/audit/PHASE-0-REPORT.md</code> for the Phase 0 completion report and
-      <code>docs/APOLLO_11_PRODUCTION_SPEC.md</code> for the build contract.
-    </p>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

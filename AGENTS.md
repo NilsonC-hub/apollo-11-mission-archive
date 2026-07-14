@@ -44,38 +44,47 @@ page.
 8. **State must be deterministic at any MET.** Both `stateAtMet(def, met)` and
    `visualStateAtStoryTime` must reconstruct identically after jump, scrub,
    reset, refresh.
-9. **`@vitejs/plugin-react` is not installed in Phase 0.** Do not import React,
-   R3F, or Three in any Phase 0 file. Runtime deps install in Phase 4.
+9. **Phase 4 UI dependencies stay outside mission-core.** React, R3F, Three,
+   and Zustand may appear under app/features/scene code, never in mission-core.
 
 ## Stages & commands (current state)
 
-Phase 0 only — baseline, source freeze, model feasibility. No UI, no game
-data, no Event tables beyond the seed under audit.
+Phases 0–4 complete — source freeze, mission core, Apollo 11 mission pack,
+reproducible model/celestial assets, and the Launch / Earth Orbit / TLI
+production interface. Phase 5 lunar/return scenes and Phase 6 final archive,
+performance, and accessibility closure remain pending.
 
 ```
 pnpm install                # install dev tools (node 22, pnpm)
 pnpm validate:sources       # verify Source Manifest references + SHA-256
 pnpm validate:mission       # verify event table + fact coverage (Phase 1+)
 pnpm validate:models        # verify Node Manifests + GLB parseability
+pnpm validate:decoders      # offline-decode Draco and validate KTX2 assets
+pnpm dev                    # stage verified runtime assets and start the app
+pnpm build                  # typecheck + production bundle
 node scripts/inspect-glb.ts <glb-path>   # inspect a single GLB
 node scripts/validate-sources.ts          # alt invocation
 ```
 
-Phase 0 must pass before Phase 1 starts. Phase exit requires
+Every earlier phase must remain green before the next phase starts. Phase exit requires
 `docs/audit/PHASE-{N}-REPORT.md` per spec §58.
 
 ## Layout (see Production Spec §39 for the full plan)
 
-| Path                                         | Phase 0 contents                                                               |
+| Path                                         | Current contents                                                               |
 | -------------------------------------------- | ------------------------------------------------------------------------------ |
 | `src/missions/apollo11/source-manifest.json` | Source Manifest — URL, accessedAt, SHA-256, rights, notes for every NASA asset |
-| `src/missions/apollo11/asset-manifest.json`  | (stub) — filled Phase 3                                                        |
+| `src/missions/apollo11/asset-manifest.json`  | Phase 3 derived model/texture/fallback/decoder inventory                       |
 | `assets/raw/`                                | Read-only archive of original NASA files (PDFs, GLBs, STLs, textures)          |
 | `docs/sources/apollo11/`                     | Per-source metadata sidecars + locator excerpts                                |
 | `docs/audit/`                                | Phase reports, risk log, decision log, model inspection reports                |
 | `docs/decisions/`                            | Architecture Decision Records                                                  |
 | `scripts/`                                   | Validation / inspection scripts (Node, no React)                               |
-| `tests/unit/`                                | Unit tests for mission-core (Phase 1+)                                         |
+| `src/app/`                                   | Mission adapter, shared shell, and replay UI state                             |
+| `src/features/archive/`                      | Archive route; must remain free of Three/R3F/model imports                     |
+| `src/features/control/`                      | Phase 4 Mission Control route and R3F scene                                    |
+| `src/styles/`                                | Archive/Control design system and responsive/accessibility rules               |
+| `tests/unit/`                                | Regression tests for mission-core, pack, sources, assets, and Phase 4 scope    |
 | `docs/APOLLO_11_PRODUCTION_SPEC.md`          | The build contract (copied verbatim from project seed)                         |
 
 ## References

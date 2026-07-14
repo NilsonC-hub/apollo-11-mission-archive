@@ -1,7 +1,215 @@
 {
-  "manifestVersion": 0,
+  "manifestVersion": 1,
   "missionId": "apollo11",
-  "status": "stub",
-  "note": "Phase 0 stub. Asset Manifest is populated in Phase 3 (Model & Celestial Asset Pipeline) after the optimize-models pipeline runs. Phase 0 records the raw NASA asset inventory in source-manifest.json; this file records the derived runtime assets (high/medium/low LOD GLBs, KTX2 textures, fallbacks) once they exist.",
-  "assets": []
+  "status": "phase3-complete",
+  "generatedAt": "2026-07-14",
+  "truthBoundary": "Derived runtime assets only. NASA-released visualization models are not flight CAD; the CSM is explicitly reconstructed from NASA references; celestial maps are modern imagery-based composites, not instantaneous 1969 views.",
+  "toolchain": {
+    "models": {
+      "blender": "4.3.2",
+      "recipe": "scripts/blender/process_apollo11_assets.py",
+      "compression": "Draco level 6"
+    },
+    "textures": {
+      "toktx": "4.4.2",
+      "recipe": "scripts/prepare-textures.ts",
+      "compression": "KTX2 ETC1S qlevel 180 clevel 2, single-threaded, mipmapped"
+    },
+    "decoders": { "draco3dgltf": "1.5.7", "ktxSoftware": "4.4.2", "hosting": "local-only" }
+  },
+  "assets": [
+    {
+      "assetId": "apollo11-saturn-v",
+      "kind": "model",
+      "sourceIds": ["NASA-MODEL-SATV", "NASA-A11-SATV-FE"],
+      "truthLabel": "NASA VISUALIZATION MODEL — SEMANTIC SPLIT RECONSTRUCTED; NOT NASA CAD",
+      "nodeManifest": "src/missions/apollo11/node-manifests/apollo11-saturn-v.json",
+      "thumbnail": "docs/media/phase3-apollo11-saturn-v.png",
+      "lods": {
+        "high": {
+          "path": "assets/derived/models/apollo11-saturn-v-high.glb",
+          "bytes": 235356,
+          "sha256": "4206c3c82c5173b716c84e5fc4a8580fce60bd22704993c4cf43c263025b4087",
+          "triangles": 34814
+        },
+        "medium": {
+          "path": "assets/derived/models/apollo11-saturn-v-medium.glb",
+          "bytes": 203280,
+          "sha256": "ccd4517230672148e36c20d8c198d2e8f6ec53acff0e2f2f041a2fa9e31f93d7",
+          "triangles": 19147
+        },
+        "low": {
+          "path": "assets/derived/models/apollo11-saturn-v-low.glb",
+          "bytes": 140164,
+          "sha256": "3cfa51e4b523fc0e8552ee22acb2d45f1b9277fb60b2888ec29b82a6844cd356",
+          "triangles": 7718
+        }
+      }
+    },
+    {
+      "assetId": "apollo11-lunar-module",
+      "kind": "model",
+      "sourceIds": ["NASA-MODEL-LM", "NASA-LM-HB"],
+      "truthLabel": "NASA GENERIC APOLLO LM VISUALIZATION — NOT CERTIFIED LM-5; STAGE SPLIT RECONSTRUCTED",
+      "nodeManifest": "src/missions/apollo11/node-manifests/apollo11-lunar-module.json",
+      "thumbnail": "docs/media/phase3-apollo11-lunar-module.png",
+      "lods": {
+        "high": {
+          "path": "assets/derived/models/apollo11-lunar-module-high.glb",
+          "bytes": 428204,
+          "sha256": "8195b2144cb3ddf4218acfea7b66adb33ff00ae826bcb17a525391db9b1e4dc5",
+          "triangles": 97588
+        },
+        "medium": {
+          "path": "assets/derived/models/apollo11-lunar-module-medium.glb",
+          "bytes": 374348,
+          "sha256": "2633e76e48ac759d0b4654d5f4b48c827684354509140c76388bdb83f3f8d674",
+          "triangles": 53671
+        },
+        "low": {
+          "path": "assets/derived/models/apollo11-lunar-module-low.glb",
+          "bytes": 258892,
+          "sha256": "3c92bcab0174894860d38b52cb08ebcdb77bcb37d84bf694ad33d1e7bad31583",
+          "triangles": 21468
+        }
+      }
+    },
+    {
+      "assetId": "apollo11-command-service-module",
+      "kind": "model",
+      "sourceIds": ["NASA-MODEL-SATV-STL", "NASA-CSM-NR"],
+      "truthLabel": "RECONSTRUCTED FROM NASA REFERENCES — NOT NASA CAD",
+      "nodeManifest": "src/missions/apollo11/node-manifests/apollo11-command-service-module.json",
+      "thumbnail": "docs/media/phase3-apollo11-command-service-module.png",
+      "lods": {
+        "high": {
+          "path": "assets/derived/models/apollo11-command-service-module-high.glb",
+          "bytes": 530172,
+          "sha256": "7cf1b2c1d991f71f0a8b2a86a7ce41de2e1c9c5c59bc5496eeaef360ac274a48",
+          "triangles": 50234
+        },
+        "medium": {
+          "path": "assets/derived/models/apollo11-command-service-module-medium.glb",
+          "bytes": 317976,
+          "sha256": "1ae76b6778a36f0a9328605cf6f5987050cb9ec680537c6d1b40c056093f444c",
+          "triangles": 27628
+        },
+        "low": {
+          "path": "assets/derived/models/apollo11-command-service-module-low.glb",
+          "bytes": 156944,
+          "sha256": "34c297a90399e436d4608fafd8e16ada2127245e5c7838decf2b783b9c34e6fe",
+          "triangles": 11050
+        }
+      }
+    },
+    {
+      "assetId": "earth-blue-marble",
+      "kind": "texture",
+      "sourceIds": ["NASA-EARTH-BLUE-MARBLE", "NASA-EARTH-BLUE-MARBLE-SVS"],
+      "truthLabel": "NASA IMAGERY-BASED TEXTURE — MODERN COMPOSITE",
+      "projection": "equirectangular",
+      "coverage": "global",
+      "colorSpace": "sRGB",
+      "generationMethod": "Official NASA SVS 8192x4096 TIFF downsampled with toktx lanczos4; ETC1S; mipmapped; no historical cloud/illumination reconstruction.",
+      "variants": {
+        "1k": {
+          "path": "assets/derived/textures/earth-blue-marble-1k.ktx2",
+          "width": 1024,
+          "height": 512,
+          "bytes": 123284,
+          "sha256": "29d555c3890b6132c9dbe4803b1265ea94de15a75c51e7a3e2dcc6662f842cdf"
+        },
+        "2k": {
+          "path": "assets/derived/textures/earth-blue-marble-2k.ktx2",
+          "width": 2048,
+          "height": 1024,
+          "bytes": 402252,
+          "sha256": "296b676a40449d5da8732ba5fd39368d8d75e65b691e8af1d13caf3fd5a0ec60"
+        },
+        "4k": {
+          "path": "assets/derived/textures/earth-blue-marble-4k.ktx2",
+          "width": 4096,
+          "height": 2048,
+          "bytes": 1453276,
+          "sha256": "ce35ebeac64e09ac07d418396f0448d381112c445b6e35a2018adbeac3d46943"
+        }
+      }
+    },
+    {
+      "assetId": "moon-lro-color",
+      "kind": "texture",
+      "sourceIds": ["NASA-MOON-CGI-KIT", "NASA-MOON-CGI-COLOR-8K"],
+      "truthLabel": "NASA IMAGERY-BASED TEXTURE — MODERN LRO PRODUCT",
+      "projection": "equirectangular with pole fill",
+      "coverage": "global",
+      "colorSpace": "sRGB",
+      "generationMethod": "Official NASA SVS 8192x4096 LRO color TIFF downsampled with toktx lanczos4; ETC1S; mipmapped; color only, no DEM claim.",
+      "variants": {
+        "1k": {
+          "path": "assets/derived/textures/moon-lro-color-1k.ktx2",
+          "width": 1024,
+          "height": 512,
+          "bytes": 106556,
+          "sha256": "b89a00c9cf047e0d915aa0ee34fb8b834209cd5c68d2d61f210c36a0d362c63f"
+        },
+        "2k": {
+          "path": "assets/derived/textures/moon-lro-color-2k.ktx2",
+          "width": 2048,
+          "height": 1024,
+          "bytes": 366807,
+          "sha256": "876928cbf1fa291676ca9e6e7bddf2ecdd01ce43a3a6ae23abd9a930b26cfcc9"
+        },
+        "4k": {
+          "path": "assets/derived/textures/moon-lro-color-4k.ktx2",
+          "width": 4096,
+          "height": 2048,
+          "bytes": 1398978,
+          "sha256": "dca8f26d8927b5d758b260178d60b03e72d5584aeae680bb7e9b38d530bb8b65"
+        }
+      }
+    },
+    {
+      "assetId": "vehicle-structure-fallback",
+      "kind": "fallback",
+      "truthLabel": "SCHEMATIC — NOT TO SCALE",
+      "path": "public/missions/apollo11/fallbacks/vehicle-structure.svg",
+      "bytes": 1587,
+      "sha256": "13fe501b11f357ddb103b94953c065a1f866358f982d94ee25e2b709a696e91d"
+    }
+  ],
+  "offlineDecoders": [
+    {
+      "id": "draco-js",
+      "version": "1.5.7",
+      "path": "public/missions/apollo11/decoders/draco/draco_decoder_gltf.js",
+      "bytes": 58456,
+      "sha256": "8bb2952d2ba7d67e1414f8df819410cb0434a666be53f671fff75f68843d76f6"
+    },
+    {
+      "id": "draco-wasm",
+      "version": "1.5.7",
+      "path": "public/missions/apollo11/decoders/draco/draco_decoder_gltf.wasm",
+      "bytes": 192593,
+      "sha256": "712db3449ae2041d6e8a224c395bda6cedb49e51322fae38b7db9beb8b381889"
+    },
+    {
+      "id": "basis-js",
+      "version": "4.4.2",
+      "path": "public/missions/apollo11/decoders/ktx2/msc_basis_transcoder.js",
+      "bytes": 63219,
+      "sha256": "77561a7e68488201b08e341e8e6c34975990a82c21d30e9cc466e94fb2802b72"
+    },
+    {
+      "id": "basis-wasm",
+      "version": "4.4.2",
+      "path": "public/missions/apollo11/decoders/ktx2/msc_basis_transcoder.wasm",
+      "bytes": 421034,
+      "sha256": "ec6da83ab28561784f22fbd594d6bf73f9e7f65d506fc1adf2548178f1474dd5"
+    }
+  ],
+  "budgetCheck": {
+    "desktopDefault": "Saturn V medium + CSM medium + Earth 2K = 923508 bytes and 46775 visible triangles before renderer overhead; below Phase 3 transfer/triangle budgets.",
+    "mobileDefault": "Saturn V low + CSM low + Earth 1K = 420392 bytes and 18768 visible triangles before renderer overhead; below Phase 3 transfer/triangle budgets.",
+    "engineeringBudgetNotMissionFact": true
+  }
 }

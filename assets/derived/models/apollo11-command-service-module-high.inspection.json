@@ -1,0 +1,180 @@
+{
+  "file": {
+    "name": "apollo11-command-service-module-high.glb",
+    "bytes": 530172,
+    "bytesHuman": "517.7 KiB",
+    "ext": ".glb",
+    "sha256": "7cf1b2c1d991f71f0a8b2a86a7ce41de2e1c9c5c59bc5496eeaef360ac274a48"
+  },
+  "summary": {
+    "scenes": 1,
+    "nodes": 6,
+    "meshes": 2,
+    "primitives": 2,
+    "triangles": 50234,
+    "vertices": 150702,
+    "materials": 2,
+    "textures": 0,
+    "skins": 0,
+    "animations": 0,
+    "cameras": 0
+  },
+  "sceneBounds": {
+    "min": [
+      -1.9558000564575195,
+      0,
+      -1.9557998180389404
+    ],
+    "max": [
+      1.9558000564575195,
+      10.752531051635742,
+      1.9556868076324463
+    ],
+    "size": [
+      3.911600112915039,
+      10.752531051635742,
+      3.9114866256713867
+    ]
+  },
+  "nodes": [
+    {
+      "name": "apollo11-command-service-module",
+      "path": "/Scene/apollo11-command-service-module",
+      "depth": 0,
+      "hasMesh": false,
+      "hasTransform": false,
+      "isRoot": true,
+      "childCount": 5
+    },
+    {
+      "name": "anchor-camera-focus",
+      "path": "/Scene/apollo11-command-service-module/anchor-camera-focus",
+      "depth": 1,
+      "hasMesh": false,
+      "hasTransform": true,
+      "isRoot": false,
+      "childCount": 0
+    },
+    {
+      "name": "anchor-docking",
+      "path": "/Scene/apollo11-command-service-module/anchor-docking",
+      "depth": 1,
+      "hasMesh": false,
+      "hasTransform": true,
+      "isRoot": false,
+      "childCount": 0
+    },
+    {
+      "name": "anchor-sps-exhaust",
+      "path": "/Scene/apollo11-command-service-module/anchor-sps-exhaust",
+      "depth": 1,
+      "hasMesh": false,
+      "hasTransform": false,
+      "isRoot": false,
+      "childCount": 0
+    },
+    {
+      "name": "command-module",
+      "path": "/Scene/apollo11-command-service-module/command-module",
+      "depth": 1,
+      "hasMesh": true,
+      "hasTransform": false,
+      "isRoot": false,
+      "childCount": 0,
+      "triangleCount": 3652,
+      "vertexCount": 10028,
+      "primitiveCount": 1,
+      "materialNames": [
+        "command-module-ablative"
+      ],
+      "worldBounds": {
+        "min": [
+          -1.9558000564575195,
+          7.52664852142334,
+          -1.952919363975525
+        ],
+        "max": [
+          1.9558000564575195,
+          10.752531051635742,
+          1.952950358390808
+        ]
+      }
+    },
+    {
+      "name": "service-module",
+      "path": "/Scene/apollo11-command-service-module/service-module",
+      "depth": 1,
+      "hasMesh": true,
+      "hasTransform": false,
+      "isRoot": false,
+      "childCount": 0,
+      "triangleCount": 46582,
+      "vertexCount": 127295,
+      "primitiveCount": 1,
+      "materialNames": [
+        "service-module-aluminum"
+      ],
+      "worldBounds": {
+        "min": [
+          -1.8459110260009766,
+          0,
+          -1.9557998180389404
+        ],
+        "max": [
+          1.8459734916687012,
+          7.52664852142334,
+          1.9556868076324463
+        ]
+      }
+    }
+  ],
+  "materials": [
+    {
+      "name": "command-module-ablative",
+      "alphaMode": "OPAQUE",
+      "doubleSided": true,
+      "hasBaseColorTexture": false,
+      "hasNormalTexture": false,
+      "hasMetalRoughTexture": false,
+      "hasEmissiveTexture": false,
+      "baseColorFactor": [
+        0.23999999463558197,
+        0.25,
+        0.23999999463558197,
+        1
+      ],
+      "metallicFactor": 0.25,
+      "roughnessFactor": 0.6200000047683716
+    },
+    {
+      "name": "service-module-aluminum",
+      "alphaMode": "OPAQUE",
+      "doubleSided": true,
+      "hasBaseColorTexture": false,
+      "hasNormalTexture": false,
+      "hasMetalRoughTexture": false,
+      "hasEmissiveTexture": false,
+      "baseColorFactor": [
+        0.4300000071525574,
+        0.44999998807907104,
+        0.46000000834465027,
+        1
+      ],
+      "metallicFactor": 0.550000011920929,
+      "roughnessFactor": 0.3799999952316284
+    }
+  ],
+  "textures": [],
+  "animations": [],
+  "notes": {
+    "heuristicUnits": "maybe-meters-or-scaled",
+    "hasSemanticSaturnStages": false,
+    "hasSemanticLMStages": false,
+    "monotoneRoot": 1,
+    "maxDepth": 1,
+    "nonIdentityTransformCount": 2,
+    "rootNames": [
+      "apollo11-command-service-module"
+    ]
+  }
+}

@@ -121,6 +121,234 @@ async function reparseGlbCounts(absGlb: string): Promise<{
   }
 }
 
+interface DerivedLod {
+  path: string
+  bytes: number
+  sha256: string
+  triangles: number
+}
+
+interface DerivedAsset {
+  assetId: string
+  kind: 'model' | 'texture' | 'fallback'
+  nodeManifest?: string
+  lods?: Record<string, DerivedLod>
+  variants?: Record<
+    string,
+    { path: string; bytes: number; sha256: string; width: number; height: number }
+  >
+  path?: string
+  bytes?: number
+  sha256?: string
+}
+
+interface GltfJson {
+  scene?: number
+  scenes?: Array<{ name?: string; nodes?: number[] }>
+  nodes?: Array<{ name?: string; children?: number[] }>
+  animations?: unknown[]
+  extensionsRequired?: string[]
+}
+
+interface SemanticPathRecord {
+  path: string
+  required: boolean
+}
+
+interface NodeManifest {
+  units: string
+  coordinateSystem?: { up?: string }
+  derived?: Record<string, { sha256: string }>
+  nodes: Record<string, SemanticPathRecord>
+  anchors: Record<string, SemanticPathRecord>
+}
+
+function sha256Of(abs: string): string {
+  return createHashSync('sha256').update(fsRead(abs)).digest('hex')
+}
+
+function glbJson(abs: string): GltfJson {
+  const bytes = fsRead(abs)
+  if (bytes.toString('ascii', 0, 4) !== 'glTF') throw new Error('missing glTF magic')
+  const jsonLength = bytes.readUInt32LE(12)
+  const jsonType = bytes.toString('ascii', 16, 20)
+  if (jsonType !== 'JSON') throw new Error('first GLB chunk is not JSON')
+  return JSON.parse(bytes.toString('utf8', 20, 20 + jsonLength).trimEnd()) as GltfJson
+}
+
+function nodePaths(json: GltfJson): Set<string> {
+  const result = new Set<string>()
+  const scene = json.scenes?.[json.scene ?? 0]
+  const sceneName = scene?.name || 'Scene'
+  const visit = (index: number, parent: string) => {
+    const node = json.nodes?.[index]
+    if (!node) return
+    const path = `${parent}/${node.name || `<node-${index}>`}`
+    result.add(path)
+    for (const child of node.children || []) visit(child, path)
+  }
+  for (const root of scene?.nodes || []) visit(root, `/${sceneName}`)
+  return result
+}
+
+async function derivedTriangleCount(abs: string): Promise<number> {
+  const io = new NodeIO()
+    .registerExtensions([
+      KHRMaterialsSpecular,
+      EXTTextureWebP,
+      KHRMaterialsUnlit,
+      KHRMaterialsTransmission,
+      KHRMaterialsVolume,
+      KHRMaterialsIOR,
+      KHRMaterialsSheen,
+      KHRMaterialsClearcoat,
+      KHRMaterialsEmissiveStrength,
+      KHRMaterialsAnisotropy,
+      KHRMaterialsDispersion,
+      KHRTextureBasisu,
+      KHRTextureTransform,
+      KHRDracoMeshCompression,
+      KHRMeshQuantization,
+    ])
+    .registerDependencies({ 'draco3d.decoder': await draco3d.createDecoderModule() })
+  const doc = await io.readBinary(fsRead(abs))
+  let triangles = 0
+  for (const mesh of doc.getRoot().listMeshes()) {
+    for (const primitive of mesh.listPrimitives()) {
+      const indices = primitive.getIndices()
+      const position = primitive.getAttribute('POSITION')
+      triangles += Math.floor((indices?.getCount() ?? position?.getCount() ?? 0) / 3)
+    }
+  }
+  return triangles
+}
+
+async function validatePhase3Assets(): Promise<number> {
+  let errors = 0
+  const fail = (message: string) => {
+    console.log(`[FAIL]  Phase 3: ${message}`)
+    errors++
+  }
+  const ok = (message: string) => console.log(`[OK]    Phase 3: ${message}`)
+  const manifestPath = resolve(ROOT, 'src/missions/apollo11/asset-manifest.json')
+  if (!fsExists(manifestPath)) {
+    fail('asset-manifest.json missing')
+    return errors
+  }
+  const manifest = JSON.parse(fsRead(manifestPath, 'utf8')) as {
+    manifestVersion: number
+    status: string
+    assets: DerivedAsset[]
+    offlineDecoders: Array<{ id: string; path: string; bytes: number; sha256: string }>
+  }
+  if (manifest.manifestVersion !== 1 || manifest.status !== 'phase3-complete') {
+    fail('asset manifest is not the version 1 Phase 3 manifest')
+  }
+
+  for (const asset of manifest.assets) {
+    if (asset.kind === 'model') {
+      if (!asset.lods || !asset.nodeManifest) {
+        fail(`${asset.assetId}: model lacks LODs or Node Manifest`)
+        continue
+      }
+      const nodeManifestAbs = resolve(ROOT, asset.nodeManifest)
+      if (!fsExists(nodeManifestAbs)) {
+        fail(`${asset.assetId}: Node Manifest missing`)
+        continue
+      }
+      const nodes = JSON.parse(fsRead(nodeManifestAbs, 'utf8')) as NodeManifest
+      if (nodes.units !== 'meter' || nodes.coordinateSystem?.up !== '+Y') {
+        fail(`${asset.assetId}: Node Manifest is not meter / +Y normalized`)
+      }
+      let highPaths: Set<string> | undefined
+      for (const lodName of ['high', 'medium', 'low']) {
+        const lod = asset.lods[lodName]
+        if (!lod) {
+          fail(`${asset.assetId}: missing ${lodName} LOD`)
+          continue
+        }
+        const abs = resolve(ROOT, lod.path)
+        if (!fsExists(abs)) {
+          fail(`${asset.assetId}/${lodName}: file missing`)
+          continue
+        }
+        if (statSync(abs).size !== lod.bytes || sha256Of(abs) !== lod.sha256) {
+          fail(`${asset.assetId}/${lodName}: byte length or SHA-256 mismatch`)
+          continue
+        }
+        const json = glbJson(abs)
+        if (!(json.extensionsRequired || []).includes('KHR_draco_mesh_compression')) {
+          fail(`${asset.assetId}/${lodName}: Draco is not required by the GLB`)
+        }
+        if ((json.animations || []).length !== 0) {
+          fail(`${asset.assetId}/${lodName}: source animation tracks were not stripped`)
+        }
+        const actualTriangles = await derivedTriangleCount(abs)
+        if (actualTriangles !== lod.triangles) {
+          fail(
+            `${asset.assetId}/${lodName}: triangles ${actualTriangles} != manifest ${lod.triangles}`,
+          )
+        }
+        if (nodes.derived?.[lodName]?.sha256 !== lod.sha256) {
+          fail(`${asset.assetId}/${lodName}: Node Manifest derived hash mismatch`)
+        }
+        if (lodName === 'high') highPaths = nodePaths(json)
+      }
+      if (highPaths) {
+        for (const [id, record] of Object.entries({ ...nodes.nodes, ...nodes.anchors })) {
+          if (record.required && !highPaths.has(record.path)) {
+            fail(`${asset.assetId}: required semantic path '${id}' missing: ${record.path}`)
+          }
+        }
+      }
+      const highTris = asset.lods.high?.triangles ?? Infinity
+      const lowTris = asset.lods.low?.triangles ?? Infinity
+      if (highTris > 400_000 || lowTris > 120_000)
+        fail(`${asset.assetId}: LOD triangle budget exceeded`)
+      else ok(`${asset.assetId}: 3 LODs, hashes, Draco and required semantic paths verified`)
+    } else if (asset.kind === 'texture') {
+      for (const level of ['1k', '2k', '4k']) {
+        const variant = asset.variants?.[level]
+        if (!variant) {
+          fail(`${asset.assetId}: missing ${level} texture variant`)
+          continue
+        }
+        const abs = resolve(ROOT, variant.path)
+        if (!fsExists(abs)) {
+          fail(`${asset.assetId}/${level}: texture missing`)
+          continue
+        }
+        const magic = fsRead(abs).subarray(0, 12).toString('hex')
+        if (magic !== 'ab4b5458203230bb0d0a1a0a')
+          fail(`${asset.assetId}/${level}: invalid KTX2 magic`)
+        if (statSync(abs).size !== variant.bytes || sha256Of(abs) !== variant.sha256) {
+          fail(`${asset.assetId}/${level}: byte length or SHA-256 mismatch`)
+        }
+      }
+      ok(`${asset.assetId}: 1K/2K/4K KTX2 variants verified`)
+    } else if (asset.kind === 'fallback' && asset.path && asset.sha256 && asset.bytes) {
+      const abs = resolve(ROOT, asset.path)
+      if (!fsExists(abs) || statSync(abs).size !== asset.bytes || sha256Of(abs) !== asset.sha256) {
+        fail(`${asset.assetId}: fallback missing or hash mismatch`)
+      } else ok(`${asset.assetId}: static fallback verified`)
+    }
+  }
+
+  for (const decoder of manifest.offlineDecoders || []) {
+    const abs = resolve(ROOT, decoder.path)
+    if (
+      !fsExists(abs) ||
+      statSync(abs).size !== decoder.bytes ||
+      sha256Of(abs) !== decoder.sha256
+    ) {
+      fail(`${decoder.id}: offline decoder missing or hash mismatch`)
+    }
+  }
+  if (manifest.offlineDecoders?.length === 4) ok('four pinned local decoder artifacts verified')
+  else fail('offline decoder manifest must contain four artifacts')
+  return errors
+}
+
 async function main() {
   let errors = 0
   console.log('=== Model Inspection Validation ===')
@@ -255,6 +483,8 @@ async function main() {
       `[OK]    ${t.id}: hash=${data.file.sha256.slice(0, 12)}… tris=${data.summary.triangles.toLocaleString()} verts=${data.summary.vertices.toLocaleString()} mats=${data.summary.materials} size=${data.sceneBounds.size.map((n) => n.toFixed(2)).join('x')} units=${data.notes.heuristicUnits} semSat=${data.notes.hasSemanticSaturnStages} semLM=${data.notes.hasSemanticLMStages}`,
     )
   }
+
+  errors += await validatePhase3Assets()
 
   if (errors > 0) {
     console.log(`\nFAIL: ${errors} problem(s)`)

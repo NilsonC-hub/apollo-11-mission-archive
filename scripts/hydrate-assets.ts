@@ -6,7 +6,7 @@
 // This script makes a clean git clone / git archive fully reproducible:
 //   1. Read source-manifest.json
 //   2. For each source with localPath pointing to a gitignored binary
-//      (.glb, .stl, .zip) that is missing on disk, download it from
+//      (.glb, .stl, .zip, .tif) that is missing on disk, download it from
 //      effectiveDownloadUrl (or originalUrl) and verify SHA-256.
 //   3. Extract ZIP archives to their extractedTo directory.
 //   4. Run STL inspection to verify extracted parts.
@@ -48,7 +48,7 @@ interface Manifest {
 }
 
 // Extensions that are gitignored and need hydration
-const GITIGNORED_EXTS = ['.glb', '.stl', '.zip']
+const GITIGNORED_EXTS = ['.glb', '.stl', '.zip', '.tif', '.tiff']
 
 function sha256OfFile(absPath: string): string {
   const buf = readFileSync(absPath)
