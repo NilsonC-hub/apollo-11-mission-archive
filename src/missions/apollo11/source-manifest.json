@@ -42,7 +42,10 @@
       "sha256": "1cc59a866cc9c30c4d5bf4863e9eb53455489b702ad8238fab1b17bdac525fb0",
       "bytes": 5027,
       "status": "downloaded",
-      "notes": "HTML frameset stub; references five PDFs (a11-fltplan1..5.pdf, a11final-fltpln.pdf, a11final-fltpln_pp3-3to8.pdf, a11fltpln_final_reformat.pdf). The actual chapter PDFs are tracked under NASA-A11-FP1-WB. Original nasa.gov .../alsj/a11/a11-fltplan1.pdf returns 404 as of 2026-07-13; chapters retrieved via Internet Archive Wayback (see NASA-A11-FP1-WB)."
+      "notes": "HTML frameset stub; references five PDFs (a11-fltplan1..5.pdf, a11final-fltpln.pdf, a11final-fltpln_pp3-3to8.pdf, a11fltpln_final_reformat.pdf). The actual chapter PDFs are tracked under NASA-A11-FP1-WB. Original nasa.gov .../alsj/a11/a11-fltplan1.pdf returns 404 as of 2026-07-13; chapters retrieved via Internet Archive Wayback (see NASA-A11-FP1-WB).",
+      "contentAssertions": {
+        "htmlCanonicalMarker": "Apollo 11 Flight Plan"
+      }
     },
     {
       "id": "NASA-A11-FP1",
@@ -91,7 +94,10 @@
       "localPath": "docs/sources/apollo11/NASA-A11-TTEC-WEB.page.html",
       "sha256": "daf141a2c9030b0ca1e8748962af7a4cbfe227ed324f5c5ca085f063db271b3a",
       "bytes": 1273321,
-      "status": "downloaded"
+      "status": "downloaded",
+      "contentAssertions": {
+        "htmlCanonicalMarker": "Apollo 11 - Technical Air-to-Ground Voice Transcription"
+      }
     },
     {
       "id": "NASA-A11-RAW-TRANS",
@@ -107,7 +113,10 @@
       "sha256": "5356a50a3fcb1e84579c6034d4e9fdd0be66fc386827c4d1bf17b5b0b1853612",
       "bytes": 3152,
       "status": "downloaded",
-      "notes": "Frameset index. Lists a11transcript_pao.htm/pdf, a11transcript_tec.html, a11onboardp224.pdf, A11PAO71-74-412.pdf, a11TEC84-2p491.pdf — candidates for follow-up download when transcript deep-linking is implemented."
+      "notes": "Frameset index. Lists a11transcript_pao.htm/pdf, a11transcript_tec.html, a11onboardp224.pdf, A11PAO71-74-412.pdf, a11TEC84-2p491.pdf — candidates for follow-up download when transcript deep-linking is implemented.",
+      "contentAssertions": {
+        "htmlCanonicalMarker": "Apollo 11 Transcripts"
+      }
     },
     {
       "id": "NASA-A11-AFJ",
@@ -124,7 +133,10 @@
       "sha256": "f607a35a97b44a56caf95ac37117368eba610f14953ab1ffa0b13873140458d5",
       "bytes": 282661,
       "status": "downloaded",
-      "notes": "Spec URL https://www.nasa.gov/wp-content/uploads/static/history/afj/ap11fj/ returns 404 as of 2026-07-13. Mirror at https://history.nasa.gov/afj/ap11fj/ works. The two paths may have diverged editorially; cross-check by-line before treating as identical."
+      "notes": "Spec URL https://www.nasa.gov/wp-content/uploads/static/history/afj/ap11fj/ returns 404 as of 2026-07-13. Mirror at https://history.nasa.gov/afj/ap11fj/ works. The two paths may have diverged editorially; cross-check by-line before treating as identical.",
+      "contentAssertions": {
+        "htmlCanonicalMarker": "Apollo Flight Journal"
+      }
     },
     {
       "id": "NASA-A11-ALSJ",
@@ -140,7 +152,10 @@
       "sha256": "19de0bac7157c9a311c15229232c76e391998222cb8884f4ce8cb56f185b2a87",
       "bytes": 7288,
       "status": "downloaded",
-      "notes": "Frameset stub. Full ALSJ content accessed via sub-pages (a11.landing.html, a11MissionAudio.html, a11tecdbrf.html, etc.) — each tracked separately."
+      "notes": "Frameset stub. Full ALSJ content accessed via sub-pages (a11.landing.html, a11MissionAudio.html, a11tecdbrf.html, etc.) — each tracked separately.",
+      "contentAssertions": {
+        "htmlCanonicalMarker": "Apollo 11 Lunar Surface Journal"
+      }
     },
     {
       "id": "NASA-A11-LANDING",
@@ -155,7 +170,10 @@
       "localPath": "docs/sources/apollo11/NASA-A11-LANDING.page.html",
       "sha256": "990583a24adbd385a86d87ea1f0468002a5f734aab896024e396c1ed61369ceb",
       "bytes": 147126,
-      "status": "downloaded"
+      "status": "downloaded",
+      "contentAssertions": {
+        "htmlCanonicalMarker": "The First Lunar Landing"
+      }
     },
     {
       "id": "NASA-A11-AUDIO",
@@ -171,7 +189,10 @@
       "sha256": "a6250475bb9309ae2c7dc5b8343375d7ed511f0b6c334ea0d4a557269173a6df",
       "bytes": 1479,
       "status": "downloaded",
-      "notes": "Frameset stub. Index references a11.html and an mp3 landing clip (ap11_07a__landing_dsea.mp3). Phase 2 must enumerate the full channel list and download rights-cleared clips. OPEN QUESTION for Phase 2: archive.org mirror at https://www.archive.org/details/Apollo11Audio hosts full channel audio — verify it is the same public-domain NASA source."
+      "notes": "Frameset stub. Index references a11.html and an mp3 landing clip (ap11_07a__landing_dsea.mp3). Phase 2 must enumerate the full channel list and download rights-cleared clips. OPEN QUESTION for Phase 2: archive.org mirror at https://www.archive.org/details/Apollo11Audio hosts full channel audio — verify it is the same public-domain NASA source.",
+      "contentAssertions": {
+        "htmlCanonicalMarker": "Apollo 11 Mission Audio"
+      }
     },
     {
       "id": "NASA-A11-OVERVIEW",
@@ -186,7 +207,10 @@
       "localPath": "docs/sources/apollo11/NASA-A11-OVERVIEW.page.html",
       "sha256": "86120d1215b869ad4f415991b9f4cc1e4088566f0bfdf364123521cfaa74ca34",
       "bytes": 270841,
-      "status": "downloaded"
+      "status": "downloaded",
+      "contentAssertions": {
+        "htmlCanonicalMarker": "Apollo 11 Mission Overview"
+      }
     },
     {
       "id": "NASA-APOLLO-NUMBERS",
@@ -257,20 +281,7 @@
       "ntrsCitationId": "19900066485",
       "reportNumber": "MPR-SAT-FE-69-9",
       "nasaTmNumber": "NASA-TM-X-62558",
-      "contentAssertions": {
-        "titlePageKeywords": [
-          "MPR-SAT-FE-69-9",
-          "NASA-TM-X-62558",
-          "AS-506",
-          "Apollo 11",
-          "Saturn V Launch Vehicle Flight Evaluation Report"
-        ],
-        "publisher": "George C. Marshall Space Flight Center",
-        "preparingBody": "Saturn Flight Evaluation Working Group",
-        "pageCount": 284,
-        "pdfProducer": "Pdf.Capture version 5.2"
-      },
-      "notes": "R-016 RESOLVED. This report provides the S-IC/S-II physical separation at 162.3 sec (Table 4-3 ACTUAL) and S-II/S-IVB physical separation at 549.0 sec (Table 4-3 ACTUAL). These are the authoritative separation METs — the Mission Report (NASA-A11-MR) Table 3-I does not contain physical separation times, only engine cutoff and ignition command times. Section 12.2 confirms S-IC/S-II separation was 'accomplished as planned' with 'clean severance of the stages'. Section 12.3 confirms S-II/S-IVB separation was 'nominal'. See docs/audit/SATV-FE-SEPARATION-VERIFICATION.txt for full extraction and cross-check."
+      "notes": "R-016 RESOLVED. This report provides the S-IC/S-II separation command at 162.3 sec (Table 2-2 Event 27, computed from TIME FROM BASE = 161.6 + 0.7; Table 4-3 ACTUAL = 162.3 — same value) and S-II/S-IVB separation command at 549.0 sec (Table 2-2 Event 46, computed from TIME FROM BASE = 548.2 + 0.8; Table 4-3 ACTUAL = 549.0 — same value). Table 4-3 and Table 2-2 report the same value for each event; no independent physical-severance timestamp distinct from the command time is available. Section 12.2 confirms S-IC/S-II separation was 'accomplished as planned' with 'clean severance of the stages'. Section 12.3 confirms S-II/S-IVB separation was 'nominal'. See docs/audit/SATV-FE-SEPARATION-VERIFICATION.txt for full extraction and cross-check."
     },
     {
       "id": "NASA-A11-TRAJ-RECON",
@@ -352,7 +363,10 @@
       "sha256": "91f823f7738cb80b591d5e3e27e13ab9a52a4ab2d85306ecf62cf40cc1f35b80",
       "bytes": 6268,
       "status": "downloaded",
-      "notes": "Index page lists subsystem reports (tnD6722LMDisplayControl, tnD6737CrewProvisnsEquip, tnD6739VoiceCommTechnqs, etc.). Specific reports deferred to Phase 2/3."
+      "notes": "Index page lists subsystem reports (tnD6722LMDisplayControl, tnD6737CrewProvisnsEquip, tnD6739VoiceCommTechnqs, etc.). Specific reports deferred to Phase 2/3.",
+      "contentAssertions": {
+        "htmlCanonicalMarker": "Apollo Experience Reports"
+      }
     },
     {
       "id": "NASA-A11-IMAGES",
@@ -368,7 +382,10 @@
       "sha256": "c065b9e0b6760f3926bfed311610f8330523388d15835f75b49c29885b5515eb",
       "bytes": 15227,
       "status": "downloaded",
-      "notes": "Index page; specific image downloads deferred to Phase 2/3 when archive plates are curated."
+      "notes": "Index page; specific image downloads deferred to Phase 2/3 when archive plates are curated.",
+      "contentAssertions": {
+        "htmlCanonicalMarker": "Apollo 11 Image Gallery"
+      }
     },
     {
       "id": "NASA-A11-MEDIA50",
@@ -383,7 +400,10 @@
       "localPath": "docs/sources/apollo11/NASA-A11-MEDIA50.page.html",
       "sha256": "017399a37e03648dc3b4984a52241a6747f23723f33c453a255ed48e8f21be0d",
       "bytes": 17670,
-      "status": "downloaded"
+      "status": "downloaded",
+      "contentAssertions": {
+        "htmlCanonicalMarker": "Apollo 50th"
+      }
     },
     {
       "id": "NASA-MODEL-SATV",
@@ -412,7 +432,10 @@
         "materials": 13,
         "textures": 8,
         "animations": 23,
-        "sceneBounds": { "min": [-1.0194, -0.1409, -0.2641], "max": [0.9949, 12.8459, 1.7502] },
+        "sceneBounds": {
+          "min": [-1.0194, -0.1409, -0.2641],
+          "max": [0.9949, 12.8459, 1.7502]
+        },
         "sceneSize": [2.014, 12.987, 2.014],
         "maxDepth": 1,
         "nonIdentityTransforms": 0,
@@ -450,7 +473,10 @@
         "materials": 12,
         "textures": 6,
         "animations": 135,
-        "sceneBounds": { "min": [-3.2145, 0.1026, -3.2157], "max": [3.2129, 5.1154, 3.2109] },
+        "sceneBounds": {
+          "min": [-3.2145, 0.1026, -3.2157],
+          "max": [3.2129, 5.1154, 3.2109]
+        },
         "sceneSize": [6.427, 5.013, 6.427],
         "maxDepth": 1,
         "nonIdentityTransforms": 0,
@@ -489,7 +515,10 @@
           "bytes": 182684,
           "sha256": "12d6e8d1bc35a24fdc9f842fae54b7dfcb3790f9f49e92c9c3174b0cc5ee32b2",
           "triangles": 3652,
-          "bounds": { "min": [-16.73, -121.5, -8.03], "max": [17.22, -101.41, 25.87] },
+          "bounds": {
+            "min": [-16.73, -121.5, -8.03],
+            "max": [17.22, -101.41, 25.87]
+          },
           "units": "likely-centimeters-or-scaled",
           "csmRelevance": "command-module — CM candidate (note original typo 'moduel')"
         },
@@ -498,7 +527,10 @@
           "bytes": 801584,
           "sha256": "42ff337d2c2f246cd731700fcd68d03236ee9246bc9da3e26b7391b31db0cb2d",
           "triangles": 16030,
-          "bounds": { "min": [-19.23, -216.03, -10.46], "max": [19.08, -105.14, 27.9] },
+          "bounds": {
+            "min": [-19.23, -216.03, -10.46],
+            "max": [19.08, -105.14, 27.9]
+          },
           "units": "likely-millimeters",
           "csmRelevance": "launch-escape-system — LES candidate"
         },
@@ -507,7 +539,10 @@
           "bytes": 3384,
           "sha256": "89bb87aa90e3cd3e8bba76d177a40219944e6bb020230626bba5c6fd61f6f76e",
           "triangles": 66,
-          "bounds": { "min": [-91.33, 119.18, -2.84], "max": [-46.48, 148.17, 2.49] },
+          "bounds": {
+            "min": [-91.33, 119.18, -2.84],
+            "max": [-46.48, 148.17, 2.49]
+          },
           "units": "likely-centimeters-or-scaled",
           "csmRelevance": "F-1 engine fin (print 4 of a set) — not CSM"
         },
@@ -516,7 +551,10 @@
           "bytes": 58184,
           "sha256": "03c45c2dbb7640038102df1c6306d5c054bffbbd55949511029d2047e1b34874",
           "triangles": 1162,
-          "bounds": { "min": [-29.29, -58.69, -20.17], "max": [29.01, 4.96, 37.92] },
+          "bounds": {
+            "min": [-29.29, -58.69, -20.17],
+            "max": [29.01, 4.96, 37.92]
+          },
           "units": "likely-centimeters-or-scaled",
           "csmRelevance": "spacecraft-lm-adapter — SLA candidate"
         },
@@ -525,7 +563,10 @@
           "bytes": 1891434,
           "sha256": "1f7cd0a01026dcc1b7475d4327198aa6a0cb5d72be36ee45810c3138ee4fbb31",
           "triangles": 37827,
-          "bounds": { "min": [-62.32, -0.0, -62.45], "max": [62.24, 203.08, 62.11] },
+          "bounds": {
+            "min": [-62.32, -0.0, -62.45],
+            "max": [62.24, 203.08, 62.11]
+          },
           "units": "likely-millimeters",
           "csmRelevance": "S-IC first-stage lower section — not CSM"
         },
@@ -534,7 +575,10 @@
           "bytes": 684,
           "sha256": "66ad879b02f5dc5e96f697a6425808a351ad970077dfe60eb936c657baf649cc",
           "triangles": 12,
-          "bounds": { "min": [-22.9, -22.9, -22.9], "max": [22.9, 22.9, 22.9] },
+          "bounds": {
+            "min": [-22.9, -22.9, -22.9],
+            "max": [22.9, 22.9, 22.9]
+          },
           "units": "likely-centimeters-or-scaled",
           "csmRelevance": "S-IC assembly jig — not CSM"
         },
@@ -543,7 +587,10 @@
           "bytes": 820384,
           "sha256": "8e1cfb31c2aaeee6c5339a236e635b8ae92019bf7dc209a163c9d3a64fb8605c",
           "triangles": 16406,
-          "bounds": { "min": [-45.08, -78.51, -45.22], "max": [45.02, 88.81, 44.88] },
+          "bounds": {
+            "min": [-45.08, -78.51, -45.22],
+            "max": [45.02, 88.81, 44.88]
+          },
           "units": "likely-millimeters",
           "csmRelevance": "S-IC first-stage upper section — not CSM"
         },
@@ -552,7 +599,10 @@
           "bytes": 816184,
           "sha256": "dcfca68d42222dde64e1461bae5f0a0ac6aa18ad837d3511fc0be7edebb9fe36",
           "triangles": 16322,
-          "bounds": { "min": [-48.05, 119.98, -36.64], "max": [45.13, 384.68, 54.18] },
+          "bounds": {
+            "min": [-48.05, 119.98, -36.64],
+            "max": [45.13, 384.68, 54.18]
+          },
           "units": "likely-millimeters",
           "csmRelevance": "S-II second stage — not CSM"
         },
@@ -561,7 +611,10 @@
           "bytes": 836634,
           "sha256": "65bca1d8aa5865d1d3ec456ff31a7da68d52bffb040c4fcb866947998b2ea3d8",
           "triangles": 16731,
-          "bounds": { "min": [-32.4, -12.65, -24.22], "max": [31.1, 169.09, 41.84] },
+          "bounds": {
+            "min": [-32.4, -12.65, -24.22],
+            "max": [31.1, 169.09, 41.84]
+          },
           "units": "likely-millimeters",
           "csmRelevance": "S-IVB third stage — not CSM"
         },
@@ -570,7 +623,10 @@
           "bytes": 2329184,
           "sha256": "1e7b612d310ba2b8ca6f16321888726afc4f081c8c44991fddd1997184e79fbe",
           "triangles": 46582,
-          "bounds": { "min": [-20.21, -111.53, -13.66], "max": [19.7, -30.16, 28.62] },
+          "bounds": {
+            "min": [-20.21, -111.53, -13.66],
+            "max": [19.7, -30.16, 28.62]
+          },
           "units": "likely-centimeters-or-scaled",
           "csmRelevance": "service-module — SM candidate"
         },
@@ -579,7 +635,10 @@
           "bytes": 331184,
           "sha256": "3a696ddc2e2aac0f2b7532da607c4c5eac8d647efad586596d88724d92ed63a7",
           "triangles": 6622,
-          "bounds": { "min": [-45.21, -43.42, -45.21], "max": [45.18, 53.43, 45.18] },
+          "bounds": {
+            "min": [-45.21, -43.42, -45.21],
+            "max": [45.18, 53.43, 45.18]
+          },
           "units": "likely-centimeters-or-scaled",
           "csmRelevance": "S-IC/S-II interstage coupler — not CSM"
         },
@@ -588,7 +647,10 @@
           "bytes": 207484,
           "sha256": "353d9d13fd08eb24043f3a776a9a5febfb6da8b60e848259aff41037307b3623",
           "triangles": 4148,
-          "bounds": { "min": [-45.66, 339.95, -36.6], "max": [44.73, 436.8, 53.79] },
+          "bounds": {
+            "min": [-45.66, 339.95, -36.6],
+            "max": [44.73, 436.8, 53.79]
+          },
           "units": "likely-centimeters-or-scaled",
           "csmRelevance": "S-IC/S-II interstage coupler (alt version) — not CSM"
         }
@@ -618,7 +680,10 @@
           "purpose": "1K color map sample — verify color space and pole handling before adopting as runtime Moon texture."
         }
       ],
-      "notes": "svs.gsfc.nasa.gov has an EXPIRED TLS certificate as of 2026-07-13 (SEC_E_CERT_EXPIRED). All downloads from this host require -k (insecure) flag. CRITICAL: Phase 3 must (a) verify certificate status before re-fetching, (b) download full-resolution variants: lroc_color_poles_8k.tif or _16k.tif for desktop, _2k.tif or _4k.tif for mobile, (c) download DEM variants: ldem_4.tif or ldem_16.tif for displacement/normal mapping, (d) record each variant's SHA-256. Full resolution variants are large (TIF) — not fetched in Phase 0 to bound disk usage. OPEN QUESTION: is the SVS cert expiry transient or persistent? If persistent, escalate to NASA contact."
+      "notes": "svs.gsfc.nasa.gov has an EXPIRED TLS certificate as of 2026-07-13 (SEC_E_CERT_EXPIRED). All downloads from this host require -k (insecure) flag. CRITICAL: Phase 3 must (a) verify certificate status before re-fetching, (b) download full-resolution variants: lroc_color_poles_8k.tif or _16k.tif for desktop, _2k.tif or _4k.tif for mobile, (c) download DEM variants: ldem_4.tif or ldem_16.tif for displacement/normal mapping, (d) record each variant's SHA-256. Full resolution variants are large (TIF) — not fetched in Phase 0 to bound disk usage. OPEN QUESTION: is the SVS cert expiry transient or persistent? If persistent, escalate to NASA contact.",
+      "contentAssertions": {
+        "htmlCanonicalMarker": "CGI Moon Kit"
+      }
     },
     {
       "id": "NASA-A11-MOON-VIEW",
@@ -695,7 +760,10 @@
       "imageBinarySha256": null,
       "imageBinaryBytes": null,
       "imageBinaryStatus": "pending",
-      "notes": "Remediation: source kind corrected from 'image' to 'web' — Phase 0 archived the Visible Earth landing page only, not an actual image binary. The original Phase 0 release incorrectly classified this as kind=image while pointing localPath at an HTML snapshot. Direct image download URLs (eoimages.gsfc.nasa.gov path) all return HTTP 404 as of 2026-07-13. Phase 3 must locate the working Blue Marble 2048x2048 or 8192x4096 equirectangular texture via (a) Internet Archive Wayback for the original eoimages URLs, (b) NASA SVS Blue Marble variants, (c) NASA 'Blue Marble: Next Generation' (referenced in the page sidebar), or (d) another NASA-affiliated public-domain mirror. When a binary is retrieved, the entry must be split into a dedicated image-kind source or this entry's kind upgraded back to 'image' with a real binary localPath. OPEN QUESTION for owner: which Blue Marble variant is preferred (2002 original vs Next Generation 2007 vs more recent composite)?"
+      "notes": "Remediation: source kind corrected from 'image' to 'web' — Phase 0 archived the Visible Earth landing page only, not an actual image binary. The original Phase 0 release incorrectly classified this as kind=image while pointing localPath at an HTML snapshot. Direct image download URLs (eoimages.gsfc.nasa.gov path) all return HTTP 404 as of 2026-07-13. Phase 3 must locate the working Blue Marble 2048x2048 or 8192x4096 equirectangular texture via (a) Internet Archive Wayback for the original eoimages URLs, (b) NASA SVS Blue Marble variants, (c) NASA 'Blue Marble: Next Generation' (referenced in the page sidebar), or (d) another NASA-affiliated public-domain mirror. When a binary is retrieved, the entry must be split into a dedicated image-kind source or this entry's kind upgraded back to 'image' with a real binary localPath. OPEN QUESTION for owner: which Blue Marble variant is preferred (2002 original vs Next Generation 2007 vs more recent composite)?",
+      "contentAssertions": {
+        "htmlCanonicalMarker": "Blue Marble"
+      }
     },
     {
       "id": "NASA-MEDIA-RULES",
@@ -710,7 +778,10 @@
       "localPath": "docs/sources/apollo11/NASA-MEDIA-RULES.page.html",
       "sha256": "a156b3b3aa2cf34dd5e8b853154194b8975d423e2c0814d506e2ad10aa37d2bb",
       "bytes": 303382,
-      "status": "downloaded"
+      "status": "downloaded",
+      "contentAssertions": {
+        "htmlCanonicalMarker": "Guidelines for using NASA Images"
+      }
     },
     {
       "id": "NASA-BRAND",
@@ -725,7 +796,10 @@
       "localPath": "docs/sources/apollo11/NASA-BRAND.page.html",
       "sha256": "e80d7c1721d97d17210f50a9fc2ebd573fbea4d58831025e0f84653bfd77ffb3",
       "bytes": 330285,
-      "status": "downloaded"
+      "status": "downloaded",
+      "contentAssertions": {
+        "htmlCanonicalMarker": "NASA Brand Guidelines"
+      }
     }
   ]
 }

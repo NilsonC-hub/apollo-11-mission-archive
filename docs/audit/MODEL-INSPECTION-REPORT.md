@@ -182,7 +182,7 @@ Node names follow Maya defaults: `group13 {1..14, g1..g9, gr, p1, p2, pC}`, `gro
 
 ### Key findings
 
-- **All four CSM components are present** as separate STLs: CM, SM, LES, SLA. This confirms Path 2 is viable for CSM reconstruction.
+- **All four CSM components are present** as separate STLs: CM (`command moduel.stl`, note original typo), SM, LES, SLA. This makes Path 2 **provisionally viable** for CSM reconstruction, pending visual geometry verification (Phase 3: open each STL in a viewer and confirm the shape matches the expected CSM component).
 - **Units are inconsistent across the kit**: some STLs in millimeters (escape tower, S-IC sections, S-II, S-IVB), others in centimeters (CM, SM, SLA, couplers). Phase 3 normalization must scale each part individually.
 - **STLs have no UVs or materials** (typical for 3D-print kits). Phase 3 must remesh + UV unwrap + author materials.
 - **CM is low-detail** (3,652 triangles). Phase 3 may supplement with Path 3 (Saturn V GLB top extraction) for a higher-detail CM. See `CSM-RECONSTRUCTION-PLAN.md` for the hybrid recommendation.

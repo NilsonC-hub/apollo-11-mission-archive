@@ -5,14 +5,19 @@
 // source — i.e., the file has the right extension and valid HTML, but its
 // content does not contain the declared canonical marker.
 //
+// This test calls the REAL production validator (scripts/validate-sources.ts)
+// via its exported `validate` function with --manifest/--root fixture paths.
+// It does NOT duplicate validation logic.
+//
 // Spec ref: §9 — every source must trace to its declared identity; the
 // validator must detect cross-wiring beyond just kind/magic checks.
 
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { writeFileSync, mkdirSync, rmSync, existsSync, readFileSync } from 'node:fs'
+import { writeFileSync, mkdirSync, rmSync, existsSync } from 'node:fs'
 import { resolve, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { validate } from '../../scripts/validate-sources.ts'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = resolve(__filename, '..')
@@ -20,12 +25,13 @@ const ROOT = resolve(__dirname, '..', '..')
 
 const FIXTURE_DIR = join(ROOT, 'tests', 'fixtures', 'cross-wiring-test')
 
-function setupFixture(): void {
+function setupFixture(): string {
   if (existsSync(FIXTURE_DIR)) {
     rmSync(FIXTURE_DIR, { recursive: true, force: true })
   }
   mkdirSync(join(FIXTURE_DIR, 'docs', 'sources'), { recursive: true })
   mkdirSync(join(FIXTURE_DIR, 'src', 'missions', 'apollo11'), { recursive: true })
+  return FIXTURE_DIR
 }
 
 function teardownFixture(): void {
@@ -34,156 +40,231 @@ function teardownFixture(): void {
   }
 }
 
-// Inline validator logic — mirrors the content-assertion check in validate-sources.ts
-function validateContentAssertions(
-  fixtureRoot: string,
-): Array<{ id: string; marker: string; message: string }> {
-  const manifestPath = join(fixtureRoot, 'src', 'missions', 'apollo11', 'source-manifest.json')
-  const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'))
-  const errors: Array<{ id: string; marker: string; message: string }> = []
-
-  for (const s of manifest.sources) {
-    if (!s.contentAssertions?.htmlCanonicalMarker || !s.localPath) continue
-    const abs = join(fixtureRoot, s.localPath)
-    if (!existsSync(abs)) continue
-    const ext =
-      s.localPath.toLowerCase().endsWith('.html') || s.localPath.toLowerCase().endsWith('.htm')
-    if (!ext) continue
-    const content = readFileSync(abs, 'utf8')
-    if (!content.includes(s.contentAssertions.htmlCanonicalMarker)) {
-      errors.push({
-        id: s.id,
-        marker: s.contentAssertions.htmlCanonicalMarker,
-        message: `HTML canonical marker '${s.contentAssertions.htmlCanonicalMarker}' not found in '${s.localPath}' — cross-wired`,
-      })
-    }
+function writeManifest(dir: string, sources: object[]): void {
+  const manifest = {
+    manifestVersion: 1,
+    missionId: 'apollo11',
+    sources,
   }
-  return errors
+  writeFileSync(
+    join(dir, 'src', 'missions', 'apollo11', 'source-manifest.json'),
+    JSON.stringify(manifest, null, 2),
+  )
 }
 
-test('cross-wiring detection: wrong HTML path fails content assertion', () => {
-  setupFixture()
+test('cross-wiring detection: wrong HTML path fails content assertion via real validator', () => {
+  const dir = setupFixture()
   try {
     // Create two HTML snapshots with DIFFERENT canonical markers
     writeFileSync(
-      join(FIXTURE_DIR, 'docs', 'sources', 'NASA-A11-MR.page.html'),
+      join(dir, 'docs', 'sources', 'NASA-A11-MR.page.html'),
       '<html><head><title>Apollo 11 Mission Report</title></head><body>Apollo 11 Mission Report MSC-00171</body></html>',
     )
     writeFileSync(
-      join(FIXTURE_DIR, 'docs', 'sources', 'NASA-A11-OVERVIEW.page.html'),
+      join(dir, 'docs', 'sources', 'NASA-A11-OVERVIEW.page.html'),
       '<html><head><title>Apollo 11 Mission Overview</title></head><body>Apollo 11 Mission Overview</body></html>',
     )
 
     // Manifest where source B's localPath is cross-wired to source A's HTML
-    const manifest = {
-      manifestVersion: 1,
-      missionId: 'apollo11',
-      sources: [
-        {
-          id: 'NASA-A11-MR',
-          kind: 'web',
-          title: 'Apollo 11 Mission Report (HTML landing page)',
-          originalUrl: 'https://example.com/mr',
-          accessedAt: '2026-07-13',
-          rightsStatus: 'public domain',
-          purpose: 'test',
-          localPath: 'docs/sources/NASA-A11-MR.page.html',
-          status: 'downloaded',
-          contentAssertions: { htmlCanonicalMarker: 'Apollo 11 Mission Report' },
-        },
-        {
-          id: 'NASA-A11-OVERVIEW',
-          kind: 'web',
-          title: 'Apollo 11 Mission Overview (HTML landing page)',
-          originalUrl: 'https://example.com/overview',
-          accessedAt: '2026-07-13',
-          rightsStatus: 'public domain',
-          purpose: 'test',
-          // CROSS-WIRED: points at source A's HTML file, not its own
-          localPath: 'docs/sources/NASA-A11-MR.page.html',
-          status: 'downloaded',
-          contentAssertions: { htmlCanonicalMarker: 'Apollo 11 Mission Overview' },
-        },
-      ],
-    }
+    writeManifest(dir, [
+      {
+        id: 'NASA-A11-MR',
+        kind: 'web',
+        title: 'Apollo 11 Mission Report (HTML landing page)',
+        originalUrl: 'https://example.com/mr',
+        accessedAt: '2026-07-13',
+        rightsStatus: 'public domain',
+        purpose: 'test',
+        localPath: 'docs/sources/NASA-A11-MR.page.html',
+        status: 'downloaded',
+        contentAssertions: { htmlCanonicalMarker: 'Apollo 11 Mission Report' },
+      },
+      {
+        id: 'NASA-A11-OVERVIEW',
+        kind: 'web',
+        title: 'Apollo 11 Mission Overview (HTML landing page)',
+        originalUrl: 'https://example.com/overview',
+        accessedAt: '2026-07-13',
+        rightsStatus: 'public domain',
+        purpose: 'test',
+        // CROSS-WIRED: points at source A's HTML file, not its own
+        localPath: 'docs/sources/NASA-A11-MR.page.html',
+        status: 'downloaded',
+        contentAssertions: { htmlCanonicalMarker: 'Apollo 11 Mission Overview' },
+      },
+    ])
 
-    writeFileSync(
-      join(FIXTURE_DIR, 'src', 'missions', 'apollo11', 'source-manifest.json'),
-      JSON.stringify(manifest, null, 2),
+    const manifestPath = join(dir, 'src', 'missions', 'apollo11', 'source-manifest.json')
+    const errors = validate(manifestPath, dir)
+
+    // The real validator MUST detect the cross-wiring
+    const crossWiredErrors = errors.filter(
+      (e) =>
+        e.sourceId === 'NASA-A11-OVERVIEW' && e.field === 'contentAssertions.htmlCanonicalMarker',
     )
-
-    const errors = validateContentAssertions(FIXTURE_DIR)
-
-    // The validator MUST find the cross-wiring: NASA-A11-OVERVIEW's localPath
-    // points at NASA-A11-MR's HTML, which does NOT contain the
-    // "Apollo 11 Mission Overview" canonical marker.
-    assert.ok(errors.length > 0, 'Validator must detect cross-wiring')
-    const overviewError = errors.find((e) => e.id === 'NASA-A11-OVERVIEW')
-    assert.ok(overviewError, 'Error must identify NASA-A11-OVERVIEW as cross-wired')
     assert.ok(
-      overviewError!.marker.includes('Apollo 11 Mission Overview'),
-      'Error must reference the missing canonical marker',
+      crossWiredErrors.length > 0,
+      'Real validator must detect cross-wired HTML path via content assertion',
     )
   } finally {
     teardownFixture()
   }
 })
 
-test('cross-wiring detection: correct HTML path passes content assertion', () => {
-  setupFixture()
+test('cross-wiring detection: correct HTML path passes content assertion via real validator', () => {
+  const dir = setupFixture()
   try {
     writeFileSync(
-      join(FIXTURE_DIR, 'docs', 'sources', 'NASA-A11-MR.page.html'),
+      join(dir, 'docs', 'sources', 'NASA-A11-MR.page.html'),
       '<html><head><title>Apollo 11 Mission Report</title></head><body>Apollo 11 Mission Report MSC-00171</body></html>',
     )
     writeFileSync(
-      join(FIXTURE_DIR, 'docs', 'sources', 'NASA-A11-OVERVIEW.page.html'),
+      join(dir, 'docs', 'sources', 'NASA-A11-OVERVIEW.page.html'),
       '<html><head><title>Apollo 11 Mission Overview</title></head><body>Apollo 11 Mission Overview</body></html>',
     )
 
     // Manifest where both sources point at their OWN HTML — no cross-wiring
-    const manifest = {
-      manifestVersion: 1,
-      missionId: 'apollo11',
-      sources: [
-        {
-          id: 'NASA-A11-MR',
-          kind: 'web',
-          title: 'Apollo 11 Mission Report (HTML landing page)',
-          originalUrl: 'https://example.com/mr',
-          accessedAt: '2026-07-13',
-          rightsStatus: 'public domain',
-          purpose: 'test',
-          localPath: 'docs/sources/NASA-A11-MR.page.html',
-          status: 'downloaded',
-          contentAssertions: { htmlCanonicalMarker: 'Apollo 11 Mission Report' },
-        },
-        {
-          id: 'NASA-A11-OVERVIEW',
-          kind: 'web',
-          title: 'Apollo 11 Mission Overview (HTML landing page)',
-          originalUrl: 'https://example.com/overview',
-          accessedAt: '2026-07-13',
-          rightsStatus: 'public domain',
-          purpose: 'test',
-          localPath: 'docs/sources/NASA-A11-OVERVIEW.page.html',
-          status: 'downloaded',
-          contentAssertions: { htmlCanonicalMarker: 'Apollo 11 Mission Overview' },
-        },
-      ],
-    }
+    writeManifest(dir, [
+      {
+        id: 'NASA-A11-MR',
+        kind: 'web',
+        title: 'Apollo 11 Mission Report (HTML landing page)',
+        originalUrl: 'https://example.com/mr',
+        accessedAt: '2026-07-13',
+        rightsStatus: 'public domain',
+        purpose: 'test',
+        localPath: 'docs/sources/NASA-A11-MR.page.html',
+        status: 'downloaded',
+        contentAssertions: { htmlCanonicalMarker: 'Apollo 11 Mission Report' },
+      },
+      {
+        id: 'NASA-A11-OVERVIEW',
+        kind: 'web',
+        title: 'Apollo 11 Mission Overview (HTML landing page)',
+        originalUrl: 'https://example.com/overview',
+        accessedAt: '2026-07-13',
+        rightsStatus: 'public domain',
+        purpose: 'test',
+        localPath: 'docs/sources/NASA-A11-OVERVIEW.page.html',
+        status: 'downloaded',
+        contentAssertions: { htmlCanonicalMarker: 'Apollo 11 Mission Overview' },
+      },
+    ])
 
+    const manifestPath = join(dir, 'src', 'missions', 'apollo11', 'source-manifest.json')
+    const errors = validate(manifestPath, dir)
+
+    const contentErrors = errors.filter((e) => e.field === 'contentAssertions.htmlCanonicalMarker')
+    assert.equal(
+      contentErrors.length,
+      0,
+      `Validator must pass when paths are correct. Errors: ${JSON.stringify(contentErrors)}`,
+    )
+  } finally {
+    teardownFixture()
+  }
+})
+
+test('cross-wiring detection: production POSTTRAJ scenario — unique wrong HTML path fails', () => {
+  // This test reproduces the original R-013 cross-wiring scenario:
+  // NASA-A11-POSTTRAJ (a PDF source) has its localPath pointing at
+  // NASA-A11-MR.page.html (an HTML snapshot belonging to a different source).
+  // The validator must catch this via the kind/localPath consistency check
+  // (binary kind pointing at HTML) even without content assertions.
+  const dir = setupFixture()
+  try {
     writeFileSync(
-      join(FIXTURE_DIR, 'src', 'missions', 'apollo11', 'source-manifest.json'),
-      JSON.stringify(manifest, null, 2),
+      join(dir, 'docs', 'sources', 'NASA-A11-MR.page.html'),
+      '<html><head><title>Apollo 11 Mission Report</title></head><body>Mission Report</body></html>',
     )
 
-    const errors = validateContentAssertions(FIXTURE_DIR)
+    // POSTTRAJ is declared as kind=pdf but points at MR's HTML snapshot
+    writeManifest(dir, [
+      {
+        id: 'NASA-A11-MR',
+        kind: 'web',
+        title: 'Apollo 11 Mission Report (HTML landing page)',
+        originalUrl: 'https://ntrs.nasa.gov/citations/19700008096',
+        accessedAt: '2026-07-13',
+        rightsStatus: 'public domain',
+        purpose: 'test',
+        localPath: 'docs/sources/NASA-A11-MR.page.html',
+        status: 'downloaded',
+        contentAssertions: { htmlCanonicalMarker: 'Mission Report' },
+      },
+      {
+        id: 'NASA-A11-POSTTRAJ',
+        kind: 'pdf',
+        title: 'Apollo 11 Post-launch Operational Trajectory',
+        originalUrl: 'https://ntrs.nasa.gov/citations/19690026499',
+        accessedAt: '2026-07-13',
+        rightsStatus: 'public domain',
+        purpose: 'test',
+        // CROSS-WIRED: pdf kind pointing at an HTML file
+        localPath: 'docs/sources/NASA-A11-MR.page.html',
+        status: 'downloaded',
+      },
+    ])
 
+    const manifestPath = join(dir, 'src', 'missions', 'apollo11', 'source-manifest.json')
+    const errors = validate(manifestPath, dir)
+
+    // The validator must catch: (a) binary kind=pdf with HTML localPath,
+    // and (b) duplicate localPath cross-wiring
+    const posttrajErrors = errors.filter((e) => e.sourceId === 'NASA-A11-POSTTRAJ')
+    assert.ok(
+      posttrajErrors.length > 0,
+      'Real validator must detect POSTTRAJ cross-wiring (pdf kind → HTML path)',
+    )
+    // Must catch either the kind mismatch or the duplicate localPath
+    const hasKindError = posttrajErrors.some((e) => e.message.includes('HTML page'))
+    const hasDuplicateError = posttrajErrors.some(
+      (e) => e.message.includes('cross-wired') || e.message.includes('also claimed by'),
+    )
+    assert.ok(
+      hasKindError || hasDuplicateError,
+      `POSTTRAJ errors must include kind mismatch or duplicate path. Got: ${JSON.stringify(posttrajErrors)}`,
+    )
+  } finally {
+    teardownFixture()
+  }
+})
+
+test('cross-wiring detection: HTML source without contentAssertions is allowed', () => {
+  // Sources without contentAssertions should not fail on that basis —
+  // the content assertion check is opt-in, not mandatory.
+  // This documents the rule: local HTML sources without content assertions
+  // pass the validator; they just don't get the extra cross-wiring protection.
+  const dir = setupFixture()
+  try {
+    writeFileSync(
+      join(dir, 'docs', 'sources', 'NASA-A11-INDEX.page.html'),
+      '<html><body>Index page</body></html>',
+    )
+
+    writeManifest(dir, [
+      {
+        id: 'NASA-A11-INDEX',
+        kind: 'web',
+        title: 'Index page (no content assertion)',
+        originalUrl: 'https://example.com/index',
+        accessedAt: '2026-07-13',
+        rightsStatus: 'public domain',
+        purpose: 'test',
+        localPath: 'docs/sources/NASA-A11-INDEX.page.html',
+        status: 'downloaded',
+        // No contentAssertions — this is allowed
+      },
+    ])
+
+    const manifestPath = join(dir, 'src', 'missions', 'apollo11', 'source-manifest.json')
+    const errors = validate(manifestPath, dir)
+
+    const assertionErrors = errors.filter((e) => e.field === 'contentAssertions')
     assert.equal(
-      errors.length,
+      assertionErrors.length,
       0,
-      `Validator must pass when paths are correct. Errors: ${JSON.stringify(errors)}`,
+      `Sources without contentAssertions must not fail. Errors: ${JSON.stringify(assertionErrors)}`,
     )
   } finally {
     teardownFixture()

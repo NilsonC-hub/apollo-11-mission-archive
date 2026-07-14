@@ -108,7 +108,7 @@ Summary: 28 Event IDs established across the 10 A.3 categories. Verification sta
 
 No A.3 sub-event is labelled `ACTUAL` for animation unless its MET was verified in Phase 0, per spec §A.3: _"没有可靠 MET 时，可以保留在 Archive 叙事中，但不能驱动标为 `ACTUAL` 的精确动画。"_
 
-New risk R-016 logged: the Apollo 11 launch vehicle flight evaluation report (which authoritatively records the S-IC/S-II and S-II/S-IVB physical-separation METs) is NOT archived in Phase 0. Phase 2 must search NTRS and archive it.
+Risk R-016 RESOLVED: the Apollo 11 launch vehicle flight evaluation report (MPR-SAT-FE-69-9 / NASA-TM-X-62558) is now archived from archive.org mirror (NTRS de-indexed). S-IC/S-II separation command = 162.3 sec, S-II/S-IVB separation command = 549.0 sec — both MET-CONFIRMED. See `docs/audit/SATV-FE-SEPARATION-VERIFICATION.txt` for full extraction.
 
 ## UTC derivation rule (Appendix A.4)
 
@@ -129,7 +129,7 @@ The Mission Report defines range zero as `1969-07-16 13:32:00 GMT` and the lifto
 - ✅ **Appendix A.3 Event IDs established** (remediation): 28 Event IDs across 10 categories, each with source candidates, verification status, and non-ACTUAL processing rules. See `docs/audit/EVENT-VERIFICATION-A3.md`.
 - ✅ UTC epoch rule locked in.
 - ⚠ Some A.3 sub-events have `MET-LOCATED-NOT-VERIFIED` status (1201/1202 alarms at ~102:38:22 and ~102:39:31); Phase 2 must verify against Technical Air-to-Ground Transcript and ALSJ landing page.
-- ⚠ Launch vehicle flight evaluation report (R-016) not archived; Phase 2 must search NTRS.
+- ✅ Launch vehicle flight evaluation report (R-016) archived from archive.org mirror; S-IC/S-II and S-II/S-IVB separation METs confirmed (162.3 sec and 549.0 sec).
 - ❌ No event may be tagged `ACTUAL` in the production event table until Phase 2 completes the locator + page-number pass and writes the citations into `src/missions/apollo11/events.ts`.
 
 ## Commands run

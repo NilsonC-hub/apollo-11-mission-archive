@@ -3,7 +3,7 @@
 # Source: MPR-SAT-FE-69-9 / NASA-TM-X-62558 / NTRS 19900066485
 # Archive.org identifier: saturn-v-launch-vehicle-flight-evaluation-report-as-506
 # PDF: assets/raw/NASA-A11-SATV-FE.pdf (11,581,879 bytes, sha256 feb84bc2f6d761cc0996faf7ca74d449d83beb885b8ec67d4892f57e4ed0d212)
-# Extracted with PyMuPDF (fitz 1.28.0) on 2026-07-13 (remediation round 2)
+# Extracted with PyMuPDF (fitz 1.28.0) on 2026-07-13 (remediation round 2, corrected round 3)
 
 ## Provenance
 
@@ -42,13 +42,49 @@
 
 ### Table 2-2: Significant Event Times Summary (PDF pages 40-43)
 
-Event 27: S-IC/S-II SEPARATION COMMAND TO FIRE SEPARATION DEVICES AND RETRO MOTORS
-  Range Time ACTUAL: 164.0 sec
-  (Note: this is the COMMAND time, not the physical separation time)
+The table has a multi-column layout. Some events have a direct "RANGE TIME ACTUAL SEC"
+value; others only have a "TIME FROM BASE ACTUAL SEC" value that must be added to the
+time-base start to get the range time. The coordinate-based extraction (PyMuPDF
+get_text("dict") with bbox coordinates) was used to correctly map values to event rows.
 
-Event 46: S-II/S-IVB SEPARATION COMMAND TO FIRE SEPARATION DEVICES AND RETRO MOTORS
-  Range Time ACTUAL: 550.4 sec
-  (Note: this is the COMMAND time, not the physical separation time)
+#### S-IC/S-II separation region (PDF page 41, events 25-30)
+
+Time base 3 starts at Event 23 (page 40). Base time = 161.6 sec
+(verified: Event 25 ACTUAL=161.8, TIME_FROM_BASE=0.2 → 161.8-0.2=161.6;
+Event 28 ACTUAL=163.0, TIME_FROM_BASE=1.4 → 163.0-1.4=161.6;
+Event 29 ACTUAL=164.0, TIME_FROM_BASE=2.4 → 164.0-2.4=161.6).
+
+| Event | Description | RANGE TIME ACTUAL (direct) | TIME FROM BASE | Computed Range Time | Source |
+| --- | --- | --- | --- | --- | --- |
+| 25 | S-II LH2 recirculation pumps off | 161.8 | 0.2 | 161.8 | direct |
+| 26 | S-II ullage motor ignition | (blank) | 0.5 | 162.1 | base+TFB |
+| 27 | S-IC/S-II SEPARATION COMMAND | (blank) | 0.7 | 162.3 | base+TFB |
+| 28 | S-II engine start command (ESC) | 163.0 | 1.4 | 163.0 | direct |
+| 29 | S-II engine solenoid activation | 164.0 | 2.4 | 164.0 | direct |
+| 30 | S-II ullage motor burn time termination | 166.1 | 4.4 | 166.0 | direct |
+
+Event 27 (S-IC/S-II separation command) = 161.6 + 0.7 = 162.3 sec.
+This value has no direct ACTUAL cell; it is computed from the TIME FROM BASE column.
+
+Event 29 (S-II engine solenoid activation) = 164.0 sec (direct ACTUAL value).
+
+#### S-II/S-IVB separation region (PDF page 42, events 45-48)
+
+Time base 4 starts at Event 44 (page 41, S-II cutoff interrupt). Base time = 548.2 sec
+(verified: Event 47 ACTUAL=549.2, TIME_FROM_BASE=1.0 → 549.2-1.0=548.2;
+Event 48 ACTUAL=550.4, TIME_FROM_BASE=2.2 → 550.4-2.2=548.2).
+
+| Event | Description | RANGE TIME ACTUAL (direct) | TIME FROM BASE | Computed Range Time | Source |
+| --- | --- | --- | --- | --- | --- |
+| 45 | S-IVB ullage motor ignition | (blank) | 0.7 | 548.9 | base+TFB |
+| 46 | S-II/S-IVB SEPARATION COMMAND | (blank) | 0.8 | 549.0 | base+TFB |
+| 47 | S-IVB engine start command (first ESC) | 549.2 | 1.0 | 549.2 | direct |
+| 48 | Fuel chilldown pump off | 550.4 | 2.2 | 550.4 | direct |
+
+Event 46 (S-II/S-IVB separation command) = 548.2 + 0.8 = 549.0 sec.
+This value has no direct ACTUAL cell; it is computed from the TIME FROM BASE column.
+
+Event 48 (fuel chilldown pump off) = 550.4 sec (direct ACTUAL value).
 
 ### Table 4-3: Comparison of Separation Events (PDF page 63)
 
@@ -71,6 +107,13 @@ S-II/S-IVB SEPARATION:
   Heading Angle: ACTUAL 82.426 deg
   Geodetic Latitude: ACTUAL 31.883 deg N
 
+Table 4-3 gives the same values as the Table 2-2 separation command times
+(162.3 and 549.0). Table 4-3 does not provide an independent "physical severance"
+timestamp distinct from the command time. The Table 4-3 "Range Time" for each
+separation event matches the Table 2-2 Event 27/46 command time. Without an
+independent locator for a distinct severance moment, we cannot claim to have
+both a command time and a separate physical-severance time.
+
 ### Section 12: Separation (PDF page 183, printed page 12-1)
 
 12.1 SUMMARY:
@@ -92,23 +135,43 @@ S-II/S-IVB SEPARATION:
 
 ## Cross-check with Mission Report (NASA-A11-MR Table 3-I)
 
-| Event | Mission Report (Table 3-I) | Flight Evaluation Report (Table 4-3) | Delta |
-|---|---|---|---|
-| S-IC outboard cutoff (OECO) | 161.7 sec | 161.63 sec (Table 2-2 event 22) | -0.07 sec |
-| S-IC/S-II physical separation | (not in Table 3-I) | **162.3 sec** (Table 4-3) | — |
-| S-IC/S-II separation command | (not in Table 3-I) | 164.0 sec (Table 2-2 event 27) | — |
-| S-II cutoff | 548.3 sec | 548.22 sec (Table 2-2 event 43) | -0.08 sec |
-| S-II/S-IVB physical separation | (not in Table 3-I) | **549.0 sec** (Table 4-3) | — |
-| S-II/S-IVB separation command | (not in Table 3-I) | 550.4 sec (Table 2-2 event 46) | — |
-| S-IVB first ignition command | 552.2 sec | 552.2 sec (Table 2-2 event 47) | 0.0 sec |
+| Event | Mission Report (Table 3-I) | Flight Evaluation Report | Locator |
+| --- | --- | --- | --- |
+| S-IC outboard cutoff (OECO) | 161.7 sec | 161.63 sec (Table 2-2 event 22, direct) | Table 2-2 |
+| S-IC/S-II separation command | (not in Table 3-I) | 162.3 sec (Table 2-2 event 27, base+TFB) | Table 2-2 |
+| S-IC/S-II separation | (not in Table 3-I) | 162.3 sec (Table 4-3 ACTUAL) | Table 4-3 |
+| S-II engine solenoid activation | (not in Table 3-I) | 164.0 sec (Table 2-2 event 29, direct) | Table 2-2 |
+| S-II cutoff | 548.3 sec | 548.22 sec (Table 2-2 event 43, direct) | Table 2-2 |
+| S-II/S-IVB separation command | (not in Table 3-I) | 549.0 sec (Table 2-2 event 46, base+TFB) | Table 2-2 |
+| S-II/S-IVB separation | (not in Table 3-I) | 549.0 sec (Table 4-3 ACTUAL) | Table 4-3 |
+| Fuel chilldown pump off | (not in Table 3-I) | 550.4 sec (Table 2-2 event 48, direct) | Table 2-2 |
+| S-IVB first ignition command | 552.2 sec | 552.2 sec (Table 2-2 event 47, direct) | Table 2-2 |
 
-The physical separation times (162.3 sec and 549.0 sec) fall between the engine cutoff and the separation command times, which is physically correct: cutoff → physical separation → separation command → next stage ignition.
+Note: Table 4-3 separation Range Time = Table 2-2 separation command time for
+both events (162.3 and 549.0). No independent physical-severance timestamp is
+available distinct from the command time.
 
 ## R-016 Resolution
 
-R-016 is now RESOLVED. The S-IC/S-II and S-II/S-IVB physical separation METs are:
+R-016 is now RESOLVED. The S-IC/S-II and S-II/S-IVB separation command METs are:
 
-- `a11-sic-sii-separation`: **162.3 sec** (ACTUAL, from Table 4-3 of MPR-SAT-FE-69-9)
-- `a11-sii-sivb-separation`: **549.0 sec** (ACTUAL, from Table 4-3 of MPR-SAT-FE-69-9)
+- a11-sic-sii-separation: 162.3 sec (Table 2-2 event 27, computed from TIME FROM
+  BASE = 161.6 + 0.7; Table 4-3 ACTUAL = 162.3 — same value)
+- a11-sii-sivb-separation: 549.0 sec (Table 2-2 event 46, computed from TIME FROM
+  BASE = 548.2 + 0.8; Table 4-3 ACTUAL = 549.0 — same value)
 
-These values can now drive ACTUAL precision animation. The A.3 Event Verification document must be updated to change these from QUALITATIVE-ONLY to MET-CONFIRMED.
+These values can drive ACTUAL precision animation. The A.3 Event Verification
+document has been updated to change these from QUALITATIVE-ONLY to MET-CONFIRMED.
+
+### Correction history
+
+Round 2 transcription errors (now fixed in round 3):
+- Previously transcribed Event 27 = 164.0 (WRONG — 164.0 is Event 29, S-II engine
+  solenoid activation). Correct value: Event 27 = 162.3 (computed from TIME FROM BASE).
+- Previously transcribed Event 46 = 550.4 (WRONG — 550.4 is Event 48, fuel chilldown
+  pump off). Correct value: Event 46 = 549.0 (computed from TIME FROM BASE).
+- Previously claimed "physical separation (162.3) occurs between OECO (161.63) and
+  the separation command (164.0), which is physically correct" (WRONG — 164.0 is
+  Event 29, not Event 27; the separation command IS at 162.3, same as Table 4-3).
+  This argument has been removed. No claim is made about a physical-severance
+  timestamp distinct from the command time.

@@ -52,13 +52,9 @@ interface SourceRecord {
   provenance?: string
   provenanceGrade?: string
   contentAssertions?: {
-    titlePageKeywords?: string[]
-    publisher?: string
-    preparingBody?: string
-    pageCount?: number
-    pdfProducer?: string
     // HTML canonical/source marker — for web snapshots, a string that must
-    // appear in the HTML content to confirm it is the right page
+    // appear in the HTML content to confirm it is the right page.
+    // The validator checks this and fails if the marker is absent.
     htmlCanonicalMarker?: string
   }
 }
@@ -185,7 +181,8 @@ function matchesSignature(absPath: string, fileKind: string): boolean {
   return false
 }
 
-function validate(manifestPath: string): ValidationError[] {
+export function validate(manifestPath: string, rootDir?: string): ValidationError[] {
+  const ROOT = rootDir || resolve(dirname(fileURLToPath(import.meta.url)), '..')
   const errors: ValidationError[] = []
   if (!existsSync(manifestPath)) {
     errors.push({
@@ -517,14 +514,25 @@ function validate(manifestPath: string): ValidationError[] {
   return errors
 }
 
-const manifestPath = resolve(ROOT, 'src/missions/apollo11/source-manifest.json')
-const errors = validate(manifestPath)
+// === CLI entry point ===
+// Supports optional --manifest <path> and --root <dir> flags for fixture-based testing.
+// When not invoked as a module import, runs the validator and exits.
+const args = process.argv.slice(2)
+const manifestIdx = args.indexOf('--manifest')
+const rootIdx = args.indexOf('--root')
+const cliManifest =
+  manifestIdx >= 0 && args[manifestIdx + 1]
+    ? resolve(args[manifestIdx + 1])
+    : resolve(ROOT, 'src/missions/apollo11/source-manifest.json')
+const cliRoot = rootIdx >= 0 && args[rootIdx + 1] ? resolve(args[rootIdx + 1]) : undefined
+
+const errors = validate(cliManifest, cliRoot)
 
 const errorsList = errors.filter((e) => e.severity === 'error')
 const warnings = errors.filter((e) => e.severity === 'warn')
 
 console.log('=== Source Manifest Validation ===')
-console.log(`Manifest: ${manifestPath}`)
+console.log(`Manifest: ${cliManifest}`)
 console.log(`Errors:   ${errorsList.length}`)
 console.log(`Warnings: ${warnings.length}`)
 

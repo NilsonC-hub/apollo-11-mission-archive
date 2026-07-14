@@ -128,7 +128,7 @@ If Paths 2 and 3 both yield insufficient geometry, Phase 3 must self-build. Inpu
 - The final CSM asset is always labelled `RECONSTRUCTED FROM NASA REFERENCES` in the UI and Asset Manifest.
 - The Apollo-Soyuz GLB is explicitly forbidden (spec §30.4) and was not located anyway.
 
-**Remediation change from original Phase 0 decision**: the original decision said "Phase 3 must attempt Path 2 and Path 3 in parallel" — but Path 2 was not yet enumerated. The remediation confirms Path 2 is viable and specifies which STLs map to which CSM components. The hybrid approach (Path 2 for SM/LES/SLA + Path 3 for CM) is the new recommendation.
+**Remediation change from original Phase 0 decision**: the original decision said "Phase 3 must attempt Path 2 and Path 3 in parallel" — but Path 2 was not yet enumerated. The remediation confirms Path 2 is **provisionally viable** (pending visual geometry verification) and specifies which STLs map to which CSM components. The hybrid approach (Path 2 for SM/LES/SLA + Path 3 for CM) is the new recommendation.
 
 ## UI labelling commitment
 
