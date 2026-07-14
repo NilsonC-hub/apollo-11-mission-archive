@@ -4,6 +4,7 @@ import type { MissionAction, MissionEvent } from '../types/events.ts'
 import type { MissionDefinition, SourceRecord } from '../types/mission.ts'
 import type { CitationRef, EvidenceValue, SourcedValue } from '../types/provenance.ts'
 import { quantityForUnit } from '../types/units.ts'
+import type { VehicleComponentState } from '../types/vehicle.ts'
 
 export interface ValidationIssue {
   severity: 'error' | 'warning'
@@ -30,6 +31,71 @@ function duplicateIds(ids: readonly string[]): string[] {
     seen.add(id)
   }
   return [...duplicates]
+}
+
+function validateEngineKnowledge(
+  component: VehicleComponentState,
+  path: string,
+  issues: ValidationIssue[],
+): void {
+  if (component.engineMode === undefined) {
+    if (component.engineStateBasis !== undefined && component.engineStateBasis !== 'terminal') {
+      issue(
+        issues,
+        'ENGINE_BASIS_WITHOUT_MODE',
+        path,
+        'An absent engine mode may only describe a terminal configuration',
+      )
+    }
+    return
+  }
+  if (component.engineMode === 'unknown') {
+    if (component.engineStateBasis !== 'point-event') {
+      issue(
+        issues,
+        'UNKNOWN_ENGINE_WITHOUT_POINT_EVENT',
+        path,
+        'Unknown engine mode must be grounded in a point ignition event',
+      )
+    }
+    if (component.lastKnownEngineMode === undefined) {
+      issue(
+        issues,
+        'UNKNOWN_ENGINE_WITHOUT_LAST_KNOWN',
+        path,
+        'Unknown engine mode must preserve the last known mode',
+      )
+    }
+    return
+  }
+  if (component.engineStateBasis === 'point-event') {
+    issue(
+      issues,
+      'KNOWN_ENGINE_WITH_POINT_EVENT_BASIS',
+      path,
+      'A point ignition event cannot claim a continuing known engine mode',
+    )
+  }
+  if (component.engineStateBasis === 'terminal') {
+    issue(
+      issues,
+      'ENGINE_MODE_IN_TERMINAL_CONFIGURATION',
+      path,
+      'A terminal configuration must not claim a continuing engine mode',
+    )
+  }
+  if (
+    component.engineStateBasis === 'known' &&
+    component.lastKnownEngineMode !== undefined &&
+    component.lastKnownEngineMode !== component.engineMode
+  ) {
+    issue(
+      issues,
+      'ENGINE_LAST_KNOWN_MISMATCH',
+      path,
+      'A known engine mode must agree with its last-known value',
+    )
+  }
 }
 
 function validateCitations(
@@ -380,6 +446,7 @@ export function validateMissionDefinition(definition: MissionDefinition): Valida
   }
 
   for (const [index, component] of definition.vehicle.components.entries()) {
+    validateEngineKnowledge(component.initialState, `vehicle.components[${index}]`, issues)
     const parentId = component.initialState.parentId
     if (parentId !== null && !componentIds.has(parentId)) {
       issue(
@@ -436,6 +503,11 @@ export function validateMissionDefinition(definition: MissionDefinition): Valida
     try {
       const eventState = stateAtMet(definition, event.metSeconds)
       for (const [componentId, component] of Object.entries(eventState.components)) {
+        validateEngineKnowledge(
+          component,
+          `events[${eventIndex}].components.${componentId}`,
+          issues,
+        )
         if (
           (component.lifecycle === 'discarded' || component.lifecycle === 'landed') &&
           component.engineMode === 'burning'

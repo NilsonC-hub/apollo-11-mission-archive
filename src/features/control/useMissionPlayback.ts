@@ -1,14 +1,21 @@
 import { useEffect, useRef } from 'react'
 
-import { controlMetPath } from '../../app/controlDeepLink.ts'
+import { controlMetPath, recordControlPlaybackSnapshot } from '../../app/controlDeepLink.ts'
 import { mission } from '../../app/mission.ts'
 import { useMissionStore } from '../../app/missionStore.ts'
 import { metAtStoryTime } from '../../mission-core/index.ts'
 
-function flushPlaybackUrl(): void {
+let navigationFlushInProgress = false
+
+function flushPlaybackUrl(preserveSnapshotSource = false): void {
   if (!window.location.pathname.startsWith('/control')) return
   const state = useMissionStore.getState()
   const met = metAtStoryTime(mission.narrative, state.storyTimeMs)
+  recordControlPlaybackSnapshot(
+    window.location.pathname,
+    met,
+    preserveSnapshotSource || navigationFlushInProgress,
+  )
   window.history.replaceState(window.history.state, '', controlMetPath(met))
 }
 
@@ -22,16 +29,37 @@ function usePlaybackInterruptionSafety(): void {
     const onVisibilityChange = () => {
       if (document.visibilityState === 'hidden') interrupt('visibility')
     }
-    const onPageHide = () => interrupt('page-hide')
+    const onPageHide = () => {
+      flushPlaybackUrl(true)
+      pause('page-hide')
+    }
     const onBlur = () => interrupt('focus-loss')
+    const onBeforeUnload = () => {
+      navigationFlushInProgress = true
+      flushPlaybackUrl()
+    }
+    const onDocumentClick = (event: MouseEvent) => {
+      if (event.button !== 0 || event.defaultPrevented) return
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+      const target = event.target
+      const anchor = target instanceof Element ? target.closest<HTMLAnchorElement>('a[href]') : null
+      if (!anchor || anchor.target === '_blank' || anchor.hasAttribute('download')) return
+      const destination = new URL(anchor.href, window.location.href)
+      if (destination.origin !== window.location.origin) return
+      if (!destination.pathname.startsWith('/control')) flushPlaybackUrl()
+    }
 
     document.addEventListener('visibilitychange', onVisibilityChange)
+    document.addEventListener('click', onDocumentClick, true)
     window.addEventListener('pagehide', onPageHide)
     window.addEventListener('blur', onBlur)
+    window.addEventListener('beforeunload', onBeforeUnload)
     return () => {
       document.removeEventListener('visibilitychange', onVisibilityChange)
+      document.removeEventListener('click', onDocumentClick, true)
       window.removeEventListener('pagehide', onPageHide)
       window.removeEventListener('blur', onBlur)
+      window.removeEventListener('beforeunload', onBeforeUnload)
     }
   }, [])
 }

@@ -32,6 +32,7 @@ import {
 const MODEL_ROOT = '/missions/apollo11/models'
 const DRACO_ROOT = '/missions/apollo11/decoders/three-draco/'
 const BASIS_ROOT = '/missions/apollo11/decoders/three-basis/'
+const CAMERA_DRAG_THRESHOLD_PX = 4
 
 type Position = [number, number, number]
 type SceneMode =
@@ -141,6 +142,7 @@ function setComponentPresentation(
 }
 
 function handleSemanticClick(event: ThreeEvent<MouseEvent>): void {
+  if (event.delta >= CAMERA_DRAG_THRESHOLD_PX) return
   let candidate: Object3D | null = event.object
   while (candidate) {
     const componentId = candidate.userData.semanticComponentId as string | undefined
@@ -230,6 +232,7 @@ function CsmModel({
   const scene = useMemo(() => gltf.scene.clone(true), [gltf.scene])
 
   useLayoutEffect(() => {
+    scene.userData.csmConfiguration = configuration
     setComponentPresentation(scene, 'service-module', configuration === 'full')
     setComponentPresentation(scene, 'command-module', true)
   }, [configuration, scene])
@@ -436,13 +439,21 @@ function MissionConfiguration({
   }
 
   if (mode === 'return') {
-    const transearth = stateAtMet(mission, met).phaseId === 'transearth'
+    const missionState = stateAtMet(mission, met)
+    const transearth = missionState.phaseId === 'transearth'
+    const csmConfiguration =
+      missionState.components['service-module']?.lifecycle === 'discarded' ? 'command-only' : 'full'
     return (
       <>
         <Planet kind="moon" position={[-8.6, -3.9, -10]} radius={transearth ? 2.5 : 5.2} />
         {transearth && <Planet kind="earth" position={[9.5, 3.8, -12]} radius={2.2} />}
         <TrajectoryReference mode="return" />
-        <CsmModel quality={quality} position={[0.6, 0.4, 0]} scale={0.18} />
+        <CsmModel
+          quality={quality}
+          configuration={csmConfiguration}
+          position={[0.6, 0.4, 0]}
+          scale={0.18}
+        />
       </>
     )
   }
@@ -497,7 +508,9 @@ function CameraRig({
     const onPointerMove = (event: PointerEvent) => {
       const start = pointerStart.current
       if (!start || start.id !== event.pointerId) return
-      if (Math.hypot(event.clientX - start.x, event.clientY - start.y) >= 4) {
+      if (
+        Math.hypot(event.clientX - start.x, event.clientY - start.y) >= CAMERA_DRAG_THRESHOLD_PX
+      ) {
         useMissionStore.getState().enterFreeLook()
         pointerStart.current = null
       }
@@ -634,7 +647,7 @@ function RuntimeSceneState({
   const stateRef = useRef(state)
   stateRef.current = state
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const html = document.documentElement
     html.dataset.controlScene = 'loading'
     useMissionStore.getState().setSceneRuntime('loading')
@@ -665,7 +678,9 @@ function SceneContents({
 }) {
   const phaseProgress = visualStateAtStoryTime(mission.narrative, storyTimeMs).progress
   const runtimeState = stateAtMet(mission, met)
-  const configurationKey = `${sceneModeAtMet(met)}:${Object.entries(runtimeState.components)
+  const configurationKey = `${quality}:${sceneModeAtMet(met)}:${Object.entries(
+    runtimeState.components,
+  )
     .map(
       ([id, component]) =>
         `${id}:${component.lifecycle}:${component.parentId ?? '-'}:${component.visible}`,
@@ -686,7 +701,7 @@ function SceneContents({
 }
 
 function LoadingScene() {
-  useEffect(() => {
+  useLayoutEffect(() => {
     document.documentElement.dataset.controlScene = 'loading'
     useMissionStore.getState().setSceneRuntime('loading')
   }, [])
@@ -705,7 +720,10 @@ function RendererAuditProbe() {
   useEffect(() => {
     const report = () => {
       const materials = new Set<unknown>()
+      const csmConfigurations = new Set<string>()
       scene.traverse((object) => {
+        const csmConfiguration = object.userData.csmConfiguration as string | undefined
+        if (object.visible && csmConfiguration) csmConfigurations.add(csmConfiguration)
         const material = (object as { material?: unknown | unknown[] }).material
         for (const entry of Array.isArray(material) ? material : [material]) {
           if (entry) materials.add(entry)
@@ -720,6 +738,9 @@ function RendererAuditProbe() {
       document.documentElement.dataset.rendererFrames = String(renderer.info.render.frame)
       document.documentElement.dataset.rendererCalls = String(renderer.info.render.calls)
       document.documentElement.dataset.rendererTriangles = String(renderer.info.render.triangles)
+      document.documentElement.dataset.renderedCsmConfigurations = [...csmConfigurations]
+        .sort()
+        .join(',')
     }
 
     report()
@@ -769,6 +790,10 @@ export function StaticVehicleFallback() {
   )
 }
 
+function CanvasSupportFallback() {
+  return <span hidden aria-hidden="true" />
+}
+
 let cachedWebglAvailability: boolean | undefined
 
 function webglAvailable(): boolean {
@@ -803,7 +828,7 @@ export function MissionScene({
         camera={{ position: [9.2, 4.8, 12.8], fov: 38, near: 0.1, far: 120 }}
         frameloop="demand"
         gl={{ antialias: quality !== 'low', powerPreference: 'high-performance' }}
-        fallback={<StaticVehicleFallback />}
+        fallback={<CanvasSupportFallback />}
       >
         <RendererAuditProbe />
         <Suspense fallback={<LoadingScene />}>

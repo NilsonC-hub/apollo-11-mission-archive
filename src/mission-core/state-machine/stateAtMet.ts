@@ -32,9 +32,21 @@ export function applyMissionAction(state: MissionState, action: MissionAction): 
   const components = copyComponents(state.components)
 
   switch (action.type) {
-    case 'set-component-lifecycle':
+    case 'set-component-lifecycle': {
       components[action.componentId].lifecycle = action.lifecycle
+      if (
+        (action.lifecycle === 'discarded' || action.lifecycle === 'landed') &&
+        components[action.componentId].engineMode !== undefined
+      ) {
+        const previousMode = components[action.componentId].engineMode
+        if (previousMode !== 'unknown') {
+          components[action.componentId].lastKnownEngineMode = previousMode
+        }
+        components[action.componentId].engineMode = undefined
+        components[action.componentId].engineStateBasis = 'terminal'
+      }
       break
+    }
     case 'set-component-parent':
       components[action.componentId].parentId = action.parentId
       break
@@ -43,9 +55,18 @@ export function applyMissionAction(state: MissionState, action: MissionAction): 
       break
     case 'set-engine-mode':
       components[action.componentId].engineMode = action.engineMode
+      components[action.componentId].engineStateBasis = 'known'
+      components[action.componentId].lastKnownEngineMode = action.engineMode
       break
-    case 'record-engine-ignition':
-      return state
+    case 'record-engine-ignition': {
+      const previousMode = components[action.componentId].engineMode
+      if (previousMode && previousMode !== 'unknown') {
+        components[action.componentId].lastKnownEngineMode = previousMode
+      }
+      components[action.componentId].engineMode = 'unknown'
+      components[action.componentId].engineStateBasis = 'point-event'
+      break
+    }
   }
   return { ...state, components }
 }

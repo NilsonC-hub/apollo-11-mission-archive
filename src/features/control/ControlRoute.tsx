@@ -1,7 +1,14 @@
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 
-import { controlEventPath, controlMetPath, metForControlPath } from '../../app/controlDeepLink.ts'
+import {
+  clearControlReloadSnapshot,
+  consumeControlReloadSnapshot,
+  controlEventPath,
+  controlMetPath,
+  metForControlPath,
+  type ControlPlaybackSnapshot,
+} from '../../app/controlDeepLink.ts'
 import {
   currentReplayEvent,
   eventsForPhase,
@@ -118,18 +125,30 @@ function useControlKeyboard(): void {
 
 function useControlDeepLink(): number | undefined {
   const location = useLocation()
+  const navigate = useNavigate()
   const appliedPath = useRef<string | null>(null)
-  const targetMet = metForControlPath(location.pathname)
-  const pendingMet = appliedPath.current === location.pathname ? undefined : targetMet
+  const reloadSnapshot = useRef<ControlPlaybackSnapshot | null | undefined>(undefined)
+  if (reloadSnapshot.current === undefined) {
+    reloadSnapshot.current = consumeControlReloadSnapshot(location.pathname) ?? null
+  }
+  const effectivePath = reloadSnapshot.current?.path ?? location.pathname
+  const targetMet = reloadSnapshot.current?.metSeconds ?? metForControlPath(location.pathname)
+  const pendingMet = appliedPath.current === effectivePath ? undefined : targetMet
 
   useLayoutEffect(() => {
-    appliedPath.current = location.pathname
+    appliedPath.current = effectivePath
     if (targetMet !== undefined) {
       const store = useMissionStore.getState()
       store.setMet(targetMet)
       store.setPlaying(false)
     }
-  }, [location.pathname, targetMet])
+    if (reloadSnapshot.current) {
+      const restoredPath = reloadSnapshot.current.path
+      reloadSnapshot.current = null
+      clearControlReloadSnapshot()
+      if (restoredPath !== location.pathname) void navigate(restoredPath, { replace: true })
+    }
+  }, [effectivePath, location.pathname, navigate, targetMet])
 
   return pendingMet
 }
@@ -192,9 +211,13 @@ function enginePresentation(
         (action) => action.type === 'record-engine-ignition' && action.componentId === componentId,
       ),
   )
-  if (isIgnitionRecord) return { label: 'IGNITION EVENT · MODE N/A', tone: 'unknown' }
+  if (isIgnitionRecord) return { label: 'IGNITION EVENT · DURATION N/A', tone: 'unknown' }
   if (component.lifecycle === 'discarded') return { label: 'DISCARDED', tone: 'off' }
   if (component.lifecycle === 'landed') return { label: 'LANDED', tone: 'on' }
+  if (component.engineMode === 'unknown') {
+    const lastKnown = component.lastKnownEngineMode?.toUpperCase() ?? 'N/A'
+    return { label: `ENGINE MODE UNKNOWN · LAST KNOWN ${lastKnown}`, tone: 'unknown' }
+  }
   if (component.engineMode !== 'burning') {
     return {
       label: (component.engineMode ?? component.lifecycle).toUpperCase(),

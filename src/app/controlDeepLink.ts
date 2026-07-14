@@ -1,6 +1,73 @@
 import { parseMet } from '../mission-core/index.ts'
 import { replayEvents } from './mission.ts'
 
+const CONTROL_RELOAD_SNAPSHOT_KEY = 'apollo11.control.reload-snapshot.v1'
+
+export interface ControlPlaybackSnapshot {
+  sourcePathname: string
+  path: string
+  metSeconds: number
+}
+
+export function recordControlPlaybackSnapshot(
+  sourcePathname: string,
+  metSeconds: number,
+  preserveSource = false,
+): void {
+  if (typeof sessionStorage === 'undefined') return
+  let preservedSource: string | undefined
+  if (preserveSource) {
+    try {
+      preservedSource = (
+        JSON.parse(
+          sessionStorage.getItem(CONTROL_RELOAD_SNAPSHOT_KEY) ?? 'null',
+        ) as Partial<ControlPlaybackSnapshot> | null
+      )?.sourcePathname
+    } catch {
+      preservedSource = undefined
+    }
+  }
+  const snapshot: ControlPlaybackSnapshot = {
+    sourcePathname: preservedSource ?? sourcePathname,
+    path: controlMetPath(metSeconds),
+    metSeconds,
+  }
+  sessionStorage.setItem(CONTROL_RELOAD_SNAPSHOT_KEY, JSON.stringify(snapshot))
+}
+
+export function consumeControlReloadSnapshot(
+  pathname: string,
+): ControlPlaybackSnapshot | undefined {
+  if (typeof sessionStorage === 'undefined' || typeof performance === 'undefined') return undefined
+  const navigation = performance.getEntriesByType('navigation')[0] as
+    PerformanceNavigationTiming | undefined
+  if (navigation?.type !== 'reload') return undefined
+
+  const serialized = sessionStorage.getItem(CONTROL_RELOAD_SNAPSHOT_KEY)
+  if (!serialized) return undefined
+  try {
+    const snapshot = JSON.parse(serialized) as Partial<ControlPlaybackSnapshot>
+    if (
+      snapshot.sourcePathname !== pathname ||
+      typeof snapshot.path !== 'string' ||
+      typeof snapshot.metSeconds !== 'number' ||
+      !Number.isFinite(snapshot.metSeconds) ||
+      metForControlPath(snapshot.path) !== snapshot.metSeconds
+    ) {
+      return undefined
+    }
+    return snapshot as ControlPlaybackSnapshot
+  } catch {
+    return undefined
+  }
+}
+
+export function clearControlReloadSnapshot(): void {
+  if (typeof sessionStorage !== 'undefined') {
+    sessionStorage.removeItem(CONTROL_RELOAD_SNAPSHOT_KEY)
+  }
+}
+
 export function metForControlPath(pathname: string): number | undefined {
   const eventMatch = /^\/control\/event\/([^/]+)\/?$/.exec(pathname)
   if (eventMatch) {
@@ -12,7 +79,12 @@ export function metForControlPath(pathname: string): number | undefined {
   if (!metMatch) return undefined
 
   try {
-    return parseMet(decodeURIComponent(metMatch[1]))
+    const token = decodeURIComponent(metMatch[1])
+    if (/^s-?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i.test(token)) {
+      const value = Number(token.slice(1))
+      return Number.isFinite(value) ? value : undefined
+    }
+    return parseMet(token)
   } catch {
     return undefined
   }
@@ -20,38 +92,7 @@ export function metForControlPath(pathname: string): number | undefined {
 
 export function controlMetPath(metSeconds: number): string {
   if (!Number.isFinite(metSeconds)) throw new TypeError('Control MET must be finite')
-
-  const sign = metSeconds < 0 ? '-' : ''
-  const decimal = expandDecimal(Math.abs(metSeconds).toString())
-  const wholeSeconds = BigInt(decimal.whole)
-  const hours = wholeSeconds / 3600n
-  const remainder = wholeSeconds % 3600n
-  const minutes = remainder / 60n
-  const seconds = remainder % 60n
-  const fraction = decimal.fraction ? `.${decimal.fraction}` : ''
-  const formatted = `${sign}${hours.toString().padStart(3, '0')}:${minutes
-    .toString()
-    .padStart(2, '0')}:${seconds.toString().padStart(2, '0')}${fraction}`
-  return `/control/met/${encodeURIComponent(formatted)}`
-}
-
-function expandDecimal(value: string): { whole: string; fraction: string } {
-  const [coefficient, exponentToken] = value.toLowerCase().split('e')
-  const exponent = exponentToken ? Number(exponentToken) : 0
-  const point = coefficient.indexOf('.')
-  const digits = coefficient.replace('.', '')
-  const decimalIndex = (point === -1 ? coefficient.length : point) + exponent
-
-  if (decimalIndex <= 0) {
-    return { whole: '0', fraction: `${'0'.repeat(-decimalIndex)}${digits}` }
-  }
-  if (decimalIndex >= digits.length) {
-    return { whole: `${digits}${'0'.repeat(decimalIndex - digits.length)}`, fraction: '' }
-  }
-  return {
-    whole: digits.slice(0, decimalIndex),
-    fraction: digits.slice(decimalIndex),
-  }
+  return `/control/met/${encodeURIComponent(`s${metSeconds.toString()}`)}`
 }
 
 export function controlEventPath(eventId: string): string {

@@ -257,7 +257,16 @@ export const useMissionStore = create<MissionUiState>((set, get) => ({
         return state
       }
       if (state.interaction.mode === 'inspect') {
-        return { interaction: { ...state.interaction, componentId } }
+        return {
+          interaction: {
+            ...state.interaction,
+            componentId,
+            cameraControl:
+              state.interaction.componentId === componentId
+                ? state.interaction.cameraControl
+                : 'guided-focus',
+          },
+        }
       }
       return {
         playing: false,

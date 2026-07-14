@@ -1,13 +1,17 @@
 import type { EvidenceClass } from './provenance.ts'
 
 export type ComponentLifecycle = 'attached' | 'separating' | 'free' | 'discarded' | 'landed'
-export type EngineMode = 'off' | 'burning' | 'cutoff'
+export type KnownEngineMode = 'off' | 'burning' | 'cutoff'
+export type EngineMode = KnownEngineMode | 'unknown'
+export type EngineStateBasis = 'known' | 'point-event' | 'terminal'
 
 export interface VehicleComponentState {
   lifecycle: ComponentLifecycle
   parentId: string | null
   visible: boolean
   engineMode?: EngineMode
+  engineStateBasis?: EngineStateBasis
+  lastKnownEngineMode?: KnownEngineMode
 }
 
 export interface VehicleNodeBinding {

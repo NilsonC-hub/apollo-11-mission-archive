@@ -305,8 +305,24 @@ function validateMissionShape(candidate: unknown): ValidationIssue[] {
       if (state.engineMode !== undefined) {
         enumAt(
           state.engineMode,
-          ['off', 'burning', 'cutoff'],
+          ['off', 'burning', 'cutoff', 'unknown'],
           `${path}.initialState.engineMode`,
+          issues,
+        )
+      }
+      if (state.engineStateBasis !== undefined) {
+        enumAt(
+          state.engineStateBasis,
+          ['known', 'point-event', 'terminal'],
+          `${path}.initialState.engineStateBasis`,
+          issues,
+        )
+      }
+      if (state.lastKnownEngineMode !== undefined) {
+        enumAt(
+          state.lastKnownEngineMode,
+          ['off', 'burning', 'cutoff'],
+          `${path}.initialState.lastKnownEngineMode`,
           issues,
         )
       }

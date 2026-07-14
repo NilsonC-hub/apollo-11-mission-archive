@@ -29,7 +29,13 @@ function component(
       lifecycle: 'attached',
       parentId,
       visible: true,
-      ...(options.engine ? { engineMode: 'off' as const } : {}),
+      ...(options.engine
+        ? {
+            engineMode: 'off' as const,
+            engineStateBasis: 'known' as const,
+            lastKnownEngineMode: 'off' as const,
+          }
+        : {}),
     },
   }
 }
