@@ -40,9 +40,9 @@
 
 ## Separation MET Verification
 
-### Primary source: Table 4-3 — Comparison of Separation Events (PDF page 63)
+### Direct separation source: Table 4-3 — Comparison of Separation Events (PDF page 63)
 
-Table 4-3 is the primary source for separation METs. It lists "Range Time, sec"
+Table 4-3 is the report's dedicated separation comparison. It lists "Range Time, sec"
 with ACTUAL and NOMINAL columns for each separation event.
 
 S-IC/S-II SEPARATION:
@@ -64,12 +64,12 @@ S-II/S-IVB SEPARATION:
   Heading Angle: ACTUAL 82.426 deg
   Geodetic Latitude: ACTUAL 31.883 deg N
 
-### Cross-check: Table 2-2 — Significant Event Times Summary (PDF pages 40-43)
+### Independent direct confirmation: Table 2-2 — Significant Event Times Summary (PDF pages 40-43)
 
-Table 2-2 has a multi-column layout. Events 27 and 46 do not have a direct
-cell in the "RANGE TIME ACTUAL SEC" column. They do have a "TIME FROM BASE
-ACTUAL SEC" value. The TIME FROM BASE values cross-check the Table 4-3
-ACTUAL values:
+Table 2-2 has a multi-column layout. Events 27 and 46 each have a direct value
+in the "RANGE TIME ACTUAL SEC" column: 162.3 and 549.0 respectively. Their
+"TIME FROM BASE ACTUAL SEC" values provide a separate arithmetic cross-check
+against the applicable time-base start.
 
 #### S-IC/S-II separation region (PDF page 41, events 25-30)
 
@@ -82,13 +82,13 @@ Event 29 ACTUAL=164.0, TFB=2.4 → 164.0-2.4=161.6).
 | --- | --- | --- | --- | --- | --- |
 | 25 | S-II LH2 recirculation pumps off | 161.8 | 0.2 | 161.8 | — |
 | 26 | S-II ullage motor ignition | (none) | 0.5 | 162.1 | — |
-| 27 | S-IC/S-II SEPARATION COMMAND | (none) | 0.7 | 162.3 | 162.3 ✓ |
+| 27 | S-IC/S-II SEPARATION COMMAND | 162.3 | 0.7 | 162.3 | 162.3 ✓ |
 | 28 | S-II engine start command (ESC) | 163.0 | 1.4 | 163.0 | — |
 | 29 | S-II engine solenoid activation | 164.0 | 2.4 | 164.0 | — |
 | 30 | S-II ullage motor burn time termination | 166.1 | 4.4 | 166.0 | — |
 
-Event 27: Table 4-3 ACTUAL = 162.3 sec (primary). Table 2-2 TFB cross-check:
-base 161.6 + TFB 0.7 = 162.3 ✓.
+Event 27: Table 2-2 directly records RANGE TIME ACTUAL = 162.3 sec. Table 4-3
+independently records ACTUAL = 162.3 sec. TFB cross-check: base 161.6 + 0.7 = 162.3 ✓.
 
 Event 29: direct ACTUAL = 164.0 sec (Table 2-2 only, not a separation event).
 
@@ -101,23 +101,22 @@ Event 48 ACTUAL=550.4, TFB=2.2 → 550.4-2.2=548.2).
 | Event | Description | RANGE TIME ACTUAL (direct) | TIME FROM BASE | Computed (base+TFB) | Table 4-3 ACTUAL |
 | --- | --- | --- | --- | --- | --- |
 | 45 | S-IVB ullage motor ignition | (none) | 0.7 | 548.9 | — |
-| 46 | S-II/S-IVB SEPARATION COMMAND | (none) | 0.8 | 549.0 | 549.0 ✓ |
+| 46 | S-II/S-IVB SEPARATION COMMAND | 549.0 | 0.8 | 549.0 | 549.0 ✓ |
 | 47 | S-IVB engine start command (first ESC) | 549.2 | 1.0 | 549.2 | — |
 | 48 | Fuel chilldown pump off | 550.4 | 2.2 | 550.4 | — |
 
-Event 46: Table 4-3 ACTUAL = 549.0 sec (primary). Table 2-2 TFB cross-check:
-base 548.2 + TFB 0.8 = 549.0 ✓.
+Event 46: Table 2-2 directly records RANGE TIME ACTUAL = 549.0 sec. Table 4-3
+independently records ACTUAL = 549.0 sec. TFB cross-check: base 548.2 + 0.8 = 549.0 ✓.
 
 Event 48: direct ACTUAL = 550.4 sec (Table 2-2 only, not a separation event).
 
 ### Table 4-3 and Table 2-2 consistency
 
-Table 4-3 gives the separation Range Time ACTUAL values (162.3 and 549.0).
-Table 2-2 Events 27 and 46 do not have direct ACTUAL cells for these events;
-their TIME FROM BASE values (0.7 and 0.8) cross-check the Table 4-3 values
-when added to the time-base start (161.6 and 548.2 respectively). Both
-cross-checks match exactly. No independent physical-severance timestamp
-distinct from the command time is available.
+Table 2-2 Events 27 and 46 and Table 4-3 independently give the same direct
+Range Time ACTUAL values (162.3 and 549.0). Table 2-2 TIME FROM BASE values
+(0.7 and 0.8) provide an additional arithmetic cross-check when added to the
+time-base start (161.6 and 548.2 respectively). Both cross-checks match exactly.
+No independent physical-severance timestamp distinct from the command time is available.
 
 ### Section 12: Separation (PDF page 183, printed page 12-1)
 
@@ -143,28 +142,28 @@ distinct from the command time is available.
 | Event | Mission Report (Table 3-I) | Flight Evaluation Report | Locator |
 | --- | --- | --- | --- |
 | S-IC outboard cutoff (OECO) | 161.7 sec | 161.63 sec (Table 2-2 event 22, direct) | Table 2-2 |
-| S-IC/S-II separation | (not in Table 3-I) | 162.3 sec (Table 4-3 ACTUAL) | Table 4-3 |
-| S-IC/S-II separation command | (not in Table 3-I) | 162.3 sec (Table 2-2 event 27, TFB cross-check: 161.6+0.7) | Table 2-2 TFB |
+| S-IC/S-II separation | (not in Table 3-I) | 162.3 sec (Table 4-3 direct ACTUAL) | Table 4-3 |
+| S-IC/S-II separation command | (not in Table 3-I) | 162.3 sec (Table 2-2 event 27, direct ACTUAL; TFB cross-check: 161.6+0.7) | Table 2-2 |
 | S-II engine solenoid activation | (not in Table 3-I) | 164.0 sec (Table 2-2 event 29, direct) | Table 2-2 |
 | S-II cutoff | 548.3 sec | 548.22 sec (Table 2-2 event 43, direct) | Table 2-2 |
-| S-II/S-IVB separation | (not in Table 3-I) | 549.0 sec (Table 4-3 ACTUAL) | Table 4-3 |
-| S-II/S-IVB separation command | (not in Table 3-I) | 549.0 sec (Table 2-2 event 46, TFB cross-check: 548.2+0.8) | Table 2-2 TFB |
+| S-II/S-IVB separation | (not in Table 3-I) | 549.0 sec (Table 4-3 direct ACTUAL) | Table 4-3 |
+| S-II/S-IVB separation command | (not in Table 3-I) | 549.0 sec (Table 2-2 event 46, direct ACTUAL; TFB cross-check: 548.2+0.8) | Table 2-2 |
 | Fuel chilldown pump off | (not in Table 3-I) | 550.4 sec (Table 2-2 event 48, direct) | Table 2-2 |
 | S-IVB first ignition command | 552.2 sec | 552.2 sec (Table 2-2 event 47, direct) | Table 2-2 |
 
-The primary source for separation METs is Table 4-3 (ACTUAL = 162.3 and 549.0).
-Table 2-2 Events 27 and 46 do not have direct ACTUAL cells; their TIME FROM BASE
-values (0.7 and 0.8) cross-check the Table 4-3 values. No independent
-physical-severance timestamp distinct from the command time is available.
+Table 2-2 Events 27 and 46 and Table 4-3 all directly record ACTUAL = 162.3 and
+549.0. The Table 2-2 TIME FROM BASE values (0.7 and 0.8) are an additional
+cross-check, not the source of the Range Time values. No independent physical-
+severance timestamp distinct from the command time is available.
 
 ## R-016 Resolution
 
 R-016 is now RESOLVED. The S-IC/S-II and S-II/S-IVB separation METs are:
 
-- a11-sic-sii-separation: 162.3 sec (Table 4-3 ACTUAL, primary source;
-  Table 2-2 Event 27 TFB cross-check: base 161.6 + 0.7 = 162.3 ✓)
-- a11-sii-sivb-separation: 549.0 sec (Table 4-3 ACTUAL, primary source;
-  Table 2-2 Event 46 TFB cross-check: base 548.2 + 0.8 = 549.0 ✓)
+- a11-sic-sii-separation: 162.3 sec (direct ACTUAL in Table 2-2 Event 27 and
+  Table 4-3; TFB cross-check: base 161.6 + 0.7 = 162.3 ✓)
+- a11-sii-sivb-separation: 549.0 sec (direct ACTUAL in Table 2-2 Event 46 and
+  Table 4-3; TFB cross-check: base 548.2 + 0.8 = 549.0 ✓)
 
 These values can drive ACTUAL precision animation. The A.3 Event Verification
 document has been updated to change these from QUALITATIVE-ONLY to MET-CONFIRMED.
@@ -173,9 +172,14 @@ document has been updated to change these from QUALITATIVE-ONLY to MET-CONFIRMED
 
 Round 2 transcription errors (now fixed in round 3):
 - Previously transcribed Event 27 = 164.0 (WRONG — 164.0 is Event 29, S-II engine
-  solenoid activation). Correct value: Event 27 = 162.3 (computed from TIME FROM BASE).
+  solenoid activation). Correct value: Event 27 = 162.3 (direct ACTUAL; also confirmed by TFB).
 - Previously transcribed Event 46 = 550.4 (WRONG — 550.4 is Event 48, fuel chilldown
-  pump off). Correct value: Event 46 = 549.0 (computed from TIME FROM BASE).
+  pump off). Correct value: Event 46 = 549.0 (direct ACTUAL; also confirmed by TFB).
+
+Round 4 classification error (fixed in round 5):
+- Round 4 incorrectly described the Event 27 and Event 46 direct ACTUAL cells as
+  absent. Visual inspection of the ruled table confirms 162.3 and 549.0 are in the
+  RANGE TIME ACTUAL column. Fixture, tests, manifest, and audit wording were corrected.
 - Previously claimed "physical separation (162.3) occurs between OECO (161.63) and
   the separation command (164.0), which is physically correct" (WRONG — 164.0 is
   Event 29, not Event 27; the separation command IS at 162.3, same as Table 4-3).

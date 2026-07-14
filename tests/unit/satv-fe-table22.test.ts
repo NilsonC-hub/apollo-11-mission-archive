@@ -106,7 +106,7 @@ test('verification txt contains Event 48 direct ACTUAL 550.4', () => {
   assert.ok(verificationTxt.includes('550.4'), 'Verification txt must contain 550.4 for Event 48')
 })
 
-// === Table 4-3 primary source verification ===
+// === Table 4-3 direct ACTUAL verification ===
 
 test('Table 4-3 S-IC/S-II separation ACTUAL = 162.3 sec', () => {
   assert.equal(fixture.table43.separations['S-IC/S-II'].rangeTimeActual, 162.3)
@@ -118,9 +118,9 @@ test('Table 4-3 S-II/S-IVB separation ACTUAL = 549.0 sec', () => {
 
 // === Table 2-2 Event 27 (S-IC/S-II separation command) ===
 
-test('Table 2-2 Event 27 has no direct ACTUAL cell', () => {
+test('Table 2-2 Event 27 direct ACTUAL = 162.3 sec', () => {
   assert.ok(ev27, 'Event 27 must be in fixture')
-  assert.equal(ev27.rangeTimeActualDirect, null)
+  assert.equal(ev27.rangeTimeActualDirect, 162.3)
 })
 
 test('Table 2-2 Event 27 TFB = 0.7, base = 161.6, computed = 162.3', () => {
@@ -131,6 +131,7 @@ test('Table 2-2 Event 27 TFB = 0.7, base = 161.6, computed = 162.3', () => {
 
 test('Table 2-2 Event 27 TFB cross-check matches Table 4-3 ACTUAL', () => {
   assert.equal(r1(fixture.table22.sicSiiRegion.timeBase + ev27.timeFromBase), ev27.table43Actual)
+  assert.equal(ev27.rangeTimeActualDirect, ev27.table43Actual)
   assert.equal(ev27.table43Actual, fixture.table43.separations['S-IC/S-II'].rangeTimeActual)
 })
 
@@ -148,9 +149,9 @@ test('Table 2-2 Event 29 direct ACTUAL = 164.0 sec', () => {
 
 // === Table 2-2 Event 46 (S-II/S-IVB separation command) ===
 
-test('Table 2-2 Event 46 has no direct ACTUAL cell', () => {
+test('Table 2-2 Event 46 direct ACTUAL = 549.0 sec', () => {
   assert.ok(ev46, 'Event 46 must be in fixture')
-  assert.equal(ev46.rangeTimeActualDirect, null)
+  assert.equal(ev46.rangeTimeActualDirect, 549.0)
 })
 
 test('Table 2-2 Event 46 TFB = 0.8, base = 548.2, computed = 549.0', () => {
@@ -161,6 +162,7 @@ test('Table 2-2 Event 46 TFB = 0.8, base = 548.2, computed = 549.0', () => {
 
 test('Table 2-2 Event 46 TFB cross-check matches Table 4-3 ACTUAL', () => {
   assert.equal(r1(fixture.table22.siiSivbRegion.timeBase + ev46.timeFromBase), ev46.table43Actual)
+  assert.equal(ev46.rangeTimeActualDirect, ev46.table43Actual)
   assert.equal(ev46.table43Actual, fixture.table43.separations['S-II/S-IVB'].rangeTimeActual)
 })
 

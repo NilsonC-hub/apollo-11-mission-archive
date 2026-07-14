@@ -271,7 +271,7 @@
       "landingPageUrl": "https://archive.org/details/saturn-v-launch-vehicle-flight-evaluation-report-as-506",
       "accessedAt": "2026-07-13",
       "rightsStatus": "U.S. government work, public domain (NASA technical memorandum; archive.org mirror of de-indexed NTRS record)",
-      "purpose": "Primary source for S-IC/S-II and S-II/S-IVB physical separation METs (Table 4-3). Also provides Table 2-2 significant event times, separation evaluation narrative (Section 12), and trajectory comparison data.",
+      "purpose": "Direct source for S-IC/S-II and S-II/S-IVB physical separation METs in both Table 2-2 and the dedicated separation comparison in Table 4-3. Also provides separation evaluation narrative (Section 12) and trajectory comparison data.",
       "localPath": "assets/raw/NASA-A11-SATV-FE.pdf",
       "sha256": "feb84bc2f6d761cc0996faf7ca74d449d83beb885b8ec67d4892f57e4ed0d212",
       "bytes": 11581879,
@@ -281,7 +281,7 @@
       "ntrsCitationId": "19900066485",
       "reportNumber": "MPR-SAT-FE-69-9",
       "nasaTmNumber": "NASA-TM-X-62558",
-      "notes": "R-016 RESOLVED. This report provides the S-IC/S-II separation at 162.3 sec (Table 4-3 ACTUAL, primary source; Table 2-2 Event 27 TFB cross-check: base 161.6 + 0.7 = 162.3) and S-II/S-IVB separation at 549.0 sec (Table 4-3 ACTUAL, primary source; Table 2-2 Event 46 TFB cross-check: base 548.2 + 0.8 = 549.0). Table 2-2 Events 27 and 46 have no direct ACTUAL cells; their TIME FROM BASE values cross-check the Table 4-3 values. No independent physical-severance timestamp distinct from the command time is available. Section 12.2 confirms S-IC/S-II separation was 'accomplished as planned' with 'clean severance of the stages'. Section 12.3 confirms S-II/S-IVB separation was 'nominal'. See docs/audit/SATV-FE-SEPARATION-VERIFICATION.txt for full extraction and cross-check."
+      "notes": "R-016 RESOLVED. This report directly gives the S-IC/S-II separation at 162.3 sec in Table 2-2 Event 27 RANGE TIME ACTUAL and Table 4-3 ACTUAL. It directly gives the S-II/S-IVB separation at 549.0 sec in Table 2-2 Event 46 RANGE TIME ACTUAL and Table 4-3 ACTUAL. Table 2-2 TIME FROM BASE values independently cross-check those direct cells: base 161.6 + 0.7 = 162.3 and base 548.2 + 0.8 = 549.0. No independent physical-severance timestamp distinct from the command time is available. Section 12.2 confirms S-IC/S-II separation was 'accomplished as planned' with 'clean severance of the stages'. Section 12.3 confirms S-II/S-IVB separation was 'nominal'. See docs/audit/SATV-FE-SEPARATION-VERIFICATION.txt for full extraction and cross-check."
     },
     {
       "id": "NASA-A11-TRAJ-RECON",

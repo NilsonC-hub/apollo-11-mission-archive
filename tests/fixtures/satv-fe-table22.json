@@ -41,7 +41,7 @@
         {
           "event": 27,
           "description": "S-IC/S-II SEPARATION COMMAND",
-          "rangeTimeActualDirect": null,
+          "rangeTimeActualDirect": 162.3,
           "timeFromBase": 0.7,
           "table43Actual": 162.3
         },
@@ -78,7 +78,7 @@
         {
           "event": 46,
           "description": "S-II/S-IVB SEPARATION COMMAND",
-          "rangeTimeActualDirect": null,
+          "rangeTimeActualDirect": 549.0,
           "timeFromBase": 0.8,
           "table43Actual": 549.0
         },
