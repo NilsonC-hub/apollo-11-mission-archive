@@ -6,6 +6,22 @@ const CONTROL_TRAVERSAL_SNAPSHOTS_KEY = 'apollo11.control.traversal-snapshots.v1
 const CONTROL_HISTORY_ENTRY_ID_KEY = '__apollo11ControlEntryId'
 const MAX_CONTROL_TRAVERSAL_SNAPSHOTS = 32
 
+function controlReloadBootPathname(): string | null {
+  if (
+    typeof location === 'undefined' ||
+    typeof performance === 'undefined' ||
+    !location.pathname.startsWith('/control')
+  ) {
+    return null
+  }
+  const navigation = performance.getEntriesByType('navigation')[0] as
+    PerformanceNavigationTiming | undefined
+  return navigation?.type === 'reload' ? location.pathname : null
+}
+
+const CONTROL_RELOAD_BOOT_PATHNAME = controlReloadBootPathname()
+let controlReloadBootSnapshot: ControlPlaybackSnapshot | null | undefined
+
 export interface ControlPlaybackSnapshot {
   sourcePathname: string
   path: string
@@ -22,11 +38,21 @@ interface StoredControlTraversalSnapshot {
   path: string
 }
 
-function storedControlTraversalSnapshots(): StoredControlTraversalSnapshot[] {
-  if (typeof sessionStorage === 'undefined') return []
+function controlSessionStorage(): Storage | null {
+  try {
+    return typeof sessionStorage === 'undefined' ? null : sessionStorage
+  } catch {
+    return null
+  }
+}
+
+function storedControlTraversalSnapshots(
+  storage: Storage | null = controlSessionStorage(),
+): StoredControlTraversalSnapshot[] {
+  if (!storage) return []
   try {
     const snapshots = JSON.parse(
-      sessionStorage.getItem(CONTROL_TRAVERSAL_SNAPSHOTS_KEY) ?? '[]',
+      storage.getItem(CONTROL_TRAVERSAL_SNAPSHOTS_KEY) ?? '[]',
     ) as unknown
     if (!Array.isArray(snapshots)) return []
     return snapshots.filter(
@@ -65,15 +91,20 @@ export function ensureControlHistoryEntryId(locationKey: string): string {
 }
 
 export function recordControlTraversalSnapshot(entryId: string, metSeconds: number): void {
-  if (typeof sessionStorage === 'undefined' || entryId.length === 0) return
-  const snapshots = storedControlTraversalSnapshots().filter(
+  const storage = controlSessionStorage()
+  if (!storage || entryId.length === 0) return
+  const snapshots = storedControlTraversalSnapshots(storage).filter(
     (snapshot) => snapshot.entryId !== entryId,
   )
   snapshots.push({ entryId, path: controlMetPath(metSeconds) })
-  sessionStorage.setItem(
-    CONTROL_TRAVERSAL_SNAPSHOTS_KEY,
-    JSON.stringify(snapshots.slice(-MAX_CONTROL_TRAVERSAL_SNAPSHOTS)),
-  )
+  try {
+    storage.setItem(
+      CONTROL_TRAVERSAL_SNAPSHOTS_KEY,
+      JSON.stringify(snapshots.slice(-MAX_CONTROL_TRAVERSAL_SNAPSHOTS)),
+    )
+  } catch {
+    // Route continuity is best-effort when browser storage is unavailable.
+  }
 }
 
 export function readControlTraversalSnapshot(
@@ -89,35 +120,52 @@ export function readControlTraversalSnapshot(
 }
 
 export function clearControlTraversalSnapshot(entryId: string): void {
-  if (typeof sessionStorage === 'undefined') return
-  const snapshots = storedControlTraversalSnapshots().filter(
+  const storage = controlSessionStorage()
+  if (!storage) return
+  const snapshots = storedControlTraversalSnapshots(storage).filter(
     (snapshot) => snapshot.entryId !== entryId,
   )
-  if (snapshots.length === 0) sessionStorage.removeItem(CONTROL_TRAVERSAL_SNAPSHOTS_KEY)
-  else sessionStorage.setItem(CONTROL_TRAVERSAL_SNAPSHOTS_KEY, JSON.stringify(snapshots))
+  try {
+    if (snapshots.length === 0) storage.removeItem(CONTROL_TRAVERSAL_SNAPSHOTS_KEY)
+    else storage.setItem(CONTROL_TRAVERSAL_SNAPSHOTS_KEY, JSON.stringify(snapshots))
+  } catch {
+    // A failed cleanup must not interrupt navigation.
+  }
 }
 
 export function recordControlPlaybackSnapshot(sourcePathname: string, metSeconds: number): void {
-  if (typeof sessionStorage === 'undefined') return
+  const storage = controlSessionStorage()
+  if (!storage) return
   const snapshot: ControlPlaybackSnapshot = {
     sourcePathname,
     path: controlMetPath(metSeconds),
     metSeconds,
   }
-  sessionStorage.setItem(CONTROL_RELOAD_SNAPSHOT_KEY, JSON.stringify(snapshot))
+  try {
+    storage.setItem(CONTROL_RELOAD_SNAPSHOT_KEY, JSON.stringify(snapshot))
+  } catch {
+    // URL replacement still provides a recovery point when storage is unavailable.
+  }
 }
 
 export function consumeControlReloadSnapshot(
   pathname: string,
 ): ControlPlaybackSnapshot | undefined {
-  if (typeof sessionStorage === 'undefined' || typeof performance === 'undefined') return undefined
-  const navigation = performance.getEntriesByType('navigation')[0] as
-    PerformanceNavigationTiming | undefined
-  if (navigation?.type !== 'reload') return undefined
+  if (CONTROL_RELOAD_BOOT_PATHNAME === null || pathname !== CONTROL_RELOAD_BOOT_PATHNAME) {
+    return undefined
+  }
+  if (controlReloadBootSnapshot !== undefined) {
+    return controlReloadBootSnapshot ?? undefined
+  }
+  const storage = controlSessionStorage()
+  if (!storage) return undefined
 
-  const serialized = sessionStorage.getItem(CONTROL_RELOAD_SNAPSHOT_KEY)
-  if (!serialized) return undefined
   try {
+    const serialized = storage.getItem(CONTROL_RELOAD_SNAPSHOT_KEY)
+    if (!serialized) {
+      controlReloadBootSnapshot = null
+      return undefined
+    }
     const snapshot = JSON.parse(serialized) as Partial<ControlPlaybackSnapshot>
     const metSeconds =
       typeof snapshot.path === 'string' ? metForControlPath(snapshot.path) : undefined
@@ -127,29 +175,41 @@ export function consumeControlReloadSnapshot(
       metSeconds === undefined ||
       !Number.isFinite(metSeconds)
     ) {
+      controlReloadBootSnapshot = null
       return undefined
     }
-    return {
+    controlReloadBootSnapshot = {
       sourcePathname: snapshot.sourcePathname,
       path: snapshot.path,
       metSeconds,
     }
+    return controlReloadBootSnapshot
   } catch {
+    controlReloadBootSnapshot = null
     return undefined
   }
 }
 
 export function clearControlReloadSnapshot(): void {
-  if (typeof sessionStorage !== 'undefined') {
-    sessionStorage.removeItem(CONTROL_RELOAD_SNAPSHOT_KEY)
+  controlReloadBootSnapshot = null
+  const storage = controlSessionStorage()
+  if (!storage) return
+  try {
+    storage.removeItem(CONTROL_RELOAD_SNAPSHOT_KEY)
+  } catch {
+    // The in-memory boot transaction is still consumed when cleanup fails.
   }
 }
 
 export function metForControlPath(pathname: string): number | undefined {
   const eventMatch = /^\/control\/event\/([^/]+)\/?$/.exec(pathname)
   if (eventMatch) {
-    const eventId = decodeURIComponent(eventMatch[1])
-    return replayEvents.find((event) => event.id === eventId)?.metSeconds
+    try {
+      const eventId = decodeURIComponent(eventMatch[1])
+      return replayEvents.find((event) => event.id === eventId)?.metSeconds
+    } catch {
+      return undefined
+    }
   }
 
   const metMatch = /^\/control\/met\/([^/]+)\/?$/.exec(pathname)

@@ -641,6 +641,83 @@ test('Control history PUSH and POP restore each outgoing entry before destinatio
   expect(restoredSecondEntry.id).toMatch(new RegExp(`^control:${restoredSecondEntry.key}:`))
 })
 
+test('the Mission Control NavLink snapshots its outgoing Control history entry before PUSH', async ({
+  page,
+}) => {
+  await page.goto('/control/event/a11-liftoff')
+  await waitForScene(page)
+  const historyBeforePush = await page.evaluate(() => history.length)
+  await page.getByRole('button', { name: '10×', exact: true }).click()
+  await page.getByRole('button', { name: 'PLAY', exact: true }).click()
+  await page.waitForTimeout(1_050)
+  await expect.poll(() => page.url()).toMatch(/\/control\/met\/s/)
+  await page.waitForTimeout(200)
+  const periodicMet = metForControlPath(new URL(page.url()).pathname)
+  expect(periodicMet).toBeDefined()
+  const beforePush = await displayedMetSeconds(page)
+  expect(beforePush).toBeGreaterThan(periodicMet!)
+
+  await page.getByRole('link', { name: '02 MISSION CONTROL', exact: true }).click()
+  await expect(page).toHaveURL(/\/control$/)
+  expect(await page.evaluate(() => history.length)).toBe(historyBeforePush + 1)
+  await page.locator('.timeline-slider input').fill('500')
+  await expect(page).toHaveURL(/\/control\/met\/s5/)
+
+  await page.goBack()
+  await waitForScene(page)
+  expect(await displayedMetSeconds(page)).toBeGreaterThanOrEqual(beforePush)
+  const restoredEntry = await page.evaluate(() => ({
+    id: history.state?.__apollo11ControlEntryId as string | undefined,
+    key: history.state?.key as string | undefined,
+  }))
+  expect(restoredEntry.id).toMatch(new RegExp(`^control:${restoredEntry.key}:`))
+})
+
+test('adjacent event button and keyboard navigation land on target and pause replay', async ({
+  page,
+}) => {
+  await page.goto('/control/event/a11-liftoff')
+  await waitForScene(page)
+  await page.getByRole('button', { name: 'PLAY', exact: true }).click()
+  await page.waitForTimeout(120)
+  await page.getByRole('button', { name: 'Next event' }).click()
+  await expect(page.getByRole('button', { name: 'PLAY', exact: true })).toBeVisible()
+  await expect(page).toHaveURL(/\/control\/event\/a11-sic-outboard-cutoff$/)
+  await expect(page.locator('.met-display')).toHaveText(
+    formatEventMet(getEvent('a11-sic-outboard-cutoff')),
+  )
+
+  await page.getByRole('button', { name: '1×', exact: true }).click()
+  await page.getByRole('button', { name: 'PLAY', exact: true }).click()
+  await page.locator('.scene-frame').focus()
+  await page.keyboard.press('l')
+  await expect(page.getByRole('button', { name: 'PLAY', exact: true })).toBeVisible()
+  await expect(page).toHaveURL(/\/control\/met\/s162.3$/)
+  await expect(page.locator('.met-display')).toHaveText(
+    formatEventMet(getEvent('a11-sic-sii-separation')),
+  )
+})
+
+test('same-path Control POP applies the destination entry traversal snapshot', async ({ page }) => {
+  await page.goto('/control/met/s5')
+  await waitForScene(page)
+  await page.getByRole('link', { name: '02 MISSION CONTROL', exact: true }).click()
+  await expect(page).toHaveURL(/\/control$/)
+  await page.locator('.timeline-slider input').fill('5')
+  await expect(page).toHaveURL(/\/control\/met\/s5$/)
+
+  await page.getByRole('button', { name: '1000×', exact: true }).click()
+  await page.getByRole('button', { name: 'PLAY', exact: true }).click()
+  await page.waitForTimeout(250)
+  expect(new URL(page.url()).pathname).toBe('/control/met/s5')
+  expect(await displayedMetSeconds(page)).toBeGreaterThan(20)
+
+  await page.goBack()
+  await waitForScene(page)
+  expect(Math.abs((await displayedMetSeconds(page)) - 5)).toBeLessThan(0.11)
+  await expect(page.getByRole('button', { name: 'PLAY', exact: true })).toBeVisible()
+})
+
 test('reload snapshot is boot-only and cannot override a later traversal restore', async ({
   page,
   context,
@@ -665,6 +742,7 @@ test('reload snapshot is boot-only and cannot override a later traversal restore
   await page.getByRole('button', { name: 'PLAY', exact: true }).click()
   await expect.poll(() => displayedMetSeconds(page)).toBeGreaterThan(5)
   const session = await context.newCDPSession(page)
+  await session.send('Page.enable')
   await session.send('Emulation.setFocusEmulationEnabled', { enabled: false })
   const other = await context.newPage()
   await other.goto('about:blank')
@@ -680,11 +758,19 @@ test('reload snapshot is boot-only and cannot override a later traversal restore
   await page.waitForTimeout(300)
   const beforeBack = await displayedMetSeconds(page)
   expect(beforeBack).toBeGreaterThan(blurSnapshotMet!)
+  const c2SnapshotPath = new URL(page.url()).pathname
+  expect(metForControlPath(c2SnapshotPath)).toBe(blurSnapshotMet)
 
+  const historyWithC2 = await page.evaluate(() => history.length)
   await page.goBack()
   await expect(page).toHaveURL(/\/archive$/)
+  const forwardPaths: string[] = []
+  session.on('Page.navigatedWithinDocument', (event) => {
+    forwardPaths.push(new URL(event.url).pathname)
+  })
   await page.goForward()
   await waitForScene(page)
+  expect(forwardPaths[0]).toBe(c2SnapshotPath)
   expect(
     await page.evaluate(
       () => (performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming).type,
@@ -692,6 +778,7 @@ test('reload snapshot is boot-only and cannot override a later traversal restore
   ).toBe('reload')
   expect(await displayedMetSeconds(page)).toBeGreaterThanOrEqual(beforeBack)
   await expect(page.getByText('REPLAY PAUSED ON MODE CHANGE')).toBeVisible()
+  expect(await page.evaluate(() => history.length)).toBe(historyWithC2)
 })
 
 test('a new history entry at the same Control pathname does not consume an old entry snapshot', async ({

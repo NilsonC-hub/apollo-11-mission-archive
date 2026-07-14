@@ -3,7 +3,10 @@ import { createRoot } from 'react-dom/client'
 import { Navigate, RouterProvider, createBrowserRouter } from 'react-router-dom'
 
 import { RootLayout } from './app/RootLayout.tsx'
+import { installControlPopTraversalCapture } from './app/controlTraversal.ts'
 import './styles/global.css'
+
+installControlPopTraversalCapture()
 
 const router = createBrowserRouter([
   {

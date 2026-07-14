@@ -3,12 +3,19 @@ import { afterEach, test } from 'node:test'
 
 import { getEvent, mission, replayEndMet, replayNarrative } from '../../src/app/mission.ts'
 import {
+  clearControlReloadSnapshot,
   clearControlTraversalSnapshot,
+  consumeControlReloadSnapshot,
   controlMetPath,
   metForControlPath,
   readControlTraversalSnapshot,
+  recordControlPlaybackSnapshot,
   recordControlTraversalSnapshot,
 } from '../../src/app/controlDeepLink.ts'
+import {
+  setActiveControlHistoryEntry,
+  snapshotAndPauseActiveControlHistoryEntry,
+} from '../../src/app/controlTraversal.ts'
 import { useMissionStore } from '../../src/app/missionStore.ts'
 import { formatEventMet, stateAtMet } from '../../src/mission-core/index.ts'
 
@@ -269,16 +276,44 @@ test('traversal snapshot storage failure is best-effort and cannot prevent mode-
     },
   })
   useMissionStore.setState({ playing: true, resumeAvailable: false, pauseReason: null })
+  setActiveControlHistoryEntry('control:quota-test')
+
+  try {
+    assert.doesNotThrow(() => snapshotAndPauseActiveControlHistoryEntry())
+    assert.equal(useMissionStore.getState().playing, false)
+    assert.equal(useMissionStore.getState().resumeAvailable, true)
+    assert.equal(useMissionStore.getState().pauseReason, 'mode-switch')
+  } finally {
+    setActiveControlHistoryEntry(null)
+    if (original) Object.defineProperty(globalThis, 'sessionStorage', original)
+    else delete (globalThis as typeof globalThis & { sessionStorage?: unknown }).sessionStorage
+  }
+})
+
+test('sessionStorage getter SecurityError cannot escape or interrupt mode-switch pause', () => {
+  const original = Object.getOwnPropertyDescriptor(globalThis, 'sessionStorage')
+  Object.defineProperty(globalThis, 'sessionStorage', {
+    configurable: true,
+    get: () => {
+      throw new DOMException('Storage access denied', 'SecurityError')
+    },
+  })
+  useMissionStore.setState({ playing: true, resumeAvailable: false, pauseReason: null })
+  setActiveControlHistoryEntry('control:security-test')
 
   try {
     assert.doesNotThrow(() => {
-      recordControlTraversalSnapshot('control:quota-test', 20)
-      useMissionStore.getState().pauseForModeSwitch()
+      snapshotAndPauseActiveControlHistoryEntry()
+      recordControlPlaybackSnapshot('/control/met/s20', 20)
+      clearControlTraversalSnapshot('control:security-test')
+      clearControlReloadSnapshot()
+      consumeControlReloadSnapshot('/control/met/s20')
     })
     assert.equal(useMissionStore.getState().playing, false)
     assert.equal(useMissionStore.getState().resumeAvailable, true)
     assert.equal(useMissionStore.getState().pauseReason, 'mode-switch')
   } finally {
+    setActiveControlHistoryEntry(null)
     if (original) Object.defineProperty(globalThis, 'sessionStorage', original)
     else delete (globalThis as typeof globalThis & { sessionStorage?: unknown }).sessionStorage
   }

@@ -15,6 +15,7 @@ test('Control MET deep links preserve fractional mission time', () => {
 
 test('unknown or malformed Control deep links do not invent a target MET', () => {
   assert.equal(metForControlPath('/control/event/not-an-event'), undefined)
+  assert.equal(metForControlPath('/control/event/%E0%A4%A'), undefined)
   assert.equal(metForControlPath('/control/met/not-a-met'), undefined)
   assert.equal(metForControlPath('/control'), undefined)
 })

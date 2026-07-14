@@ -24,6 +24,7 @@ import {
   replayStartMet,
 } from '../../app/mission.ts'
 import { type ModelQuality, type PlaybackSpeed, useMissionStore } from '../../app/missionStore.ts'
+import { snapshotActiveControlHistoryEntry } from '../../app/controlTraversal.ts'
 import {
   formatMet,
   formatEventMet,
@@ -91,6 +92,23 @@ function consoleModeForPhase(phaseId: string): ConsoleMode {
   return 'return'
 }
 
+function adjacentReplayTarget(direction: 'next' | 'previous'): {
+  metSeconds: number
+  eventId?: string
+} | null {
+  const currentMet = metAtStoryTime(mission.narrative, useMissionStore.getState().storyTimeMs)
+  const targetEvent =
+    direction === 'next'
+      ? replayEvents.find((event) => event.metSeconds > currentMet + 0.01)
+      : replayEvents.findLast((event) => event.metSeconds < currentMet - 0.01)
+  if (direction === 'next' && !targetEvent) return null
+  const metSeconds = targetEvent?.metSeconds ?? replayStartMet
+  return {
+    metSeconds,
+    eventId: targetEvent?.id,
+  }
+}
+
 function useControlKeyboard(): void {
   const navigate = useNavigate()
   useEffect(() => {
@@ -107,12 +125,20 @@ function useControlKeyboard(): void {
       const store = useMissionStore.getState()
       if (event.key.toLowerCase() === 'k') store.togglePlaying()
       if (event.key.toLowerCase() === 'j') {
-        const targetMet = store.previousEvent()
-        void navigate(controlMetPath(targetMet))
+        const target = adjacentReplayTarget('previous')
+        if (!target) return
+        snapshotActiveControlHistoryEntry()
+        store.setMet(target.metSeconds)
+        store.setPlaying(false)
+        void navigate(controlMetPath(target.metSeconds))
       }
       if (event.key.toLowerCase() === 'l') {
-        const targetMet = store.nextEvent()
-        if (targetMet !== undefined) void navigate(controlMetPath(targetMet))
+        const target = adjacentReplayTarget('next')
+        if (!target) return
+        snapshotActiveControlHistoryEntry()
+        store.setMet(target.metSeconds)
+        store.setPlaying(false)
+        void navigate(controlMetPath(target.metSeconds))
       }
       if (event.key === '[' || event.key === ']') {
         const index = speeds.indexOf(store.speed)
@@ -132,61 +158,78 @@ function useControlDeepLink(): number | undefined {
   const appliedPath = useRef<string | null>(null)
   const restoreSnapshot = useRef<
     | {
-        kind: 'reload' | 'traversal'
-        entryId?: string
-        snapshot: Pick<ControlPlaybackSnapshot, 'path' | 'metSeconds'>
+        locationKey: string
+        restore: {
+          kind: 'reload' | 'traversal'
+          entryId?: string
+          snapshot: Pick<ControlPlaybackSnapshot, 'path' | 'metSeconds'>
+        } | null
       }
-    | null
     | undefined
   >(undefined)
-  if (restoreSnapshot.current === undefined) {
+  if (restoreSnapshot.current?.locationKey !== location.key) {
     const reload = consumeControlReloadSnapshot(location.pathname)
     if (reload) {
-      restoreSnapshot.current = { kind: 'reload', snapshot: reload }
+      restoreSnapshot.current = {
+        locationKey: location.key,
+        restore: { kind: 'reload', snapshot: reload },
+      }
     } else {
       const entryId = currentControlHistoryEntryId(location.key)
       const traversal = readControlTraversalSnapshot(entryId)
-      restoreSnapshot.current = traversal
-        ? { kind: 'traversal', entryId, snapshot: traversal }
-        : null
+      restoreSnapshot.current = {
+        locationKey: location.key,
+        restore: traversal ? { kind: 'traversal', entryId, snapshot: traversal } : null,
+      }
     }
   }
-  const effectivePath = restoreSnapshot.current?.snapshot.path ?? location.pathname
-  const targetMet =
-    restoreSnapshot.current?.snapshot.metSeconds ?? metForControlPath(location.pathname)
-  const pendingMet = appliedPath.current === effectivePath ? undefined : targetMet
+  const restore = restoreSnapshot.current.restore
+  const effectivePath = restore?.snapshot.path ?? location.pathname
+  const targetMet = restore?.snapshot.metSeconds ?? metForControlPath(location.pathname)
+  const pendingMet = restore
+    ? targetMet
+    : appliedPath.current === effectivePath
+      ? undefined
+      : targetMet
 
   useLayoutEffect(() => {
     appliedPath.current = effectivePath
     if (pendingMet !== undefined) {
       const store = useMissionStore.getState()
-      if (restoreSnapshot.current?.kind === 'traversal') {
+      if (restore?.kind === 'traversal') {
         store.restoreTraversalMet(pendingMet)
       } else {
         store.setMet(pendingMet)
         store.setPlaying(false)
       }
     }
-    if (restoreSnapshot.current) {
-      const restore = restoreSnapshot.current
+    if (restore) {
       const restoredPath = restore.snapshot.path
-      restoreSnapshot.current = null
+      restoreSnapshot.current = { locationKey: location.key, restore: null }
       if (restore.kind === 'reload') clearControlReloadSnapshot()
       else if (restore.entryId) clearControlTraversalSnapshot(restore.entryId)
       if (restoredPath !== location.pathname) void navigate(restoredPath, { replace: true })
     }
-  }, [effectivePath, location.pathname, navigate, pendingMet])
+  }, [effectivePath, location.key, location.pathname, navigate, pendingMet, restore])
 
   return pendingMet
 }
 
-type ControlJump = (metSeconds: number, path: string, replace?: boolean) => void
+type ControlJump = (
+  metSeconds: number,
+  path: string,
+  replace?: boolean,
+  pausePlayback?: boolean,
+) => void
 
 function useControlJump(): ControlJump {
   const navigate = useNavigate()
   return useCallback(
-    (metSeconds: number, path: string, replace = false) => {
-      useMissionStore.getState().setMet(metSeconds)
+    (metSeconds: number, path: string, replace = false, pausePlayback = false) => {
+      snapshotActiveControlHistoryEntry()
+      const store = useMissionStore.getState()
+      store.setMet(metSeconds)
+      if (pausePlayback) store.setPlaying(false)
       void navigate(path, { replace })
     },
     [navigate],
@@ -444,14 +487,16 @@ function PlaybackControls({ met, jump }: { met: number; jump: ControlJump }) {
   const editorialPause = useMissionStore((state) => state.editorialPauseSegmentId)
   const speed = useMissionStore((state) => state.speed)
   const togglePlaying = useMissionStore((state) => state.togglePlaying)
-  const nextEvent = useMissionStore((state) => state.nextEvent)
-  const previousEvent = useMissionStore((state) => state.previousEvent)
   const setSpeed = useMissionStore((state) => state.setSpeed)
   const goToAdjacentEvent = (direction: 'next' | 'previous') => {
-    const targetMet = direction === 'next' ? nextEvent() : previousEvent()
-    if (targetMet === undefined) return
-    const targetEvent = replayEvents.find((event) => event.metSeconds === targetMet)
-    jump(targetMet, targetEvent ? controlEventPath(targetEvent.id) : controlMetPath(targetMet))
+    const target = adjacentReplayTarget(direction)
+    if (!target) return
+    jump(
+      target.metSeconds,
+      target.eventId ? controlEventPath(target.eventId) : controlMetPath(target.metSeconds),
+      false,
+      true,
+    )
   }
 
   return (

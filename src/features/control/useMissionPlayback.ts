@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 
 import { controlMetPath, recordControlPlaybackSnapshot } from '../../app/controlDeepLink.ts'
+import { snapshotActiveControlHistoryEntry } from '../../app/controlTraversal.ts'
 import { mission } from '../../app/mission.ts'
 import { useMissionStore } from '../../app/missionStore.ts'
 import { metAtStoryTime } from '../../mission-core/index.ts'
@@ -9,11 +10,16 @@ interface NavigationSourceRef {
   current: string | null
 }
 
-function flushPlaybackUrl(navigationSource: NavigationSourceRef): void {
+function flushPlaybackUrl(
+  navigationSource: NavigationSourceRef,
+  persistReloadSnapshot = true,
+): void {
   if (!window.location.pathname.startsWith('/control')) return
   const state = useMissionStore.getState()
   const met = metAtStoryTime(mission.narrative, state.storyTimeMs)
-  recordControlPlaybackSnapshot(navigationSource.current ?? window.location.pathname, met)
+  if (persistReloadSnapshot) {
+    recordControlPlaybackSnapshot(navigationSource.current ?? window.location.pathname, met)
+  }
   window.history.replaceState(window.history.state, '', controlMetPath(met))
 }
 
@@ -48,7 +54,11 @@ function usePlaybackInterruptionSafety(navigationSource: NavigationSourceRef): v
       if (!anchor || anchor.target === '_blank' || anchor.hasAttribute('download')) return
       const destination = new URL(anchor.href, window.location.href)
       if (destination.origin !== window.location.origin) return
-      if (!destination.pathname.startsWith('/control')) flushPlaybackUrl(navigationSource)
+      if (destination.pathname.startsWith('/control')) {
+        snapshotActiveControlHistoryEntry()
+      } else {
+        flushPlaybackUrl(navigationSource, false)
+      }
     }
 
     document.addEventListener('visibilitychange', onVisibilityChange)
