@@ -8,6 +8,7 @@
     "dev": "pnpm stage:runtime-assets && vite",
     "build": "pnpm stage:runtime-assets && tsc -b && vite build",
     "preview": "vite preview",
+    "preview:open": "powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File scripts/open-preview.ps1",
     "typecheck": "tsc -b",
     "lint": "eslint .",
     "format": "prettier --write .",

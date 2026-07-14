@@ -75,12 +75,26 @@ The Apollo-specific, source-bound data lives under `src/missions/apollo11/`.
 The Archive and Mission Control routes are lazy-loaded independently. Opening
 the Archive does not request Three, R3F, GLB, KTX2, or decoder assets.
 
+## Windows one-click preview
+
+Double-click `OPEN-APOLLO-11-PREVIEW.cmd` in the repository root. The launcher
+checks Node and pnpm, installs the locked dependencies when they are missing,
+builds the current source, starts the production preview at
+`http://127.0.0.1:4173/archive`, and opens the default browser. Keep the launcher
+window open while previewing; press Ctrl+C or close it to stop the local server.
+
+The repository has both source `index.html` and generated `dist/index.html`
+files, but the generated file is not a standalone `file://` application. The
+BrowserRouter routes and root-relative Vite assets require the local HTTP server
+started by the launcher.
+
 ## Commands
 
 ```
 pnpm install                # install dev tools
 pnpm dev                    # stage verified runtime assets and start Vite
 pnpm build                  # stage assets, typecheck, and create production build
+pnpm preview:open           # build, serve, and open the production preview on Windows
 pnpm validate:sources       # verify Source Manifest references + hashes
 pnpm validate:mission       # verify event table + fact coverage
 pnpm validate:models         # verify Node Manifests + GLB parseability
