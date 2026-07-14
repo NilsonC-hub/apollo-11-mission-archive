@@ -9,26 +9,10 @@ export interface ControlPlaybackSnapshot {
   metSeconds: number
 }
 
-export function recordControlPlaybackSnapshot(
-  sourcePathname: string,
-  metSeconds: number,
-  preserveSource = false,
-): void {
+export function recordControlPlaybackSnapshot(sourcePathname: string, metSeconds: number): void {
   if (typeof sessionStorage === 'undefined') return
-  let preservedSource: string | undefined
-  if (preserveSource) {
-    try {
-      preservedSource = (
-        JSON.parse(
-          sessionStorage.getItem(CONTROL_RELOAD_SNAPSHOT_KEY) ?? 'null',
-        ) as Partial<ControlPlaybackSnapshot> | null
-      )?.sourcePathname
-    } catch {
-      preservedSource = undefined
-    }
-  }
   const snapshot: ControlPlaybackSnapshot = {
-    sourcePathname: preservedSource ?? sourcePathname,
+    sourcePathname,
     path: controlMetPath(metSeconds),
     metSeconds,
   }
@@ -47,16 +31,21 @@ export function consumeControlReloadSnapshot(
   if (!serialized) return undefined
   try {
     const snapshot = JSON.parse(serialized) as Partial<ControlPlaybackSnapshot>
+    const metSeconds =
+      typeof snapshot.path === 'string' ? metForControlPath(snapshot.path) : undefined
     if (
       snapshot.sourcePathname !== pathname ||
       typeof snapshot.path !== 'string' ||
-      typeof snapshot.metSeconds !== 'number' ||
-      !Number.isFinite(snapshot.metSeconds) ||
-      metForControlPath(snapshot.path) !== snapshot.metSeconds
+      metSeconds === undefined ||
+      !Number.isFinite(metSeconds)
     ) {
       return undefined
     }
-    return snapshot as ControlPlaybackSnapshot
+    return {
+      sourcePathname: snapshot.sourcePathname,
+      path: snapshot.path,
+      metSeconds,
+    }
   } catch {
     return undefined
   }
@@ -92,7 +81,8 @@ export function metForControlPath(pathname: string): number | undefined {
 
 export function controlMetPath(metSeconds: number): string {
   if (!Number.isFinite(metSeconds)) throw new TypeError('Control MET must be finite')
-  return `/control/met/${encodeURIComponent(`s${metSeconds.toString()}`)}`
+  const token = Object.is(metSeconds, -0) ? '-0' : metSeconds.toString()
+  return `/control/met/${encodeURIComponent(`s${token}`)}`
 }
 
 export function controlEventPath(eventId: string): string {

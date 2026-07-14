@@ -5,38 +5,40 @@ import { mission } from '../../app/mission.ts'
 import { useMissionStore } from '../../app/missionStore.ts'
 import { metAtStoryTime } from '../../mission-core/index.ts'
 
-let navigationFlushInProgress = false
+interface NavigationSourceRef {
+  current: string | null
+}
 
-function flushPlaybackUrl(preserveSnapshotSource = false): void {
+function flushPlaybackUrl(navigationSource: NavigationSourceRef): void {
   if (!window.location.pathname.startsWith('/control')) return
   const state = useMissionStore.getState()
   const met = metAtStoryTime(mission.narrative, state.storyTimeMs)
-  recordControlPlaybackSnapshot(
-    window.location.pathname,
-    met,
-    preserveSnapshotSource || navigationFlushInProgress,
-  )
+  recordControlPlaybackSnapshot(navigationSource.current ?? window.location.pathname, met)
   window.history.replaceState(window.history.state, '', controlMetPath(met))
 }
 
-function usePlaybackInterruptionSafety(): void {
+function usePlaybackInterruptionSafety(navigationSource: NavigationSourceRef): void {
   useEffect(() => {
     const pause = useMissionStore.getState().pauseForInterruption
     const interrupt = (reason: 'visibility' | 'page-hide' | 'focus-loss') => {
-      flushPlaybackUrl()
+      flushPlaybackUrl(navigationSource)
       pause(reason)
     }
     const onVisibilityChange = () => {
       if (document.visibilityState === 'hidden') interrupt('visibility')
     }
     const onPageHide = () => {
-      flushPlaybackUrl(true)
+      navigationSource.current ??= window.location.pathname
+      flushPlaybackUrl(navigationSource)
       pause('page-hide')
     }
     const onBlur = () => interrupt('focus-loss')
     const onBeforeUnload = () => {
-      navigationFlushInProgress = true
-      flushPlaybackUrl()
+      navigationSource.current ??= window.location.pathname
+      flushPlaybackUrl(navigationSource)
+    }
+    const onPageShow = () => {
+      navigationSource.current = null
     }
     const onDocumentClick = (event: MouseEvent) => {
       if (event.button !== 0 || event.defaultPrevented) return
@@ -46,7 +48,7 @@ function usePlaybackInterruptionSafety(): void {
       if (!anchor || anchor.target === '_blank' || anchor.hasAttribute('download')) return
       const destination = new URL(anchor.href, window.location.href)
       if (destination.origin !== window.location.origin) return
-      if (!destination.pathname.startsWith('/control')) flushPlaybackUrl()
+      if (!destination.pathname.startsWith('/control')) flushPlaybackUrl(navigationSource)
     }
 
     document.addEventListener('visibilitychange', onVisibilityChange)
@@ -54,39 +56,42 @@ function usePlaybackInterruptionSafety(): void {
     window.addEventListener('pagehide', onPageHide)
     window.addEventListener('blur', onBlur)
     window.addEventListener('beforeunload', onBeforeUnload)
+    window.addEventListener('pageshow', onPageShow)
     return () => {
       document.removeEventListener('visibilitychange', onVisibilityChange)
       document.removeEventListener('click', onDocumentClick, true)
       window.removeEventListener('pagehide', onPageHide)
       window.removeEventListener('blur', onBlur)
       window.removeEventListener('beforeunload', onBeforeUnload)
+      window.removeEventListener('pageshow', onPageShow)
     }
-  }, [])
+  }, [navigationSource])
 }
 
-function usePlaybackUrlSync(playing: boolean): void {
+function usePlaybackUrlSync(playing: boolean, navigationSource: NavigationSourceRef): void {
   useEffect(
     () =>
       useMissionStore.subscribe((state, previous) => {
-        if (previous.playing && !state.playing) flushPlaybackUrl()
+        if (previous.playing && !state.playing) flushPlaybackUrl(navigationSource)
       }),
-    [],
+    [navigationSource],
   )
 
   useEffect(() => {
     if (!playing) return
-    const interval = window.setInterval(flushPlaybackUrl, 1_000)
+    const interval = window.setInterval(() => flushPlaybackUrl(navigationSource), 1_000)
     return () => window.clearInterval(interval)
-  }, [playing])
+  }, [navigationSource, playing])
 }
 
 export function useMissionPlayback(): void {
   const frame = useRef<number | null>(null)
   const previous = useRef<number | null>(null)
+  const navigationSource = useRef<string | null>(null)
   const playing = useMissionStore((state) => state.playing)
 
-  usePlaybackInterruptionSafety()
-  usePlaybackUrlSync(playing)
+  usePlaybackInterruptionSafety(navigationSource)
+  usePlaybackUrlSync(playing, navigationSource)
 
   useEffect(() => {
     if (!playing) {
