@@ -41,3 +41,4 @@ assets/raw/NASA-MODEL-SATV-STL-extracted/
 assets/raw/**/*.mp3
 assets/raw/**/*.wav
 public/**/*.mp3
+public/missions/apollo11/plates/*.jpg

@@ -26,6 +26,10 @@ export const phase4Events = mission.events.filter((event) => phase4Ids.has(event
 export const phase4StartMet = 0
 export const phase4EndMet = phase4Events.at(-1)!.metSeconds
 
+export const replayEvents = mission.events
+export const replayStartMet = 0
+export const replayEndMet = getEvent('a11-splashdown').metSeconds
+
 export const factsById = new Map(mission.facts.map((fact) => [fact.id, fact]))
 export const sourcesById = new Map(mission.sources.sources.map((source) => [source.id, source]))
 export const phasesById = new Map(mission.phases.map((phase) => [phase.id, phase]))
@@ -38,6 +42,18 @@ export function getEvent(id: string): MissionEvent {
 
 export function currentPhase4Event(metSeconds: number): MissionEvent | undefined {
   return eventAtOrBefore(phase4Events, metSeconds)
+}
+
+export function currentReplayEvent(metSeconds: number): MissionEvent | undefined {
+  return eventAtOrBefore(replayEvents, metSeconds)
+}
+
+export function eventsForPhase(phaseId: string): MissionEvent[] {
+  const phase = phasesById.get(phaseId)
+  if (!phase) return []
+  const startMet = phase.startEventId ? getEvent(phase.startEventId).metSeconds : replayStartMet
+  const endMet = phase.endEventId ? getEvent(phase.endEventId).metSeconds : replayEndMet
+  return replayEvents.filter((event) => event.metSeconds >= startMet && event.metSeconds <= endMet)
 }
 
 export function formatCitation(citation: CitationRef): string {

@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-import { phase4EndMet, phase4Events, phase4StartMet } from './mission.ts'
+import { replayEndMet, replayEvents, replayStartMet } from './mission.ts'
 
 export type PlaybackSpeed = 1 | 10 | 100 | 1000
 export type ModelQuality = 'high' | 'medium' | 'low' | 'fallback'
@@ -20,11 +20,11 @@ interface MissionUiState {
 }
 
 function clampMet(value: number): number {
-  return Math.min(phase4EndMet, Math.max(phase4StartMet, value))
+  return Math.min(replayEndMet, Math.max(replayStartMet, value))
 }
 
 export const useMissionStore = create<MissionUiState>((set, get) => ({
-  metSeconds: phase4StartMet,
+  metSeconds: replayStartMet,
   playing: false,
   speed: 100,
   quality: 'medium',
@@ -34,12 +34,12 @@ export const useMissionStore = create<MissionUiState>((set, get) => ({
   setSpeed: (speed) => set({ speed }),
   setQuality: (quality) => set({ quality }),
   nextEvent: () => {
-    const next = phase4Events.find((event) => event.metSeconds > get().metSeconds + 0.01)
+    const next = replayEvents.find((event) => event.metSeconds > get().metSeconds + 0.01)
     if (next) set({ metSeconds: next.metSeconds, playing: false })
   },
   previousEvent: () => {
-    const candidates = phase4Events.filter((event) => event.metSeconds < get().metSeconds - 0.01)
+    const candidates = replayEvents.filter((event) => event.metSeconds < get().metSeconds - 0.01)
     const previous = candidates.at(-1)
-    set({ metSeconds: previous?.metSeconds ?? phase4StartMet, playing: false })
+    set({ metSeconds: previous?.metSeconds ?? replayStartMet, playing: false })
   },
 }))

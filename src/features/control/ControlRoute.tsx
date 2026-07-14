@@ -1,16 +1,24 @@
 import { lazy, Suspense, useEffect } from 'react'
 
 import {
-  currentPhase4Event,
+  currentReplayEvent,
+  eventsForPhase,
   formatCitation,
   mission,
-  phase4EndMet,
-  phase4Events,
-  phase4StartMet,
+  missionPack,
   phasesById,
+  replayEndMet,
+  replayEvents,
+  replayStartMet,
 } from '../../app/mission.ts'
 import { type ModelQuality, type PlaybackSpeed, useMissionStore } from '../../app/missionStore.ts'
-import { formatMet, stateAtMet } from '../../mission-core/index.ts'
+import {
+  formatMet,
+  isMissingValue,
+  sampleTelemetryAtMet,
+  stateAtMet,
+  type MissionState,
+} from '../../mission-core/index.ts'
 import { useMissionPlayback } from './useMissionPlayback.ts'
 
 const MissionScene = lazy(() =>
@@ -19,13 +27,61 @@ const MissionScene = lazy(() =>
 
 const speeds: PlaybackSpeed[] = [1, 10, 100, 1000]
 const qualities: ModelQuality[] = ['high', 'medium', 'low', 'fallback']
-const phaseIds = ['prelaunch', 'ascent', 'earth-orbit', 'tli-extraction'] as const
+
+const phaseGroups = [
+  { number: '01', label: 'LAUNCH', phaseIds: ['prelaunch', 'ascent'], target: 'prelaunch' },
+  {
+    number: '02',
+    label: 'EARTH / TLI',
+    phaseIds: ['earth-orbit', 'tli-extraction'],
+    target: 'earth-orbit',
+  },
+  { number: '03', label: 'TRANSLUNAR', phaseIds: ['translunar'], target: 'translunar' },
+  { number: '04', label: 'LUNAR ORBIT', phaseIds: ['lunar-orbit'], target: 'lunar-orbit' },
+  { number: '05', label: 'DESCENT', phaseIds: ['descent'], target: 'descent' },
+  { number: '06', label: 'SURFACE', phaseIds: ['surface'], target: 'surface' },
+  {
+    number: '07',
+    label: 'RENDEZVOUS',
+    phaseIds: ['ascent-rendezvous', 'lunar-orbit-return'],
+    target: 'ascent-rendezvous',
+  },
+  {
+    number: '08',
+    label: 'RETURN',
+    phaseIds: ['transearth', 'entry', 'recovery'],
+    target: 'transearth',
+  },
+] as const
+
+type ConsoleMode =
+  | 'launch'
+  | 'earth'
+  | 'translunar'
+  | 'lunar-orbit'
+  | 'descent'
+  | 'surface'
+  | 'rendezvous'
+  | 'return'
+
+function consoleModeForPhase(phaseId: string): ConsoleMode {
+  if (phaseId === 'prelaunch' || phaseId === 'ascent') return 'launch'
+  if (phaseId === 'earth-orbit' || phaseId === 'tli-extraction') return 'earth'
+  if (phaseId === 'translunar') return 'translunar'
+  if (phaseId === 'lunar-orbit') return 'lunar-orbit'
+  if (phaseId === 'descent') return 'descent'
+  if (phaseId === 'surface') return 'surface'
+  if (phaseId === 'ascent-rendezvous' || phaseId === 'lunar-orbit-return') {
+    return 'rendezvous'
+  }
+  return 'return'
+}
 
 function useControlKeyboard(): void {
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null
-      if (target?.matches('input, select, textarea, button, a')) return
+      if (target?.matches('input, select, textarea, button, a, summary')) return
       const store = useMissionStore.getState()
       if (event.key.toLowerCase() === 'k') store.togglePlaying()
       if (event.key.toLowerCase() === 'j') store.previousEvent()
@@ -42,17 +98,18 @@ function useControlKeyboard(): void {
   }, [])
 }
 
-function EventLog({ met }: { met: number }) {
+function EventLog({ met, phaseId }: { met: number; phaseId: string }) {
   const setMet = useMissionStore((state) => state.setMet)
-  const current = currentPhase4Event(met)
+  const current = currentReplayEvent(met)
+  const events = eventsForPhase(phaseId)
   return (
     <section className="console-panel event-log-panel" aria-labelledby="event-log-title">
       <header className="panel-head">
-        <h2 id="event-log-title">EVENT LOG</h2>
-        <span>{phase4Events.length} VERIFIED</span>
+        <h2 id="event-log-title">EVENT LOG / {phasesById.get(phaseId)?.label}</h2>
+        <span>{events.length} VERIFIED</span>
       </header>
       <ol className="control-event-log">
-        {phase4Events.map((event) => {
+        {events.map((event) => {
           const passed = event.metSeconds <= met
           return (
             <li key={event.id} className={event.id === current?.id ? 'is-current' : undefined}>
@@ -69,60 +126,176 @@ function EventLog({ met }: { met: number }) {
   )
 }
 
-function SystemsPanel({ met }: { met: number }) {
+function enginePresentation(
+  componentId: string,
+  state: MissionState,
+  met: number,
+): { label: string; tone: 'on' | 'off' | 'unknown' } {
+  const component = state.components[componentId]
+  if (component.lifecycle === 'discarded') return { label: 'DISCARDED', tone: 'off' }
+  if (component.lifecycle === 'landed') return { label: 'LANDED', tone: 'on' }
+  if (component.engineMode !== 'burning') {
+    return {
+      label: (component.engineMode ?? component.lifecycle).toUpperCase(),
+      tone: component.lifecycle === 'attached' || component.lifecycle === 'free' ? 'on' : 'off',
+    }
+  }
+
+  const ignition = [...replayEvents]
+    .reverse()
+    .find(
+      (event) =>
+        event.metSeconds <= met &&
+        event.actions.some(
+          (action) =>
+            action.type === 'set-engine-mode' &&
+            action.componentId === componentId &&
+            action.engineMode === 'burning',
+        ),
+    )
+  const nextCutoff = replayEvents.find(
+    (event) =>
+      event.metSeconds > (ignition?.metSeconds ?? met) &&
+      event.actions.some(
+        (action) =>
+          action.type === 'set-engine-mode' &&
+          action.componentId === componentId &&
+          action.engineMode === 'cutoff',
+      ),
+  )
+  if (ignition && !nextCutoff && met > ignition.metSeconds) {
+    return { label: 'CUTOFF MET N/A', tone: 'unknown' }
+  }
+  return { label: 'BURNING', tone: 'on' }
+}
+
+const componentsByMode: Record<ConsoleMode, string[]> = {
+  launch: ['s-ic', 's-ii', 's-ivb', 'service-module', 'lm-descent-stage'],
+  earth: ['s-ivb', 'service-module', 'command-module', 'lm-ascent-stage', 'lm-descent-stage'],
+  translunar: ['service-module', 'command-module', 'lm-ascent-stage', 'lm-descent-stage'],
+  'lunar-orbit': ['service-module', 'command-module', 'lm-ascent-stage', 'lm-descent-stage'],
+  descent: ['service-module', 'command-module', 'lm-ascent-stage', 'lm-descent-stage'],
+  surface: ['lm-ascent-stage', 'lm-descent-stage', 'service-module', 'command-module'],
+  rendezvous: ['lm-ascent-stage', 'lm-descent-stage', 'service-module', 'command-module'],
+  return: ['command-module', 'service-module', 'lm-ascent-stage'],
+}
+
+const missingRowsByMode: Record<ConsoleMode, Array<[string, string]>> = {
+  launch: [
+    ['ALTITUDE', 'NOT AVAILABLE'],
+    ['VELOCITY', 'NOT AVAILABLE'],
+    ['ATTITUDE', 'NOT AVAILABLE'],
+  ],
+  earth: [
+    ['ORBIT PARAMETERS', 'NOT IN CURRENT PACK'],
+    ['TLI CUTOFF MET', 'NOT IN EVENT SET'],
+    ['DOCKING RANGE', 'NOT AVAILABLE'],
+  ],
+  translunar: [
+    ['EARTH / MOON RANGE', 'NOT AVAILABLE'],
+    ['VELOCITY', 'NOT AVAILABLE'],
+    ['PTC ATTITUDE', 'NOT AVAILABLE'],
+  ],
+  'lunar-orbit': [
+    ['ORBIT / PASS', 'NOT AVAILABLE'],
+    ['AOS / LOS', 'NOT AVAILABLE'],
+    ['ATTITUDE', 'NOT AVAILABLE'],
+  ],
+  descent: [
+    ['ALTITUDE', 'NOT AVAILABLE'],
+    ['HORIZONTAL VELOCITY', 'NOT AVAILABLE'],
+    ['DESCENT PROPELLANT', 'NOT AVAILABLE'],
+  ],
+  surface: [
+    ['SUIT TELEMETRY', 'NOT PUBLISHED'],
+    ['SURFACE ROUTE', 'NOT IN CURRENT PACK'],
+    ['EASEP STATUS', 'NOT IN CURRENT PACK'],
+  ],
+  rendezvous: [
+    ['RELATIVE RANGE', 'NOT AVAILABLE'],
+    ['RANGE RATE', 'NOT AVAILABLE'],
+    ['APS CUTOFF MET', 'NOT VERIFIED'],
+  ],
+  return: [
+    ['EARTH RANGE', 'NOT AVAILABLE'],
+    ['ENTRY ATTITUDE', 'NOT AVAILABLE'],
+    ['PARACHUTE SUB-EVENTS', 'NOT VERIFIED'],
+  ],
+}
+
+function TranscriptRecords({ met }: { met: number }) {
+  const setMet = useMissionStore((state) => state.setMet)
+  return (
+    <div className="transcript-records">
+      <div className="subpanel-head">
+        <h3>TRANSCRIPT RECORDS</h3>
+        <span>AUDIO NOT AVAILABLE</span>
+      </div>
+      {missionPack.media.transcripts.map((record) => (
+        <button
+          type="button"
+          key={record.id}
+          className={record.metSeconds <= met ? 'is-passed' : undefined}
+          onClick={() => setMet(record.metSeconds)}
+        >
+          <span>
+            {formatMet(record.metSeconds)} · {record.speaker}
+          </span>
+          <q>{record.text}</q>
+        </button>
+      ))}
+    </div>
+  )
+}
+
+function PhaseDataPanel({ met, mode }: { met: number; mode: ConsoleMode }) {
   const state = stateAtMet(mission, met)
-  const tliCutoffUnresolved =
-    met >= mission.events.find((event) => event.id === 'a11-csm-sivb-separation')!.metSeconds
-  const components = ['s-ic', 's-ii', 's-ivb', 'service-module', 'lm-descent-stage']
+  const touchdownChannel = mission.telemetry.find(
+    (channel) => channel.id === 'a11-touchdown-vertical-speed',
+  )
+  const touchdownReading = touchdownChannel
+    ? sampleTelemetryAtMet(touchdownChannel, met)
+    : undefined
+
   return (
     <aside className="console-panel systems-panel" aria-labelledby="systems-title">
       <header className="panel-head">
-        <h2 id="systems-title">VEHICLE STATE</h2>
+        <h2 id="systems-title">{mode === 'surface' ? 'SURFACE CONFIGURATION' : 'VEHICLE STATE'}</h2>
         <span>DETERMINISTIC</span>
       </header>
       <div className="systems-list">
-        {components.map((id) => {
+        {componentsByMode[mode].map((id) => {
           const definition = mission.vehicle.components.find((component) => component.id === id)!
-          const componentState = state.components[id]
-          const unresolved = id === 's-ivb' && tliCutoffUnresolved
+          const presentation = enginePresentation(id, state, met)
           return (
             <div key={id}>
               <span>{definition.label}</span>
-              <b>
-                {unresolved
-                  ? 'CUTOFF MET N/A'
-                  : (componentState.engineMode ?? componentState.lifecycle)}
-              </b>
-              <i
-                className={
-                  componentState.lifecycle === 'discarded' || unresolved
-                    ? 'status-off'
-                    : 'status-on'
-                }
-              />
+              <b>{presentation.label}</b>
+              <i className={`status-${presentation.tone}`} />
             </div>
           )
         })}
       </div>
+
+      {(mode === 'descent' || mode === 'surface') && <TranscriptRecords met={met} />}
+
       <div className="data-availability">
-        <h3>FLIGHT DATA AVAILABILITY</h3>
+        <h3>{mode === 'surface' ? 'SURFACE RECORD AVAILABILITY' : 'FLIGHT DATA AVAILABILITY'}</h3>
         <dl>
-          <div>
-            <dt>ALTITUDE</dt>
-            <dd>NOT AVAILABLE</dd>
-          </div>
-          <div>
-            <dt>VELOCITY</dt>
-            <dd>NOT AVAILABLE</dd>
-          </div>
-          <div>
-            <dt>ATTITUDE</dt>
-            <dd>NOT AVAILABLE</dd>
-          </div>
-          <div>
-            <dt>TLI CUTOFF MET</dt>
-            <dd>NOT IN EVENT SET</dd>
-          </div>
+          {(mode === 'descent' || mode === 'surface') &&
+            touchdownReading &&
+            !isMissingValue(touchdownReading) && (
+              <div>
+                <dt>LANDING VERTICAL SPEED</dt>
+                <dd>{touchdownReading.value} M/S DOWN · ACTUAL</dd>
+              </div>
+            )}
+          {missingRowsByMode[mode].map(([label, value]) => (
+            <div key={label}>
+              <dt>{label}</dt>
+              <dd>{value}</dd>
+            </div>
+          ))}
         </dl>
         <p>No continuous values are synthesized between source events.</p>
       </div>
@@ -156,14 +329,14 @@ function PlaybackControls({ met }: { met: number }) {
         <span className="sr-only">Mission elapsed time</span>
         <input
           type="range"
-          min={phase4StartMet}
-          max={phase4EndMet}
+          min={replayStartMet}
+          max={replayEndMet}
           step="0.1"
           value={met}
           onChange={(event) => setMet(Number(event.target.value))}
         />
         <span>
-          <i style={{ width: `${(met / phase4EndMet) * 100}%` }} />
+          <i style={{ width: `${(met / replayEndMet) * 100}%` }} />
         </span>
       </label>
       <div className="speed-controls" aria-label="Playback speed">
@@ -182,6 +355,42 @@ function PlaybackControls({ met }: { met: number }) {
   )
 }
 
+function sceneCopy(mode: ConsoleMode): { heading: string; truth: string; body: string } {
+  if (mode === 'launch' || mode === 'earth') {
+    return {
+      heading: 'VIEW / NASA MODEL ASSETS',
+      truth: 'SATURN V: NASA VISUALIZATION · CSM: RECONSTRUCTED',
+      body: 'EARTH TEXTURE / MODERN NASA COMPOSITE',
+    }
+  }
+  if (mode === 'translunar') {
+    return {
+      heading: 'VIEW / EARTH–MOON TRANSFER',
+      truth: 'TRAJECTORY AND CELESTIAL SCALE: SCHEMATIC · NOT TO SCALE',
+      body: 'MOON TEXTURE / MODERN NASA LRO PRODUCT',
+    }
+  }
+  if (mode === 'lunar-orbit' || mode === 'descent' || mode === 'surface') {
+    return {
+      heading: 'VIEW / LUNAR OPERATIONS',
+      truth: 'LM: GENERIC NASA VISUALIZATION · NOT CERTIFIED LM-5',
+      body: 'MOON TEXTURE / MODERN NASA LRO PRODUCT · COLOR ONLY',
+    }
+  }
+  if (mode === 'rendezvous') {
+    return {
+      heading: 'VIEW / ASCENT & RENDEZVOUS',
+      truth: 'RELATIVE RANGE AND MOTION: SCHEMATIC · NOT TO SCALE',
+      body: 'DESCENT STAGE REMAINS ON LUNAR SURFACE',
+    }
+  }
+  return {
+    heading: 'VIEW / TRANSEARTH & ENTRY',
+    truth: 'CSM: RECONSTRUCTED · ENTRY / RECOVERY MOTION SCHEMATIC',
+    body: 'EARTH TEXTURE / MODERN NASA COMPOSITE',
+  }
+}
+
 export function Component() {
   useMissionPlayback()
   useControlKeyboard()
@@ -189,9 +398,11 @@ export function Component() {
   const met = useMissionStore((state) => state.metSeconds)
   const quality = useMissionStore((state) => state.quality)
   const setQuality = useMissionStore((state) => state.setQuality)
-  const currentEvent = currentPhase4Event(met)
+  const currentEvent = currentReplayEvent(met)
   const state = stateAtMet(mission, met)
   const phase = phasesById.get(state.phaseId)
+  const mode = consoleModeForPhase(state.phaseId)
+  const copy = sceneCopy(mode)
 
   useEffect(() => {
     if (
@@ -203,7 +414,7 @@ export function Component() {
   }, [setQuality])
 
   return (
-    <main id="main-content" className="control-shell" tabIndex={-1}>
+    <main id="main-content" className={`control-shell control-mode-${mode}`} tabIndex={-1}>
       <section className="mission-status" aria-label="Current mission state">
         <div>
           <span>MISSION ELAPSED TIME</span>
@@ -226,34 +437,40 @@ export function Component() {
       </section>
 
       <nav className="phase-rail" aria-label="Phase navigation">
-        {phaseIds.map((id, index) => {
-          const target = mission.phases.find((candidate) => candidate.id === id)!
+        {phaseGroups.map((group) => {
+          const target = phasesById.get(group.target)!
           const startEvent = target.startEventId
             ? mission.events.find((event) => event.id === target.startEventId)
             : undefined
-          const active =
-            id === state.phaseId || (id === 'tli-extraction' && state.phaseId === 'translunar')
+          const active = (group.phaseIds as readonly string[]).includes(state.phaseId)
           return (
             <button
-              key={id}
+              key={group.number}
               type="button"
               className={active ? 'is-active' : undefined}
               onClick={() => useMissionStore.getState().setMet(startEvent?.metSeconds ?? 0)}
             >
-              <span>{String(index + 1).padStart(2, '0')}</span>
-              {target.label}
+              <span>{group.number}</span>
+              {group.label}
             </button>
           )
         })}
       </nav>
 
+      {mode === 'surface' && (
+        <div className="configuration-change" role="status">
+          <span>CONSOLE CONFIGURATION</span>
+          LUNAR SURFACE OPERATIONS · TRANQUILITY BASE
+        </div>
+      )}
+
       <div className="console-grid">
-        <EventLog met={met} />
+        <EventLog met={met} phaseId={state.phaseId} />
         <section className="visualization-panel" aria-label="Vehicle configuration view">
           <div className="viewport-tools">
             <div>
-              <span>VIEW / NASA MODEL ASSETS</span>
-              <b>SATURN V: NASA VISUALIZATION · CSM: RECONSTRUCTED · MOTION NOT TO SCALE</b>
+              <span>{copy.heading}</span>
+              <b>{copy.truth} · MOTION NOT TO SCALE</b>
             </div>
             <label>
               QUALITY
@@ -273,9 +490,9 @@ export function Component() {
             <Suspense fallback={<div className="scene-loading outside">INITIALIZING 3D VIEW</div>}>
               <MissionScene met={met} quality={quality} />
             </Suspense>
-            <div className="scene-corner top-left">+Y / MISSION FRAME</div>
-            <div className="scene-corner bottom-left">EARTH TEXTURE / MODERN NASA COMPOSITE</div>
-            <div className="scene-corner bottom-right">MODEL TRUTH / SEE ARCHIVE 05–06</div>
+            <div className="scene-corner top-left">MISSION FRAME / SCHEMATIC</div>
+            <div className="scene-corner bottom-left">{copy.body}</div>
+            <div className="scene-corner bottom-right">MODEL TRUTH / SEE ARCHIVE 05–11</div>
           </div>
           <div className="event-readout">
             <div>
@@ -296,7 +513,7 @@ export function Component() {
             </details>
           </div>
         </section>
-        <SystemsPanel met={met} />
+        <PhaseDataPanel met={met} mode={mode} />
       </div>
 
       <PlaybackControls met={met} />

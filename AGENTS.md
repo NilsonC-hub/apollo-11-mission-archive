@@ -44,15 +44,15 @@ page.
 8. **State must be deterministic at any MET.** Both `stateAtMet(def, met)` and
    `visualStateAtStoryTime` must reconstruct identically after jump, scrub,
    reset, refresh.
-9. **Phase 4 UI dependencies stay outside mission-core.** React, R3F, Three,
+9. **Replay UI dependencies stay outside mission-core.** React, R3F, Three,
    and Zustand may appear under app/features/scene code, never in mission-core.
 
 ## Stages & commands (current state)
 
-Phases 0–4 complete — source freeze, mission core, Apollo 11 mission pack,
-reproducible model/celestial assets, and the Launch / Earth Orbit / TLI
-production interface. Phase 5 lunar/return scenes and Phase 6 final archive,
-performance, and accessibility closure remain pending.
+Phases 0–5 complete — source freeze, mission core, Apollo 11 mission pack,
+reproducible model/celestial assets, Launch / Earth Orbit / TLI, and the
+Translunar / Lunar / Return replay through splashdown. Phase 6 final Archive/UI
+closure and Phase 7 release audit remain pending.
 
 ```
 pnpm install                # install dev tools (node 22, pnpm)
@@ -82,9 +82,9 @@ Every earlier phase must remain green before the next phase starts. Phase exit r
 | `scripts/`                                   | Validation / inspection scripts (Node, no React)                               |
 | `src/app/`                                   | Mission adapter, shared shell, and replay UI state                             |
 | `src/features/archive/`                      | Archive route; must remain free of Three/R3F/model imports                     |
-| `src/features/control/`                      | Phase 4 Mission Control route and R3F scene                                    |
+| `src/features/control/`                      | Phase 4–5 Mission Control route and R3F mission configurations                 |
 | `src/styles/`                                | Archive/Control design system and responsive/accessibility rules               |
-| `tests/unit/`                                | Regression tests for mission-core, pack, sources, assets, and Phase 4 scope    |
+| `tests/unit/`                                | Regression tests for mission-core, pack, sources, assets, and Phase 4–5 scope  |
 | `docs/APOLLO_11_PRODUCTION_SPEC.md`          | The build contract (copied verbatim from project seed)                         |
 
 ## References

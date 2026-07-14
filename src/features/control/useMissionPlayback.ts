@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 
-import { phase4EndMet } from '../../app/mission.ts'
+import { replayEndMet } from '../../app/mission.ts'
 import { useMissionStore } from '../../app/missionStore.ts'
 
 export function useMissionPlayback(): void {
@@ -23,9 +23,9 @@ export function useMissionPlayback(): void {
       const deltaSeconds = (now - prior) / 1000
 
       const current = useMissionStore.getState().metSeconds
-      const next = Math.min(phase4EndMet, current + deltaSeconds * speed)
+      const next = Math.min(replayEndMet, current + deltaSeconds * speed)
       setMet(next)
-      if (next >= phase4EndMet) {
+      if (next >= replayEndMet) {
         setPlaying(false)
         return
       }

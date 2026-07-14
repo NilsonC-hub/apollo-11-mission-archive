@@ -13,6 +13,17 @@ const MODEL_ROOT = '/missions/apollo11/models'
 const DRACO_ROOT = '/missions/apollo11/decoders/three-draco/'
 const BASIS_ROOT = '/missions/apollo11/decoders/three-basis/'
 
+type Position = [number, number, number]
+type SceneMode =
+  | 'launch'
+  | 'translunar'
+  | 'lunar-orbit'
+  | 'descent'
+  | 'surface'
+  | 'rendezvous'
+  | 'return'
+  | 'entry'
+
 function modelUrl(name: string, quality: Exclude<ModelQuality, 'fallback'>): string {
   return `${MODEL_ROOT}/apollo11-${name}-${quality}.glb`
 }
@@ -30,6 +41,12 @@ function presentationProgress(met: number, eventId: string, duration = 24): numb
   return Math.min(1, Math.max(0, (met - start) / duration))
 }
 
+function rangeProgress(met: number, startEventId: string, endEventId: string): number {
+  const start = getEvent(startEventId).metSeconds
+  const end = getEvent(endEventId).metSeconds
+  return Math.min(1, Math.max(0, (met - start) / (end - start)))
+}
+
 function setNodePresentation(root: Group, nodeName: string, visible: boolean, offsetY = 0): void {
   const node = root.getObjectByName(nodeName)
   if (!node) return
@@ -37,6 +54,18 @@ function setNodePresentation(root: Group, nodeName: string, visible: boolean, of
   node.userData.presentationBaseY = baseY
   node.visible = visible
   node.position.y = baseY + offsetY
+}
+
+function sceneModeAtMet(met: number): SceneMode {
+  const phase = stateAtMet(mission, met).phaseId
+  if (phase === 'translunar') return 'translunar'
+  if (phase === 'lunar-orbit') return 'lunar-orbit'
+  if (phase === 'descent') return 'descent'
+  if (phase === 'surface') return 'surface'
+  if (phase === 'ascent-rendezvous') return 'rendezvous'
+  if (phase === 'lunar-orbit-return' || phase === 'transearth') return 'return'
+  if (phase === 'entry' || phase === 'recovery') return 'entry'
+  return 'launch'
 }
 
 function SaturnStack({
@@ -73,7 +102,7 @@ function SaturnStack({
     <group rotation={[0, 0, ascent ? 0 : -Math.PI / 2]} position={[0, ascent ? -3.7 : 0, 0]}>
       <primitive object={scene} scale={0.067} />
       {state.components['s-ic']?.engineMode === 'burning' && (
-        <mesh position={[0, -4.2, 0]} rotation={[0, 0, 0]}>
+        <mesh position={[0, -4.2, 0]}>
           <coneGeometry args={[0.2, 1.4, 14]} />
           <meshBasicMaterial color="#d0a45a" transparent opacity={0.72} />
         </mesh>
@@ -82,54 +111,261 @@ function SaturnStack({
   )
 }
 
-function SpacecraftAssembly({
+function CsmModel({
+  quality,
+  configuration = 'full',
+  position = [0, 0, 0],
+  scale = 0.14,
+}: {
+  quality: Exclude<ModelQuality, 'fallback'>
+  configuration?: 'full' | 'command-only'
+  position?: Position
+  scale?: number
+}) {
+  const gltf = useGlb(modelUrl('command-service-module', quality))
+  const scene = useMemo(() => gltf.scene.clone(true), [gltf.scene])
+
+  useEffect(() => {
+    setNodePresentation(scene, 'service-module', configuration === 'full')
+  }, [configuration, scene])
+
+  return (
+    <group position={position} rotation={[0, 0, -Math.PI / 2]}>
+      <primitive object={scene} scale={scale} />
+    </group>
+  )
+}
+
+function LunarModuleModel({
+  quality,
+  stage = 'both',
+  position = [0, 0, 0],
+  scale = 0.14,
+}: {
+  quality: Exclude<ModelQuality, 'fallback'>
+  stage?: 'both' | 'descent' | 'ascent'
+  position?: Position
+  scale?: number
+}) {
+  const gltf = useGlb(modelUrl('lunar-module', quality))
+  const scene = useMemo(() => gltf.scene.clone(true), [gltf.scene])
+
+  useEffect(() => {
+    setNodePresentation(scene, 'lm-ascent-stage', stage !== 'descent')
+    setNodePresentation(scene, 'lm-descent-stage', stage !== 'ascent')
+  }, [scene, stage])
+
+  return (
+    <group position={position} rotation={[0, 0, -Math.PI / 2]}>
+      <primitive object={scene} scale={scale} />
+    </group>
+  )
+}
+
+function ExtractionAssembly({
   met,
   quality,
 }: {
   met: number
   quality: Exclude<ModelQuality, 'fallback'>
 }) {
-  const csm = useGlb(modelUrl('command-service-module', quality))
-  const lm = useGlb(modelUrl('lunar-module', quality))
-  const csmScene = useMemo(() => csm.scene.clone(true), [csm.scene])
-  const lmScene = useMemo(() => lm.scene.clone(true), [lm.scene])
   const separation = getEvent('a11-csm-sivb-separation').metSeconds
   const docking = getEvent('a11-first-docking').metSeconds
   const ejection = getEvent('a11-spacecraft-ejection').metSeconds
-  const active = met >= separation
+  if (met < separation) return null
+
   const dockingProgress = Math.min(1, Math.max(0, (met - separation) / (docking - separation)))
   const ejected = met >= ejection
-
-  if (!active) return null
-  const csmX = ejected ? 2.6 : 4.2 - dockingProgress * 3.2
   const assemblyX = ejected ? 2.8 : 0
+  const csmX = ejected ? 2.6 : 4.2 - dockingProgress * 3.2
 
   return (
-    <group position={[assemblyX, 0, 0]} rotation={[0, 0, -Math.PI / 2]}>
-      <primitive object={lmScene} scale={0.14} position={[0, -0.4, 0]} />
-      <primitive object={csmScene} scale={0.14} position={[csmX - assemblyX, 0.66, 0]} />
+    <group position={[assemblyX, 0, 0]}>
+      <LunarModuleModel quality={quality} position={[0, -0.4, 0]} />
+      <CsmModel quality={quality} position={[csmX - assemblyX, 0.66, 0]} />
     </group>
   )
 }
 
-function Earth() {
+function Planet({
+  kind,
+  position,
+  radius,
+}: {
+  kind: 'earth' | 'moon'
+  position: Position
+  radius: number
+}) {
   const gl = useThree((state) => state.gl)
-  const texture = useLoader(
-    KTX2Loader,
-    '/missions/apollo11/textures/earth-blue-marble-1k.ktx2',
-    (loader) => loader.setTranscoderPath(BASIS_ROOT).detectSupport(gl),
+  const url =
+    kind === 'earth'
+      ? '/missions/apollo11/textures/earth-blue-marble-1k.ktx2'
+      : '/missions/apollo11/textures/moon-lro-color-1k.ktx2'
+  const texture = useLoader(KTX2Loader, url, (loader) =>
+    loader.setTranscoderPath(BASIS_ROOT).detectSupport(gl),
   )
+
   return (
-    <group position={[-7.6, -4.8, -7]}>
+    <group position={position}>
       <mesh>
-        <sphereGeometry args={[5.5, 64, 32]} />
+        <sphereGeometry args={[radius, 64, 32]} />
         <meshStandardMaterial map={texture} roughness={1} metalness={0} />
       </mesh>
       <mesh rotation={[Math.PI / 2.8, 0, 0]}>
-        <torusGeometry args={[6.4, 0.008, 4, 160]} />
-        <meshBasicMaterial color="#8da1a2" transparent opacity={0.38} />
+        <torusGeometry args={[radius * 1.16, 0.008, 4, 160]} />
+        <meshBasicMaterial color="#8da1a2" transparent opacity={0.3} />
       </mesh>
     </group>
+  )
+}
+
+function LunarReferencePlane() {
+  return (
+    <>
+      <Planet kind="moon" position={[-1.4, -10.4, -8]} radius={8} />
+      <gridHelper args={[19, 19, '#4c4d46', '#252923']} position={[0, -3.1, 0]} />
+    </>
+  )
+}
+
+function TrajectoryReference({ mode }: { mode: 'outbound' | 'orbit' | 'return' }) {
+  const rotation: Position = mode === 'orbit' ? [Math.PI / 2.7, 0, 0] : [Math.PI / 2, 0.35, 0]
+  return (
+    <mesh rotation={rotation} position={[0, -0.2, -2]}>
+      <torusGeometry args={[mode === 'orbit' ? 4.1 : 6.4, 0.012, 4, 180]} />
+      <meshBasicMaterial
+        color={mode === 'return' ? '#cf9f58' : '#829789'}
+        transparent
+        opacity={0.55}
+      />
+    </mesh>
+  )
+}
+
+function MissionConfiguration({
+  met,
+  quality,
+}: {
+  met: number
+  quality: Exclude<ModelQuality, 'fallback'>
+}) {
+  const mode = sceneModeAtMet(met)
+
+  if (mode === 'launch') {
+    return (
+      <>
+        <Planet kind="earth" position={[-7.6, -4.8, -7]} radius={5.5} />
+        <SaturnStack met={met} quality={quality} />
+        <ExtractionAssembly met={met} quality={quality} />
+        <gridHelper args={[24, 24, '#2f3a34', '#172019']} position={[0, -4.4, 0]} />
+      </>
+    )
+  }
+
+  if (mode === 'translunar') {
+    const progress = rangeProgress(met, 'a11-spacecraft-ejection', 'a11-loi-ignition')
+    return (
+      <>
+        <Planet
+          kind="earth"
+          position={[-8.4 - progress * 2, -5.4, -9]}
+          radius={4.5 - progress * 1.6}
+        />
+        <Planet
+          kind="moon"
+          position={[8 - progress * 2.5, 2.4, -10]}
+          radius={2.2 + progress * 1.8}
+        />
+        <TrajectoryReference mode="outbound" />
+        <LunarModuleModel quality={quality} position={[-0.4, -0.45, 0]} />
+        <CsmModel quality={quality} position={[0.75, 0.6, 0]} />
+      </>
+    )
+  }
+
+  if (mode === 'lunar-orbit') {
+    return (
+      <>
+        <Planet kind="moon" position={[-4.8, -4.8, -8]} radius={5.4} />
+        <TrajectoryReference mode="orbit" />
+        <LunarModuleModel quality={quality} position={[1.2, -0.2, 0]} />
+        <CsmModel quality={quality} position={[2.3, 0.85, 0]} />
+      </>
+    )
+  }
+
+  if (mode === 'descent') {
+    const progress = rangeProgress(met, 'a11-undocking', 'a11-touchdown')
+    return (
+      <>
+        <LunarReferencePlane />
+        <TrajectoryReference mode="orbit" />
+        <CsmModel quality={quality} position={[4.3, 2.2, -1]} scale={0.11} />
+        <LunarModuleModel
+          quality={quality}
+          position={[-1.3, 1.8 - progress * 4.2, 0]}
+          scale={0.17}
+        />
+      </>
+    )
+  }
+
+  if (mode === 'surface') {
+    return (
+      <>
+        <LunarReferencePlane />
+        <LunarModuleModel quality={quality} position={[-0.7, -2.42, 0]} scale={0.2} />
+      </>
+    )
+  }
+
+  if (mode === 'rendezvous') {
+    const progress = rangeProgress(met, 'a11-lunar-liftoff', 'a11-lm-csm-docking')
+    return (
+      <>
+        <LunarReferencePlane />
+        <LunarModuleModel
+          quality={quality}
+          stage="descent"
+          position={[-3.8, -2.5, -1]}
+          scale={0.14}
+        />
+        <LunarModuleModel
+          quality={quality}
+          stage="ascent"
+          position={[-1.8 + progress * 3.2, -1.4 + progress * 3.3, 0]}
+          scale={0.16}
+        />
+        <CsmModel quality={quality} position={[3.4, 2.25, -0.6]} scale={0.13} />
+        <TrajectoryReference mode="orbit" />
+      </>
+    )
+  }
+
+  if (mode === 'return') {
+    const transearth = stateAtMet(mission, met).phaseId === 'transearth'
+    return (
+      <>
+        <Planet kind="moon" position={[-8.6, -3.9, -10]} radius={transearth ? 2.5 : 5.2} />
+        {transearth && <Planet kind="earth" position={[9.5, 3.8, -12]} radius={2.2} />}
+        <TrajectoryReference mode="return" />
+        <CsmModel quality={quality} position={[0.6, 0.4, 0]} scale={0.18} />
+      </>
+    )
+  }
+
+  const recovered = met >= getEvent('a11-splashdown').metSeconds
+  return (
+    <>
+      <Planet kind="earth" position={[-4.5, -6.2, -9]} radius={6.3} />
+      <CsmModel
+        quality={quality}
+        configuration="command-only"
+        position={[recovered ? 0.2 : 2.4, recovered ? -1.75 : 1.6, 0]}
+        scale={0.22}
+      />
+      <gridHelper args={[16, 16, '#33413b', '#19211d']} position={[0, -3.2, 0]} />
+    </>
   )
 }
 
@@ -140,17 +376,13 @@ function SceneContents({
   met: number
   quality: Exclude<ModelQuality, 'fallback'>
 }) {
-  const spacecraftSeparated = met >= getEvent('a11-csm-sivb-separation').metSeconds
   return (
     <>
       <color attach="background" args={['#050706']} />
       <ambientLight intensity={1.15} />
       <directionalLight position={[8, 7, 10]} intensity={2.5} color="#f3ead8" />
       <directionalLight position={[-6, 2, -4]} intensity={0.7} color="#758a83" />
-      <Earth />
-      <SaturnStack met={met} quality={quality} />
-      {spacecraftSeparated && <SpacecraftAssembly met={met} quality={quality} />}
-      <gridHelper args={[24, 24, '#2f3a34', '#172019']} position={[0, -4.4, 0]} />
+      <MissionConfiguration met={met} quality={quality} />
     </>
   )
 }
@@ -184,11 +416,11 @@ export function StaticVehicleFallback() {
     <div
       className="static-vehicle-fallback"
       role="img"
-      aria-label="Static Saturn V structure fallback"
+      aria-label="Static vehicle structure fallback"
     >
       <img src="/missions/apollo11/fallbacks/vehicle-structure.svg" alt="" />
       <div>
-        <b>STATIC STRUCTURE VIEW</b>
+        <b>STATIC VEHICLE STRUCTURE VIEW</b>
         <span>WEBGL OR MODEL DECODER UNAVAILABLE</span>
       </div>
     </div>

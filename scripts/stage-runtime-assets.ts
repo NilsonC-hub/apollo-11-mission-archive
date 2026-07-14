@@ -29,6 +29,10 @@ await copyMatching(
   join(root, 'public', 'missions', 'apollo11', 'plates'),
   /\.png$/,
 )
+await copy(
+  join(root, 'assets', 'raw', 'NASA-A11-MOON-VIEW.jpg'),
+  join(root, 'public', 'missions', 'apollo11', 'plates', 'NASA-A11-MOON-VIEW.jpg'),
+)
 await copyMatching(
   join(root, 'node_modules', 'three', 'examples', 'jsm', 'libs', 'draco', 'gltf'),
   join(root, 'public', 'missions', 'apollo11', 'decoders', 'three-draco'),

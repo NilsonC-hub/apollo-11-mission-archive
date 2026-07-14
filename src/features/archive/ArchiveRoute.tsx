@@ -5,9 +5,10 @@ import { formatMet, isMissingValue } from '../../mission-core/index.ts'
 import {
   factsById,
   formatCitation,
+  getEvent,
   mission,
   missionPack,
-  phase4Events,
+  replayEvents,
   sourcesById,
 } from '../../app/mission.ts'
 
@@ -17,6 +18,10 @@ const archiveNav = [
   ['architecture', '04', 'Flight Architecture'],
   ['saturn', '05', 'Saturn V / AS-506'],
   ['spacecraft', '06', 'Columbia & Eagle'],
+  ['control-records', '08', 'Mission Control Record'],
+  ['landing', '09', 'Powered Descent'],
+  ['surface', '10', 'Surface Operations'],
+  ['return', '11', 'Return & Recovery'],
   ['sources', '12', 'Media & Source Room'],
 ] as const
 
@@ -71,12 +76,14 @@ export function Component() {
 
   const selectedSources = [
     'NASA-A11-MR',
+    'NASA-A11-TTEC-WEB',
     'NASA-A11-SATV-FE',
     'NASA-MODEL-SATV',
     'NASA-MODEL-SATV-STL',
     'NASA-MODEL-LM',
     'NASA-CSM-NR',
     'NASA-LM-HB',
+    'NASA-A11-MOON-VIEW',
   ]
     .map((id) => sourcesById.get(id))
     .filter((source) => source !== undefined)
@@ -84,7 +91,7 @@ export function Component() {
   return (
     <main id="main-content" className="archive-shell" tabIndex={-1}>
       <aside className="archive-index" aria-label="Archive index">
-        <p className="rail-kicker">DOCUMENT REGISTER / PHASE 4 RECORD</p>
+        <p className="rail-kicker">DOCUMENT REGISTER / PHASE 5 RECORD</p>
         <ol>
           {archiveNav.map(([id, number, label]) => (
             <li key={id}>
@@ -97,10 +104,8 @@ export function Component() {
         </ol>
         <div className="rail-status">
           <span>RECORD SCOPE</span>
-          <b>LAUNCH → SPACECRAFT EJECTION</b>
-          <p>
-            Later mission records remain in the audited data pack and are outside this build phase.
-          </p>
+          <b>LAUNCH → SPLASHDOWN</b>
+          <p>Deterministic replay scope. Final archive closure remains outside this build phase.</p>
         </div>
       </aside>
 
@@ -109,7 +114,7 @@ export function Component() {
           <div className="folio-meta">
             <span>AS-FLOWN RECORD</span>
             <span>MISSION / {mission.id.toUpperCase()}</span>
-            <span>RELEASE / PHASE 4 DEV</span>
+            <span>RELEASE / PHASE 5 DEV</span>
           </div>
           <div className="hero-grid">
             <div>
@@ -118,8 +123,8 @@ export function Component() {
                 APOLLO <em>11</em>
               </h1>
               <p className="hero-deck">
-                Mission archive and deterministic historical replay of the launch vehicle and
-                Earth-departure sequence.
+                Mission archive and deterministic historical replay from Saturn V launch through
+                lunar operations, Earth return, and splashdown.
               </p>
               <Link className="archive-cta" to="/control">
                 OPEN MISSION CONTROL <span aria-hidden="true">→</span>
@@ -163,11 +168,11 @@ export function Component() {
             <span lang="zh-Hans">实际飞行时间线</span>
           </header>
           <p className="section-intro">
-            The register below stops at the Phase 4 boundary. Every displayed MET is an actual
-            source record; visual motion in Mission Control is separately marked schematic.
+            Every displayed MET below is an actual source record. Visual position, scale, path, and
+            motion in Mission Control are separately marked schematic.
           </p>
           <ol className="event-register">
-            {phase4Events.map((event, index) => (
+            {replayEvents.map((event, index) => (
               <li key={event.id}>
                 <span className="event-sequence">{String(index + 1).padStart(2, '0')}</span>
                 <time dateTime={`PT${event.metSeconds}S`}>{formatMet(event.metSeconds)}</time>
@@ -186,15 +191,19 @@ export function Component() {
         <section id="architecture" className="archive-section section-rule">
           <header className="section-heading">
             <p>04 / FLIGHT ARCHITECTURE</p>
-            <h2>EARTH DEPARTURE, IN FOUR CONFIGURATIONS</h2>
+            <h2>MISSION, IN EIGHT CONTROL CONFIGURATIONS</h2>
             <span lang="zh-Hans">飞行架构</span>
           </header>
           <div className="architecture-strip">
             {[
-              ['01', 'FULL STACK', 'S-IC powered ascent'],
-              ['02', 'UPPER STAGES', 'S-II to S-IVB insertion'],
-              ['03', 'PARKING ORBIT', 'S-IVB first cutoff'],
-              ['04', 'DOCKED STACK', 'CSM / LM extraction'],
+              ['01', 'FULL STACK', 'Saturn V powered ascent'],
+              ['02', 'EARTH / TLI', 'Parking orbit and extraction'],
+              ['03', 'TRANSLUNAR', 'Docked CSM / LM outbound'],
+              ['04', 'LUNAR ORBIT', 'Arrival and orbit operations'],
+              ['05', 'DESCENT', 'Separated Eagle descent'],
+              ['06', 'SURFACE', 'Tranquility Base configuration'],
+              ['07', 'RENDEZVOUS', 'Ascent stage and Columbia'],
+              ['08', 'RETURN', 'CSM, entry CM, and recovery'],
             ].map(([number, title, note]) => (
               <div key={number}>
                 <span>{number}</span>
@@ -277,13 +286,141 @@ export function Component() {
           </div>
         </section>
 
+        <section id="control-records" className="archive-section section-rule">
+          <header className="section-heading">
+            <p>08 / MISSION CONTROL RECORD</p>
+            <h2>VOICE TRANSCRIPT, WITHOUT SIMULATED AUDIO</h2>
+            <span lang="zh-Hans">任务控制记录</span>
+          </header>
+          <p className="section-intro">
+            The exact transcript records are exposed as text and MET-linked replay points. Audio
+            remains unavailable because no verified local audio bytes, channel alignment, or clip
+            boundaries exist in the audited pack.
+          </p>
+          <div className="archive-transcripts">
+            {missionPack.media.transcripts.map((record) => (
+              <article key={record.id}>
+                <div>
+                  <time>{formatMet(record.metSeconds)}</time>
+                  <span>{record.speaker}</span>
+                </div>
+                <blockquote>{record.text}</blockquote>
+                <p>{formatCitation(record.citation)}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section id="landing" className="archive-section section-rule">
+          <header className="section-heading">
+            <p>09 / POWERED DESCENT &amp; LANDING</p>
+            <h2>EAGLE: ORBIT TO CONTACT</h2>
+            <span lang="zh-Hans">动力下降与着陆</span>
+          </header>
+          <div className="mission-moment-grid">
+            {['a11-undocking', 'a11-doi-ignition', 'a11-pdi-ignition', 'a11-touchdown'].map(
+              (eventId) => {
+                const event = getEvent(eventId)
+                return (
+                  <article key={event.id}>
+                    <time>{formatMet(event.metSeconds)}</time>
+                    <h3>{event.label}</h3>
+                    <SourceNote eventId={event.id} />
+                  </article>
+                )
+              },
+            )}
+          </div>
+          <div className="landing-reading">
+            <span>ESTIMATED LANDING VERTICAL SPEED — DOWN</span>
+            <b>
+              {mission.telemetry[0]?.samples[0]?.reading.kind === 'value'
+                ? `${mission.telemetry[0].samples[0].reading.value} M/S`
+                : 'NOT AVAILABLE'}
+            </b>
+            <p>
+              ACTUAL SOURCE VALUE · NORMALIZED FROM 1 FT/S TO SI. No descent profile is inferred
+              around this single source sample.
+            </p>
+          </div>
+        </section>
+
+        <section id="surface" className="archive-section section-rule">
+          <header className="section-heading">
+            <p>10 / LUNAR SURFACE OPERATIONS</p>
+            <h2>TRANQUILITY BASE: CONFIGURATION RECORD</h2>
+            <span lang="zh-Hans">月面作业</span>
+          </header>
+          <div className="surface-register">
+            <div>
+              <span>TOUCHDOWN</span>
+              <b>{formatMet(getEvent('a11-touchdown').metSeconds)}</b>
+              <p>Descent stage lifecycle changes to LANDED.</p>
+            </div>
+            <div>
+              <span>FIRST-STEP TRANSCRIPT</span>
+              <b>{formatMet(missionPack.media.transcripts[2].metSeconds)}</b>
+              <p>Exact text record; no synthesized voice or continuous surface telemetry.</p>
+            </div>
+            <div>
+              <span>LUNAR LIFTOFF</span>
+              <b>{formatMet(getEvent('a11-lunar-liftoff').metSeconds)}</b>
+              <p>Ascent stage becomes free; descent stage remains on the surface.</p>
+            </div>
+          </div>
+          <p className="method-callout">
+            The Mission Control lunar surface and ascent views are configuration diagrams. Relative
+            distance, trajectory, surface location, and apparent scale are schematic.
+          </p>
+        </section>
+
+        <section id="return" className="archive-section section-rule return-record">
+          <header className="section-heading">
+            <p>11 / RENDEZVOUS, RETURN &amp; RECOVERY</p>
+            <h2>FROM LUNAR ASCENT TO SPLASHDOWN</h2>
+            <span lang="zh-Hans">交会、返航与回收</span>
+          </header>
+          <div className="return-grid">
+            <figure className="evidence-plate">
+              <img
+                src="/missions/apollo11/plates/NASA-A11-MOON-VIEW.jpg"
+                alt="Apollo 11 photograph AS11-44-6665 showing the Moon during the return leg"
+              />
+              <figcaption>
+                <span>AS11-44-6665 / RETURN-LEG PLATE</span>
+                NASA MISSION PHOTOGRAPH · TAKEN AFTER DEPARTURE, ABOUT 10,000 NAUTICAL MILES FROM
+                THE MOON · NOT AN APPROACH OR LOI VIEW
+              </figcaption>
+            </figure>
+            <ol className="return-event-register">
+              {[
+                'a11-lunar-liftoff',
+                'a11-lm-csm-docking',
+                'a11-ascent-stage-jettison',
+                'a11-tei-ignition',
+                'a11-cm-sm-separation',
+                'a11-entry-interface',
+                'a11-splashdown',
+              ].map((eventId) => {
+                const event = getEvent(eventId)
+                return (
+                  <li key={event.id}>
+                    <time>{formatMet(event.metSeconds)}</time>
+                    <span>{event.label}</span>
+                  </li>
+                )
+              })}
+            </ol>
+          </div>
+        </section>
+
         <section id="sources" className="archive-section section-rule source-room">
           <header className="section-heading">
             <p>12 / SOURCE ROOM</p>
             <h2>PRIMARY RECORDS &amp; MODEL PROVENANCE</h2>
             <span lang="zh-Hans">媒体与来源室</span>
           </header>
-          <div className="source-table" role="table" aria-label="Phase 4 source register">
+          <div className="source-table" role="table" aria-label="Phase 5 source register">
             {selectedSources.map((source) => (
               <div role="row" key={source.id}>
                 <span role="cell">{source.id}</span>

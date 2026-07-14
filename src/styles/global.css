@@ -598,6 +598,10 @@ img {
   display: none;
 }
 
+.architecture-strip > div:nth-child(4)::after {
+  display: none;
+}
+
 .architecture-strip span {
   color: var(--oxide);
   font-family: var(--mono);
@@ -688,6 +692,149 @@ img {
 
 .spacecraft-plates .evidence-plate img {
   aspect-ratio: 1.35;
+}
+
+.archive-transcripts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 48px;
+}
+
+.archive-transcripts article {
+  min-height: 240px;
+  padding: 20px;
+  border-top: 3px solid var(--oxide);
+  background: var(--paper-alt);
+}
+
+.archive-transcripts article > div,
+.mission-moment-grid article > time,
+.surface-register span,
+.landing-reading span {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.07em;
+}
+
+.archive-transcripts article > div {
+  display: flex;
+  justify-content: space-between;
+  color: var(--oxide);
+}
+
+.archive-transcripts blockquote {
+  margin: 64px 0 24px;
+  font-family: var(--condensed);
+  font-size: 19px;
+  line-height: 1.15;
+}
+
+.archive-transcripts article > p {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.mission-moment-grid,
+.surface-register {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-top: 48px;
+  border-top: 1px solid var(--ink);
+  border-left: 1px solid var(--rule);
+}
+
+.mission-moment-grid article,
+.surface-register > div {
+  min-height: 150px;
+  padding: 18px;
+  border-right: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+}
+
+.mission-moment-grid h3 {
+  margin: 48px 0 10px;
+  font-family: var(--condensed);
+  font-size: 14px;
+  letter-spacing: 0.04em;
+}
+
+.landing-reading {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px 30px;
+  margin-top: 22px;
+  padding: 22px;
+  border-left: 3px solid var(--oxide);
+  background: var(--paper-alt);
+}
+
+.landing-reading b {
+  color: var(--oxide);
+  font-family: var(--mono);
+  font-size: 20px;
+}
+
+.landing-reading p {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.surface-register {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.surface-register b {
+  display: block;
+  margin-top: 42px;
+  font-family: var(--condensed);
+  font-size: 18px;
+}
+
+.surface-register p {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.return-grid {
+  display: grid;
+  grid-template-columns: minmax(360px, 1.1fr) minmax(300px, 0.9fr);
+  gap: 38px;
+  margin-top: 48px;
+}
+
+.return-grid .evidence-plate img {
+  aspect-ratio: 1;
+}
+
+.return-event-register {
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--ink);
+  list-style: none;
+}
+
+.return-event-register li {
+  display: grid;
+  grid-template-columns: 104px 1fr;
+  gap: 14px;
+  align-items: center;
+  min-height: 61px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.return-event-register time {
+  color: var(--oxide);
+  font-family: var(--mono);
+  font-size: 10px;
+}
+
+.return-event-register span {
+  font-family: var(--condensed);
+  font-size: 12px;
+  letter-spacing: 0.04em;
 }
 
 .source-table {
@@ -858,13 +1005,16 @@ html[data-mode='control'] .mode-nav a.active {
 }
 
 .phase-rail {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  display: flex;
   margin-top: 7px;
+  overflow-x: auto;
   border: 1px solid #39423b;
+  scrollbar-color: var(--ops-rule) var(--ops-bg);
+  scrollbar-width: thin;
 }
 
 .phase-rail button {
+  flex: 1 0 132px;
   min-height: 42px;
   border-right: 1px solid #39423b;
   background: #0d100e;
@@ -913,6 +1063,12 @@ html[data-mode='control'] .mode-nav a.active {
 
 .console-panel {
   overflow: hidden;
+}
+
+.systems-panel {
+  overflow-y: auto;
+  scrollbar-color: var(--ops-rule) var(--ops-bg);
+  scrollbar-width: thin;
 }
 
 .panel-head,
@@ -1230,6 +1386,68 @@ html[data-mode='control'] .mode-nav a.active {
   background: var(--ops-red);
 }
 
+.status-unknown {
+  background: var(--ops-amber);
+}
+
+.transcript-records {
+  margin: 12px 10px 0;
+  border-top: 1px solid var(--ops-rule);
+}
+
+.subpanel-head {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0 7px;
+  color: var(--ops-amber);
+}
+
+.subpanel-head h3,
+.subpanel-head span {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: 0.06em;
+}
+
+.transcript-records button {
+  width: 100%;
+  padding: 8px 0;
+  border-top: 1px dotted #3f4941;
+  background: transparent;
+  color: var(--ops-muted);
+  text-align: left;
+}
+
+.transcript-records button > span,
+.transcript-records q {
+  display: block;
+  font-family: var(--mono);
+  font-size: 8px;
+  line-height: 1.4;
+}
+
+.transcript-records q {
+  margin-top: 4px;
+  color: var(--ops-text);
+}
+
+.transcript-records button.is-passed {
+  border-left: 2px solid var(--ops-green);
+  padding-left: 7px;
+}
+
+.configuration-change {
+  margin: 7px 0 0;
+  padding: 7px 10px;
+  border: 1px solid var(--ops-rule);
+  background: #121612;
+  color: var(--ops-amber);
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: 0.06em;
+}
+
 .data-availability {
   margin: 14px 10px;
   padding-top: 12px;
@@ -1490,6 +1708,26 @@ html[data-mode='control'] .mode-nav a.active {
     grid-template-columns: 1fr;
   }
 
+  .archive-transcripts {
+    grid-template-columns: 1fr;
+  }
+
+  .archive-transcripts article {
+    min-height: 0;
+  }
+
+  .archive-transcripts blockquote {
+    margin-top: 34px;
+  }
+
+  .mission-moment-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .return-grid {
+    grid-template-columns: 1fr;
+  }
+
   .source-table > div {
     grid-template-columns: 165px 1fr 70px;
   }
@@ -1637,10 +1875,25 @@ html[data-mode='control'] .mode-nav a.active {
     grid-template-columns: 1fr;
   }
 
+  .archive-transcripts,
+  .mission-moment-grid,
+  .surface-register {
+    grid-template-columns: 1fr;
+  }
+
   .architecture-strip > div::after {
     right: 50%;
     bottom: -18px;
     transform: rotate(90deg);
+  }
+
+  .landing-reading {
+    display: block;
+  }
+
+  .landing-reading b {
+    display: block;
+    margin: 14px 0;
   }
 
   .component-ledger > div {
