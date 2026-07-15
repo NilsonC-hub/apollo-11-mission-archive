@@ -124,6 +124,11 @@ export function SaturnVInspector() {
     sceneTransactionStarted && quality !== 'fallback' && sceneAvailability === 'ready'
 
   useLayoutEffect(() => {
+    // React Router preserves the document scroll offset across SPA route
+    // changes. Archive enters this route from a deep chapter anchor, so reset
+    // before paint to keep the Inspector heading and return link below the
+    // sticky global header.
+    window.scrollTo(0, 0)
     const store = useMissionStore.getState()
     // Convert any playback-resuming inspection inherited from Control into the
     // normal explicit-resume transaction before this reference route loads.

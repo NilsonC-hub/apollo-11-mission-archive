@@ -84,10 +84,32 @@ test('Inspector exposes canonical hierarchy and keeps dossier navigation in fall
 test('Inspector Archive return and browser traversal preserve exact route identity', async ({
   page,
 }) => {
-  await page.goto(SATURN_V_INSPECTOR_PATH)
+  await page.goto('/archive#saturn-v')
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0)
+  await page.getByRole('link', { name: 'OPEN SATURN V INSPECTOR' }).click()
+  await expect(page).toHaveURL(new RegExp(`${SATURN_V_INSPECTOR_PATH}$`))
   await waitForScene(page)
   const returnLink = page.getByRole('link', { name: 'RETURN TO ARCHIVE / SATURN V' })
   await expect(returnLink).toHaveAttribute('href', '/archive#saturn-v')
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0)
+  const inspectorEntryBounds = await page.evaluate(() => {
+    const globalHeader = document.querySelector<HTMLElement>('.global-header')
+    const inspectorHeader = document.querySelector<HTMLElement>('.saturn-inspector__header')
+    const returnLink = inspectorHeader?.querySelector<HTMLElement>('a')
+    if (!globalHeader || !inspectorHeader || !returnLink) return null
+    return {
+      globalHeaderBottom: globalHeader.getBoundingClientRect().bottom,
+      inspectorHeaderTop: inspectorHeader.getBoundingClientRect().top,
+      returnLinkTop: returnLink.getBoundingClientRect().top,
+    }
+  })
+  expect(inspectorEntryBounds).not.toBeNull()
+  expect(inspectorEntryBounds!.inspectorHeaderTop).toBeGreaterThanOrEqual(
+    inspectorEntryBounds!.globalHeaderBottom,
+  )
+  expect(inspectorEntryBounds!.returnLinkTop).toBeGreaterThanOrEqual(
+    inspectorEntryBounds!.globalHeaderBottom,
+  )
 
   await returnLink.click()
   await expect(page).toHaveURL(/\/archive#saturn-v$/)
