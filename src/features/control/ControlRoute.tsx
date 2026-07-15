@@ -556,7 +556,8 @@ function sceneCopy(mode: ConsoleMode): { heading: string; truth: string; body: s
     return {
       heading: 'VIEW / NASA MODEL ASSETS',
       truth: 'SATURN V: NASA VISUALIZATION · CSM: RECONSTRUCTED',
-      body: 'EARTH TEXTURE / MODERN NASA COMPOSITE',
+      body:
+        'EARTH TEXTURE / MODERN NASA COMPOSITE · ROTATION SCHEMATIC / NOT EPOCH-ACCURATE',
     }
   }
   if (mode === 'translunar') {
@@ -594,9 +595,12 @@ export function Component() {
   useControlKeyboard()
 
   const storyTimeMs = useMissionStore((state) => state.storyTimeMs)
+  const visualTimeMs = useMissionStore((state) => state.visualTimeMs)
+  const transitionAnchors = useMissionStore((state) => state.visualTransitionAnchors)
   const storeMet = metAtStoryTime(mission.narrative, storyTimeMs)
   const met = deepLinkMet ?? storeMet
   const quality = useMissionStore((state) => state.quality)
+  const speed = useMissionStore((state) => state.speed)
   const sceneAvailability = useMissionStore((state) => state.sceneAvailability)
   const setQuality = useMissionStore((state) => state.setQuality)
   const resumeAvailable = useMissionStore((state) => state.resumeAvailable)
@@ -605,8 +609,10 @@ export function Component() {
   const pauseReason = useMissionStore((state) => state.pauseReason)
   const interaction = useMissionStore((state) => state.interaction)
   const cameraCommand = useMissionStore((state) => state.cameraCommand)
+  const guidedCameraActive = useMissionStore((state) => state.guidedCameraActive)
   const enterFreeLook = useMissionStore((state) => state.enterFreeLook)
   const requestCameraCommand = useMissionStore((state) => state.requestCameraCommand)
+  const skipGuidedCamera = useMissionStore((state) => state.skipGuidedCamera)
   const returnToGuided = useMissionStore((state) => state.returnToGuided)
   const closeInspection = useMissionStore((state) => state.closeInspection)
   const resumeAfterModeSwitch = useMissionStore((state) => state.resumeAfterModeSwitch)
@@ -823,6 +829,11 @@ export function Component() {
             >
               RESET VIEW
             </button>
+            {guidedCameraActive && interaction.mode === 'guided' && (
+              <button className="skip-guided" type="button" onClick={skipGuidedCamera}>
+                SKIP CAMERA MOVE
+              </button>
+            )}
             {interaction.mode === 'free-look' && (
               <button className="return-guided" type="button" onClick={returnToGuided}>
                 RETURN TO GUIDED VIEW
@@ -866,6 +877,9 @@ export function Component() {
               <MissionScene
                 met={met}
                 storyTimeMs={storyTimeMs}
+                visualTimeMs={visualTimeMs}
+                transitionAnchors={transitionAnchors}
+                speed={speed}
                 interaction={interaction}
                 cameraCommand={cameraCommand}
                 quality={quality}

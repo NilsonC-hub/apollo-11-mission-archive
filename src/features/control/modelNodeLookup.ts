@@ -9,6 +9,7 @@ import saturnManifest from '../../missions/apollo11/node-manifests/apollo11-satu
 interface RuntimeNodeManifest {
   assetId: string
   nodes: Record<string, { path: string; required: boolean }>
+  anchors?: Record<string, { path: string; required: boolean }>
 }
 
 const manifests = new Map<string, RuntimeNodeManifest>(
@@ -29,7 +30,7 @@ export function nodePathForComponent(componentId: string): string {
 export function nodePathForSemanticId(assetId: string, semanticNodeId: string): string {
   const manifest = manifests.get(assetId)
   if (!manifest) throw new RangeError(`Unknown node manifest: ${assetId}`)
-  const node = manifest.nodes[semanticNodeId]
+  const node = manifest.nodes[semanticNodeId] ?? manifest.anchors?.[semanticNodeId]
   if (!node) {
     throw new RangeError(`Unknown semantic node ${semanticNodeId} in ${manifest.assetId}`)
   }

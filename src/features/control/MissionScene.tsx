@@ -1,5 +1,14 @@
-import { Component, Suspense, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
-import { Canvas, useLoader, useThree, type ThreeEvent } from '@react-three/fiber'
+import {
+  Component,
+  Suspense,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
+import { Canvas, useFrame, useLoader, useThree, type ThreeEvent } from '@react-three/fiber'
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader.js'
@@ -7,7 +16,12 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import {
   Box3,
   BufferGeometry,
+  Color,
+  ConeGeometry,
+  DoubleSide,
   Float32BufferAttribute,
+  Mesh,
+  MeshBasicMaterial,
   Sphere,
   Vector3,
   type Group,
@@ -20,6 +34,8 @@ import {
   type CameraCommand,
   type ControlInteractionState,
   type ModelQuality,
+  type PlaybackSpeed,
+  type VisualTransitionAnchors,
 } from '../../app/missionStore.ts'
 import { stateAtMet, visualStateAtStoryTime } from '../../mission-core/index.ts'
 import {
@@ -28,6 +44,12 @@ import {
   resolveSemanticNode,
   runtimeInspectableComponentIds,
 } from './modelNodeLookup.ts'
+import {
+  launchGuidedShots,
+  launchVisualStateAt,
+  type LaunchVisualState,
+  type VisualVector3,
+} from './launchVisualState.ts'
 
 const MODEL_ROOT = '/missions/apollo11/models'
 const DRACO_ROOT = '/missions/apollo11/decoders/three-draco/'
@@ -73,7 +95,13 @@ function createStarGeometry(count: number, seed: number): BufferGeometry {
   return geometry
 }
 
-function SchematicStarField({ quality }: { quality: Exclude<ModelQuality, 'fallback'> }) {
+function SchematicStarField({
+  quality,
+  opacity = 1,
+}: {
+  quality: Exclude<ModelQuality, 'fallback'>
+  opacity?: number
+}) {
   const [faintCount, brightCount] =
     quality === 'high' ? [420, 48] : quality === 'medium' ? [280, 32] : [150, 18]
   const faint = useMemo(() => createStarGeometry(faintCount, 0x6d2b79f5), [faintCount])
@@ -95,7 +123,7 @@ function SchematicStarField({ quality }: { quality: Exclude<ModelQuality, 'fallb
           size={1}
           sizeAttenuation={false}
           transparent
-          opacity={0.38}
+          opacity={0.38 * opacity}
           depthWrite={false}
           toneMapped={false}
         />
@@ -106,7 +134,7 @@ function SchematicStarField({ quality }: { quality: Exclude<ModelQuality, 'fallb
           size={1.55}
           sizeAttenuation={false}
           transparent
-          opacity={0.72}
+          opacity={0.72 * opacity}
           depthWrite={false}
           toneMapped={false}
         />
@@ -131,14 +159,18 @@ function setComponentPresentation(
   root: Group,
   componentId: string,
   visible: boolean,
-  offsetY = 0,
+  offset: VisualVector3 = [0, 0, 0],
 ): void {
   const node = resolveComponentNode(root, componentId)
+  const baseX = Number(node.userData.presentationBaseX ?? node.position.x)
   const baseY = Number(node.userData.presentationBaseY ?? node.position.y)
+  const baseZ = Number(node.userData.presentationBaseZ ?? node.position.z)
+  node.userData.presentationBaseX = baseX
   node.userData.presentationBaseY = baseY
+  node.userData.presentationBaseZ = baseZ
   node.userData.semanticComponentId = componentId
   node.visible = visible
-  node.position.y = baseY + offsetY
+  node.position.set(baseX + offset[0], baseY + offset[1], baseZ + offset[2])
 }
 
 function handleSemanticClick(event: ThreeEvent<MouseEvent>): void {
@@ -167,17 +199,66 @@ function sceneModeAtMet(met: number): SceneMode {
   return 'launch'
 }
 
+type LaunchStageId = keyof LaunchVisualState['plumeIntensity']
+
+const plumeAnchors: Readonly<Record<LaunchStageId, string>> = {
+  's-ic': 'exhaust.sic',
+  's-ii': 'exhaust.sii',
+  's-ivb': 'exhaust.sivb',
+}
+
+function createPlume(radius: number, height: number): Mesh {
+  const material = new MeshBasicMaterial({
+    color: '#d0a45a',
+    transparent: true,
+    opacity: 0,
+    depthWrite: false,
+    toneMapped: false,
+  })
+  const plume = new Mesh(new ConeGeometry(radius, height, 18, 1, true), material)
+  plume.position.y = -height / 2
+  plume.visible = false
+  plume.userData.presentationRole = 'schematic-engine-plume'
+  return plume
+}
+
 function SaturnStack({
   met,
   quality,
+  visual,
 }: {
   met: number
   quality: Exclude<ModelQuality, 'fallback'>
+  visual: LaunchVisualState
 }) {
   const gltf = useGlb(modelUrl('saturn-v', quality))
   const scene = useMemo(() => gltf.scene.clone(true), [gltf.scene])
+  const plumes = useMemo(
+    () => ({
+      's-ic': createPlume(2.1, 18),
+      's-ii': createPlume(1.7, 14),
+      's-ivb': createPlume(1.25, 10),
+    }),
+    [],
+  )
   const state = stateAtMet(mission, met)
   const postCsmSeparation = met >= getEvent('a11-csm-sivb-separation').metSeconds
+
+  useLayoutEffect(() => {
+    for (const [stageId, anchorId] of Object.entries(plumeAnchors) as [
+      LaunchStageId,
+      string,
+    ][]) {
+      resolveSemanticNode(scene, 'apollo11-saturn-v', anchorId).add(plumes[stageId])
+    }
+    return () => {
+      for (const plume of Object.values(plumes)) {
+        plume.removeFromParent()
+        plume.geometry.dispose()
+        ;(plume.material as MeshBasicMaterial).dispose()
+      }
+    }
+  }, [plumes, scene])
 
   useLayoutEffect(() => {
     const separatingComponents = [
@@ -190,7 +271,13 @@ function SaturnStack({
 
     for (const componentId of separatingComponents) {
       const discarded = state.components[componentId]?.lifecycle === 'discarded'
-      setComponentPresentation(scene, componentId, !discarded)
+      const departure = visual.departures[componentId]
+      setComponentPresentation(
+        scene,
+        componentId,
+        !discarded || Boolean(departure?.renderAfterSeparation),
+        departure?.offsetMeters,
+      )
     }
     for (const componentId of ['s-ivb', 'instrument-unit', 'spacecraft-lm-adapter']) {
       setComponentPresentation(scene, componentId, true)
@@ -201,18 +288,18 @@ function SaturnStack({
       'spacecraft.csmLaunchRepresentation',
     )
     launchCsm.visible = !postCsmSeparation
-  }, [met, postCsmSeparation, scene, state.components])
+    for (const stageId of Object.keys(plumes) as LaunchStageId[]) {
+      const intensity = visual.plumeIntensity[stageId]
+      const plume = plumes[stageId]
+      plume.visible = intensity > 0
+      ;(plume.material as MeshBasicMaterial).opacity = 0.72 * intensity
+    }
+  }, [plumes, postCsmSeparation, scene, state.components, visual])
 
-  const ascent = state.phaseId === 'prelaunch' || state.phaseId === 'ascent'
   return (
-    <group rotation={[0, 0, ascent ? 0 : -Math.PI / 2]} position={[0, ascent ? -3.7 : 0, 0]}>
+    <group rotation={visual.vehicleRotation} position={visual.vehiclePosition}>
+      <group name="launch-camera-anchor" position={[0, 3.7, 0]} />
       <primitive object={scene} scale={0.067} onClick={handleSemanticClick} />
-      {state.components['s-ic']?.engineMode === 'burning' && (
-        <mesh position={[0, -4.2, 0]}>
-          <coneGeometry args={[0.2, 1.4, 14]} />
-          <meshBasicMaterial color="#d0a45a" transparent opacity={0.72} />
-        </mesh>
-      )}
     </group>
   )
 }
@@ -299,10 +386,12 @@ function Planet({
   kind,
   position,
   radius,
+  rotationY = 0,
 }: {
   kind: 'earth' | 'moon'
   position: Position
   radius: number
+  rotationY?: number
 }) {
   const gl = useThree((state) => state.gl)
   const url =
@@ -314,10 +403,36 @@ function Planet({
   )
 
   return (
-    <mesh position={position}>
+    <mesh position={position} rotation={[0, rotationY, 0]}>
       <sphereGeometry args={[radius, 64, 32]} />
       <meshStandardMaterial map={texture} roughness={1} metalness={0} />
     </mesh>
+  )
+}
+
+function LaunchReferenceFrame({ opacity }: { opacity: number }) {
+  if (opacity <= 0.001) return null
+  return (
+    <group position={[0, -3.69, 0]}>
+      <mesh rotation={[Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[1.5, 1.53, 64]} />
+        <meshBasicMaterial
+          color="#829789"
+          transparent
+          opacity={0.34 * opacity}
+          depthWrite={false}
+          side={DoubleSide}
+        />
+      </mesh>
+      <mesh position={[0, 0, 0]}>
+        <boxGeometry args={[4.2, 0.012, 0.012]} />
+        <meshBasicMaterial color="#829789" transparent opacity={0.24 * opacity} />
+      </mesh>
+      <mesh position={[0, 0, 0]} rotation={[0, Math.PI / 2, 0]}>
+        <boxGeometry args={[4.2, 0.012, 0.012]} />
+        <meshBasicMaterial color="#829789" transparent opacity={0.24 * opacity} />
+      </mesh>
+    </group>
   )
 }
 
@@ -343,18 +458,26 @@ function MissionConfiguration({
   met,
   phaseProgress,
   quality,
+  launchVisual,
 }: {
   met: number
   phaseProgress: number
   quality: Exclude<ModelQuality, 'fallback'>
+  launchVisual: LaunchVisualState
 }) {
   const mode = sceneModeAtMet(met)
 
   if (mode === 'launch') {
     return (
       <>
-        <Planet kind="earth" position={[-7.6, -4.8, -7]} radius={5.5} />
-        <SaturnStack met={met} quality={quality} />
+        <Planet
+          kind="earth"
+          position={[...launchVisual.earthPosition]}
+          radius={launchVisual.earthRadius}
+          rotationY={launchVisual.earthRotationY}
+        />
+        <LaunchReferenceFrame opacity={launchVisual.launchReferenceOpacity} />
+        <SaturnStack met={met} quality={quality} visual={launchVisual} />
         <ExtractionAssembly met={met} quality={quality} />
       </>
     )
@@ -480,10 +603,18 @@ function CameraRig({
   met,
   interaction,
   cameraCommand,
+  guidedShotId,
+  guidedShotDurationMs,
+  guidedShotAnchorVisualTimeMs,
+  visualTimeMs,
 }: {
   met: number
   interaction: ControlInteractionState
   cameraCommand: CameraCommand | null
+  guidedShotId: LaunchVisualState['guidedShotId'] | null
+  guidedShotDurationMs: number
+  guidedShotAnchorVisualTimeMs: number | null
+  visualTimeMs: number
 }) {
   const camera = useThree((state) => state.camera)
   const gl = useThree((state) => state.gl)
@@ -493,8 +624,40 @@ function CameraRig({
   const tweenFrame = useRef<number | null>(null)
   const settleFrame = useRef<number | null>(null)
   const pointerStart = useRef<{ id: number; x: number; y: number } | null>(null)
+  const previousSkipRevision = useRef(useMissionStore.getState().guidedCameraSkipRevision)
+  const guidedCameraSkipRevision = useMissionStore((state) => state.guidedCameraSkipRevision)
+  const followPosition = useMemo(() => new Vector3(), [])
+  const followTarget = useMemo(() => new Vector3(), [])
   const metRef = useRef(met)
+  const visualTimeRef = useRef(visualTimeMs)
   metRef.current = met
+  visualTimeRef.current = visualTimeMs
+
+  const guidedPose = useCallback(
+    (targetPosition: Vector3, targetLookAt: Vector3): boolean => {
+      if (!guidedShotId) {
+        targetPosition.copy(guidedCameraPosition)
+        targetLookAt.copy(guidedCameraTarget)
+        return true
+      }
+      const shot = launchGuidedShots[guidedShotId]
+      const anchor = scene.getObjectByName(shot.targetAnchorName)
+      if (!anchor) return false
+      anchor.getWorldPosition(targetLookAt)
+      targetLookAt.set(
+        targetLookAt.x + shot.targetOffset[0],
+        targetLookAt.y + shot.targetOffset[1],
+        targetLookAt.z + shot.targetOffset[2],
+      )
+      targetPosition.set(
+        targetLookAt.x + shot.cameraOffset[0],
+        targetLookAt.y + shot.cameraOffset[1],
+        targetLookAt.z + shot.cameraOffset[2],
+      )
+      return true
+    },
+    [guidedShotId, scene],
+  )
 
   useEffect(() => {
     controls.enableDamping = false
@@ -565,6 +728,14 @@ function CameraRig({
     document.documentElement.dataset.cameraCommand = cameraCommand.kind
   }, [camera, cameraCommand, controls, invalidate])
 
+  useFrame(() => {
+    if (interaction.mode !== 'guided' || tweenFrame.current !== null) return
+    if (!guidedPose(followPosition, followTarget)) return
+    camera.position.copy(followPosition)
+    controls.target.copy(followTarget)
+    controls.update()
+  })
+
   useEffect(() => {
     if (tweenFrame.current !== null) cancelAnimationFrame(tweenFrame.current)
     if (settleFrame.current !== null) cancelAnimationFrame(settleFrame.current)
@@ -575,8 +746,10 @@ function CameraRig({
     let targetPosition: Vector3 | undefined
     let targetLookAt: Vector3 | undefined
     if (interaction.mode === 'guided') {
-      targetPosition = guidedCameraPosition.clone()
-      targetLookAt = guidedCameraTarget.clone()
+      targetPosition = new Vector3()
+      targetLookAt = new Vector3()
+      if (!guidedPose(targetPosition, targetLookAt)) return
+      document.documentElement.dataset.cameraShot = guidedShotId ?? 'mission-reference'
     } else if (interaction.mode === 'inspect' && interaction.cameraControl === 'guided-focus') {
       const targets = findInspectableComponentNodes(
         scene,
@@ -599,10 +772,30 @@ function CameraRig({
     const startPosition = camera.position.clone()
     const startTarget = controls.target.clone()
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    const durationMs = reduceMotion ? 0 : 550
+    const skipped = guidedCameraSkipRevision !== previousSkipRevision.current
+    previousSkipRevision.current = guidedCameraSkipRevision
+    const elapsedSinceAnchor =
+      guidedShotAnchorVisualTimeMs === null
+        ? Number.POSITIVE_INFINITY
+        : Math.max(0, visualTimeRef.current - guidedShotAnchorVisualTimeMs)
+    const remainingGuidedDuration = Math.max(0, guidedShotDurationMs - elapsedSinceAnchor)
+    const durationMs = reduceMotion
+      ? 0
+      : interaction.mode === 'guided'
+        ? skipped
+          ? 0
+          : remainingGuidedDuration
+        : 550
     const startedAt = performance.now()
 
+    if (interaction.mode === 'guided') {
+      useMissionStore
+        .getState()
+        .setGuidedCameraStatus(durationMs > 0, guidedShotId ?? 'mission-reference')
+    }
+
     const update = (now: number) => {
+      if (interaction.mode === 'guided') guidedPose(targetPosition, targetLookAt)
       const progress = durationMs === 0 ? 1 : Math.min(1, (now - startedAt) / durationMs)
       const eased = 1 - (1 - progress) ** 3
       camera.position.lerpVectors(startPosition, targetPosition, eased)
@@ -612,6 +805,9 @@ function CameraRig({
       if (progress < 1) tweenFrame.current = requestAnimationFrame(update)
       else {
         tweenFrame.current = null
+        if (interaction.mode === 'guided') {
+          useMissionStore.getState().setGuidedCameraStatus(false)
+        }
         const settledLabel =
           interaction.mode === 'inspect' ? interaction.componentId : interaction.mode
         settleFrame.current = requestAnimationFrame(() => {
@@ -629,8 +825,22 @@ function CameraRig({
       if (settleFrame.current !== null) cancelAnimationFrame(settleFrame.current)
       tweenFrame.current = null
       settleFrame.current = null
+      if (interaction.mode === 'guided') {
+        useMissionStore.getState().setGuidedCameraStatus(false)
+      }
     }
-  }, [camera, controls, interaction, invalidate, scene])
+  }, [
+    camera,
+    controls,
+    guidedCameraSkipRevision,
+    guidedShotAnchorVisualTimeMs,
+    guidedShotDurationMs,
+    guidedShotId,
+    guidedPose,
+    interaction,
+    invalidate,
+    scene,
+  ])
 
   return null
 }
@@ -663,22 +873,70 @@ function RuntimeSceneState({
   return null
 }
 
+function LaunchAuditState({ visual }: { visual: LaunchVisualState }) {
+  useEffect(() => {
+    const html = document.documentElement
+    html.dataset.launchVisualPolicy = visual.policy
+    html.dataset.launchGuidedShot = visual.guidedShotId
+    html.dataset.earthPresentation = 'schematic-not-epoch-accurate'
+    html.dataset.earthRotationY = visual.earthRotationY.toFixed(6)
+    html.dataset.launchDeparture = Object.entries(visual.departures)
+      .filter(([, departure]) => departure.progress > 0 && departure.progress < 1)
+      .map(([componentId]) => componentId)
+      .join(',')
+    return () => {
+      delete html.dataset.launchVisualPolicy
+      delete html.dataset.launchGuidedShot
+      delete html.dataset.earthPresentation
+      delete html.dataset.earthRotationY
+      delete html.dataset.launchDeparture
+    }
+  }, [visual])
+
+  return null
+}
+
 function SceneContents({
   met,
   storyTimeMs,
+  visualTimeMs,
+  transitionAnchors,
+  speed,
+  reducedMotion,
   interaction,
   cameraCommand,
   quality,
 }: {
   met: number
   storyTimeMs: number
+  visualTimeMs: number
+  transitionAnchors: VisualTransitionAnchors
+  speed: PlaybackSpeed
+  reducedMotion: boolean
   interaction: ControlInteractionState
   cameraCommand: CameraCommand | null
   quality: Exclude<ModelQuality, 'fallback'>
 }) {
   const phaseProgress = visualStateAtStoryTime(mission.narrative, storyTimeMs).progress
   const runtimeState = stateAtMet(mission, met)
-  const configurationKey = `${quality}:${sceneModeAtMet(met)}:${Object.entries(
+  const mode = sceneModeAtMet(met)
+  const launchVisual = launchVisualStateAt({
+    storyTimeMs,
+    visualTimeMs,
+    transitionAnchors,
+    metSeconds: met,
+    speed,
+    reducedMotion,
+  })
+  const background = useMemo(
+    () =>
+      new Color('#1a292e').lerp(
+        new Color('#050706'),
+        mode === 'launch' ? launchVisual.atmosphereToSpace : 1,
+      ),
+    [launchVisual.atmosphereToSpace, mode],
+  )
+  const configurationKey = `${quality}:${mode}:${Object.entries(
     runtimeState.components,
   )
     .map(
@@ -688,13 +946,38 @@ function SceneContents({
     .join('|')}`
   return (
     <>
-      <color attach="background" args={['#050706']} />
-      <SchematicStarField quality={quality} />
+      <color attach="background" args={[background]} />
+      <SchematicStarField
+        quality={quality}
+        opacity={mode === 'launch' ? launchVisual.starOpacity : 1}
+      />
       <ambientLight intensity={1.15} />
       <directionalLight position={[8, 7, 10]} intensity={2.5} color="#f3ead8" />
       <directionalLight position={[-6, 2, -4]} intensity={0.7} color="#758a83" />
-      <MissionConfiguration met={met} phaseProgress={phaseProgress} quality={quality} />
-      <CameraRig met={met} interaction={interaction} cameraCommand={cameraCommand} />
+      <MissionConfiguration
+        met={met}
+        phaseProgress={phaseProgress}
+        quality={quality}
+        launchVisual={launchVisual}
+      />
+      <CameraRig
+        met={met}
+        interaction={interaction}
+        cameraCommand={cameraCommand}
+        guidedShotId={mode === 'launch' ? launchVisual.guidedShotId : null}
+        guidedShotDurationMs={
+          mode === 'launch'
+            ? launchVisual.guidedShotDurationMs
+            : reducedMotion || speed >= 100
+              ? 0
+              : 550
+        }
+        guidedShotAnchorVisualTimeMs={
+          mode === 'launch' ? launchVisual.guidedShotAnchorVisualTimeMs : null
+        }
+        visualTimeMs={visualTimeMs}
+      />
+      {mode === 'launch' && <LaunchAuditState visual={launchVisual} />}
       <RuntimeSceneState state={runtimeState} configurationKey={configurationKey} />
     </>
   )
@@ -806,19 +1089,41 @@ function webglAvailable(): boolean {
   return cachedWebglAvailability
 }
 
+function useReducedMotionPreference(): boolean {
+  const [reducedMotion, setReducedMotion] = useState(
+    () => window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+  )
+
+  useEffect(() => {
+    const query = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const update = () => setReducedMotion(query.matches)
+    query.addEventListener('change', update)
+    return () => query.removeEventListener('change', update)
+  }, [])
+
+  return reducedMotion
+}
+
 export function MissionScene({
   met,
   storyTimeMs,
+  visualTimeMs,
+  transitionAnchors,
+  speed,
   interaction,
   cameraCommand,
   quality,
 }: {
   met: number
   storyTimeMs: number
+  visualTimeMs: number
+  transitionAnchors: VisualTransitionAnchors
+  speed: PlaybackSpeed
   interaction: ControlInteractionState
   cameraCommand: CameraCommand | null
   quality: ModelQuality
 }) {
+  const reducedMotion = useReducedMotionPreference()
   if (quality === 'fallback' || !webglAvailable()) return <StaticVehicleFallback />
 
   return (
@@ -835,6 +1140,10 @@ export function MissionScene({
           <SceneContents
             met={met}
             storyTimeMs={storyTimeMs}
+            visualTimeMs={visualTimeMs}
+            transitionAnchors={transitionAnchors}
+            speed={speed}
+            reducedMotion={reducedMotion}
             interaction={interaction}
             cameraCommand={cameraCommand}
             quality={quality}
