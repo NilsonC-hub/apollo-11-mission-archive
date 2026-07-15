@@ -1,0 +1,362 @@
+.archive-shell .archive-media-lead {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 36px;
+  align-items: end;
+  margin-top: 28px;
+}
+
+.archive-shell .archive-anchor-alias {
+  display: block;
+  width: 0;
+  height: 0;
+  scroll-margin-top: 68px;
+}
+
+.archive-shell .archive-media-lead p {
+  max-width: 68ch;
+  margin: 0;
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1.65;
+}
+
+.archive-shell .archive-inspector-link {
+  display: inline-flex;
+  gap: 32px;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 48px;
+  padding: 0 16px;
+  border: 1px solid var(--ink);
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--condensed);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-decoration: none;
+}
+
+.archive-shell .archive-inspector-link:hover,
+.archive-shell .archive-inspector-link:focus-visible {
+  background: var(--oxide);
+}
+
+.archive-shell .archive-inspector-link:focus-visible {
+  outline: 2px solid var(--oxide);
+  outline-offset: 3px;
+}
+
+.archive-shell .archive-evidence-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(22px, 3vw, 44px);
+  align-items: start;
+  margin-top: clamp(38px, 5vw, 64px);
+}
+
+.archive-shell .archive-evidence-pair--secondary {
+  grid-template-columns: minmax(280px, 0.78fr) minmax(360px, 1.22fr);
+  padding-top: clamp(38px, 5vw, 64px);
+  border-top: 1px solid var(--rule);
+}
+
+.archive-shell .archive-evidence-plate {
+  position: relative;
+  min-width: 0;
+  margin: 0;
+  border: 1px solid var(--rule);
+  background: var(--paper-alt);
+}
+
+.archive-shell .archive-evidence-plate::before {
+  position: absolute;
+  z-index: 2;
+  top: -1px;
+  left: -1px;
+  width: 58px;
+  height: 5px;
+  background: var(--oxide);
+  content: '';
+}
+
+.archive-shell .archive-evidence-visual {
+  min-width: 0;
+  background: #171b1c;
+}
+
+.archive-shell .archive-evidence-visual picture,
+.archive-shell .archive-evidence-visual img {
+  display: block;
+  width: 100%;
+}
+
+.archive-shell .archive-evidence-visual img {
+  height: auto;
+}
+
+.archive-shell .archive-document-plate .archive-evidence-visual {
+  background: #bab6ad;
+}
+
+.archive-shell .archive-evidence-plate figcaption {
+  padding: 16px 18px 0;
+  border-top: 1px solid var(--rule);
+}
+
+.archive-shell .archive-evidence-heading {
+  display: flex;
+  gap: 16px;
+  align-items: baseline;
+  justify-content: space-between;
+  color: var(--oxide);
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.09em;
+}
+
+.archive-shell .archive-evidence-heading b {
+  color: var(--navy);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: right;
+}
+
+.archive-shell .archive-evidence-plate figcaption > p {
+  margin: 13px 0 16px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.archive-shell .archive-record-details {
+  margin: 0 -18px;
+  border-top: 1px solid var(--rule);
+}
+
+.archive-shell .archive-record-details > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 46px;
+  padding: 0 18px;
+  color: var(--navy);
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.09em;
+  list-style: none;
+  cursor: pointer;
+}
+
+.archive-shell .archive-record-details > summary::-webkit-details-marker {
+  display: none;
+}
+
+.archive-shell .archive-record-details > summary:hover,
+.archive-shell .archive-record-details > summary:focus-visible {
+  background: rgba(174, 165, 150, 0.18);
+}
+
+.archive-shell .archive-record-details > summary:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: -3px;
+}
+
+.archive-shell .archive-record-details[open] > summary span {
+  transform: rotate(45deg);
+}
+
+.archive-shell .archive-record-body {
+  padding: 0 18px 18px;
+  border-top: 1px solid var(--rule);
+  background: rgba(255, 255, 255, 0.17);
+}
+
+.archive-shell .archive-record-body dl {
+  margin: 0;
+}
+
+.archive-shell .archive-record-body dl > div {
+  display: grid;
+  grid-template-columns: 128px minmax(0, 1fr);
+  gap: 14px;
+  padding: 9px 0;
+  border-bottom: 1px solid rgba(96, 99, 94, 0.25);
+}
+
+.archive-shell .archive-record-body dt,
+.archive-shell .archive-record-body dd {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.archive-shell .archive-record-body dt {
+  color: var(--oxide);
+  font-family: var(--mono);
+  letter-spacing: 0.06em;
+}
+
+.archive-shell .archive-record-body dd {
+  color: var(--muted);
+}
+
+.archive-shell .archive-record-body code {
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.archive-shell .archive-record-body dd a {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  color: inherit;
+  overflow-wrap: anywhere;
+}
+
+.archive-shell .archive-record-file {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.archive-shell .archive-record-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 14px;
+}
+
+.archive-shell .archive-record-links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--rule);
+  color: var(--navy);
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-decoration: none;
+}
+
+.archive-shell .archive-record-links a:hover,
+.archive-shell .archive-record-links a:focus-visible {
+  border-color: var(--oxide);
+  color: var(--oxide);
+}
+
+.archive-shell .archive-record-links a:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.archive-shell .archive-evidence-plate--hero {
+  align-self: center;
+}
+
+.archive-shell .archive-model-stack {
+  min-width: 0;
+}
+
+.archive-shell .archive-model-plate .archive-evidence-visual {
+  background: #d8d1c4;
+}
+
+.archive-shell .archive-model-plate .archive-evidence-visual img {
+  height: auto;
+}
+
+.archive-shell .archive-model-plate .archive-record-body p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.archive-shell .saturn-component-ledger {
+  margin-top: 28px;
+}
+
+.archive-shell .saturn-component-ledger span,
+.archive-shell .saturn-component-ledger small {
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.archive-shell .saturn-component-ledger small {
+  display: block;
+}
+
+.archive-shell #saturn .chapter-sources > summary {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+}
+
+@media (max-width: 900px) {
+  .archive-shell .archive-media-lead,
+  .archive-shell .archive-evidence-pair,
+  .archive-shell .archive-evidence-pair--secondary {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .archive-shell .archive-media-lead {
+    align-items: start;
+  }
+
+  .archive-shell .archive-inspector-link {
+    justify-self: start;
+  }
+}
+
+@media (max-width: 620px) {
+  .archive-shell .archive-media-lead {
+    gap: 20px;
+  }
+
+  .archive-shell .archive-inspector-link {
+    width: 100%;
+  }
+
+  .archive-shell .archive-evidence-pair--secondary {
+    padding-top: 36px;
+  }
+
+  .archive-shell .archive-evidence-heading {
+    display: block;
+  }
+
+  .archive-shell .archive-evidence-heading b {
+    display: block;
+    margin-top: 7px;
+    text-align: left;
+  }
+
+  .archive-shell .archive-evidence-plate figcaption > p,
+  .archive-shell .archive-model-plate .archive-record-body p {
+    font-size: 16px;
+  }
+
+  .archive-shell .archive-record-body dl > div {
+    display: block;
+  }
+
+  .archive-shell .archive-record-body dd {
+    margin-top: 5px;
+  }
+
+  .archive-shell .archive-record-links {
+    display: grid;
+  }
+}
+
+@media print {
+  .archive-shell .archive-record-details,
+  .archive-shell .archive-inspector-link {
+    display: none;
+  }
+}

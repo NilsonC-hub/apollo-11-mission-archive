@@ -1,4 +1,8 @@
-import type { ArchiveMediaRecord } from './mediaSchema.ts'
+import type {
+  ArchiveMediaRecord,
+  DocumentPlateRecord,
+  HistoricalImageRecord,
+} from './mediaSchema.ts'
 
 export const apollo11ArchiveMediaRecords = [
   {
@@ -271,6 +275,22 @@ export const apollo11ArchiveMediaRecords = [
   },
 ] as const satisfies readonly ArchiveMediaRecord[]
 
-export const apollo11ArchiveMediaById = new Map(
+export const apollo11ArchiveMediaById: ReadonlyMap<string, ArchiveMediaRecord> = new Map(
   apollo11ArchiveMediaRecords.map((record) => [record.id, record]),
 )
+
+export function getHistoricalImageRecord(id: string): HistoricalImageRecord {
+  const record = apollo11ArchiveMediaById.get(id)
+  if (!record || record.kind !== 'historical-image') {
+    throw new TypeError(`Archive historical image record not found: ${id}`)
+  }
+  return record
+}
+
+export function getDocumentPlateRecord(id: string): DocumentPlateRecord {
+  const record = apollo11ArchiveMediaById.get(id)
+  if (!record || record.kind !== 'document-plate') {
+    throw new TypeError(`Archive document plate record not found: ${id}`)
+  }
+  return record
+}

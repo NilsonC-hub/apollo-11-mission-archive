@@ -30,7 +30,10 @@ export const apollo11ArchiveChapters = [
     summary:
       'Mission identity, vehicle designations, source status, and routes into the as-flown record.',
     evidence: 'actual',
-    citations: [overview],
+    citations: [
+      overview,
+      { sourceId: 'NASA-A11-S69-38660', locator: 'S69-38660; Launch Pad 39A, 1969-07-01' },
+    ],
     factIds: [
       'a11-mission-name',
       'a11-launch-vehicle-designation',
@@ -108,7 +111,15 @@ export const apollo11ArchiveChapters = [
     summary:
       'Launch-vehicle stages, instrument unit, adapters, and verified separation-command records.',
     evidence: 'actual',
-    citations: [{ sourceId: 'NASA-A11-SATV-FE', locator: 'AS-506 Flight Evaluation Report' }],
+    citations: [
+      { sourceId: 'NASA-A11-SATV-FE', locator: 'AS-506 Flight Evaluation Report' },
+      { sourceId: 'NASA-A11-MR', locator: 'Appendix A §A.5, printed p. A-10; PDF p. 334' },
+      { sourceId: 'NASA-A11-S69-39525', locator: 'S69-39525; LC-39A launch, 1969-07-16' },
+      {
+        sourceId: 'NASA-A11-S69-39961',
+        locator: 'S69-39961; launch-tower camera, 1969-07-16',
+      },
+    ],
     factIds: ['a11-launch-vehicle-designation'],
     eventIds: ['a11-sic-sii-separation', 'a11-sii-sivb-separation', 'a11-sivb-first-cutoff'],
     componentIds: ['s-ic', 's-ii', 's-ivb', 'instrument-unit', 'spacecraft-lm-adapter'],
