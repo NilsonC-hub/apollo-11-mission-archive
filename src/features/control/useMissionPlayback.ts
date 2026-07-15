@@ -23,6 +23,7 @@ function flushPlaybackUrl(
   const met = metAtStoryTime(mission.narrative, state.storyTimeMs)
   if (persistReloadSnapshot) {
     recordControlPlaybackSnapshot(navigationSource.current ?? window.location.pathname, met, {
+      speed: state.speed,
       visualTimeMs: state.visualTimeMs,
       visualTransitionAnchors: state.visualTransitionAnchors,
       suppressedGuidedCameraTransitionEventIds: state.suppressedGuidedCameraTransitionEventIds,
@@ -51,6 +52,11 @@ function usePlaybackInterruptionSafety(navigationSource: NavigationSourceRef): v
     const onBeforeUnload = () => {
       navigationSource.current ??= window.location.pathname
       flushPlaybackUrl(navigationSource)
+      // Freeze at the earliest unload boundary. Waiting for pagehide allows a
+      // short authored camera/staging transition to advance while the next
+      // document is loading, so refresh would no longer reconstruct the pose
+      // the user actually left.
+      pause('page-hide')
     }
     const onPageShow = () => {
       navigationSource.current = null

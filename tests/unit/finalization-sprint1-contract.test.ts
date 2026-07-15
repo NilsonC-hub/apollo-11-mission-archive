@@ -314,6 +314,7 @@ test('route traversal snapshots are isolated by history entry key, not pathname'
     assert.deepEqual(readControlTraversalSnapshot('control-entry-a'), {
       path: '/control/met/s20',
       metSeconds: 20,
+      speed: 100,
       visualTimeMs: 0,
       visualTransitionAnchors: {},
       suppressedGuidedCameraTransitionEventIds: [],
@@ -331,6 +332,7 @@ test('reference route traversal preserves the exact Inspector pathname', () => {
     assert.deepEqual(readControlTraversalSnapshot('control-inspector-entry'), {
       path: SATURN_V_INSPECTOR_PATH,
       metSeconds: 0,
+      speed: 100,
       visualTimeMs: 0,
       visualTransitionAnchors: {},
       suppressedGuidedCameraTransitionEventIds: [],
@@ -342,6 +344,7 @@ test('reference route traversal preserves the exact Inspector pathname', () => {
 test('visual replay snapshots preserve an exact bounded camera reconstruction', () => {
   withMemorySessionStorage(() => {
     const visualState = {
+      speed: 10 as const,
       visualTimeMs: 8_250.5,
       visualTransitionAnchors: {
         'a11-sic-sii-separation': 8_000.25,
@@ -373,6 +376,7 @@ test('visual traversal snapshot validation fails closed on unbounded or noncanon
     const base = {
       entryId: 'malformed-visual-entry',
       path: '/control/met/s162.3',
+      speed: 10,
       visualTimeMs: 100,
       visualTransitionAnchors: { 'a11-liftoff': 50 },
       suppressedGuidedCameraTransitionEventIds: [],
@@ -413,6 +417,8 @@ test('visual traversal snapshot validation fails closed on unbounded or noncanon
         },
       },
       { ...base, visualTimeMs: Number.MAX_SAFE_INTEGER },
+      { ...base, speed: 2 },
+      { ...base, speed: null },
     ]
 
     for (const invalid of invalidStates) {
@@ -447,6 +453,7 @@ test('reload snapshot validation rejects malformed visual state and legacy v1 de
       sourcePathname: pathname,
       path: pathname,
       metSeconds: 162.3,
+      speed: 100,
       visualTimeMs: 0,
       visualTransitionAnchors: {},
       suppressedGuidedCameraTransitionEventIds: [],

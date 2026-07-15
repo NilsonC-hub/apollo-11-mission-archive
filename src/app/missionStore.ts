@@ -44,6 +44,7 @@ export interface CameraCommand {
 }
 
 export interface VisualTransitionRestoreState {
+  speed: PlaybackSpeed
   visualTimeMs: number
   visualTransitionAnchors: VisualTransitionAnchors
   suppressedGuidedCameraTransitionEventIds: readonly string[]
@@ -205,6 +206,7 @@ export const useMissionStore = create<MissionUiState>((set, get) => ({
   restoreTraversalMet: (metSeconds, visualState) =>
     set({
       storyTimeMs: storyTimeAtMet(mission.narrative, clampMet(metSeconds)),
+      speed: visualState?.speed ?? get().speed,
       visualTimeMs: visualState?.visualTimeMs ?? 0,
       visualTransitionAnchors: visualState?.visualTransitionAnchors ?? {},
       playing: false,

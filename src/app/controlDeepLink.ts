@@ -1,6 +1,10 @@
 import { parseMet } from '../mission-core/index.ts'
 import { replayEndStoryTime, replayEvents, replayStartMet } from './mission.ts'
-import { GUIDED_CAMERA_REST_POSE_SHOT_IDS, type GuidedCameraRestPose } from './missionStore.ts'
+import {
+  GUIDED_CAMERA_REST_POSE_SHOT_IDS,
+  type GuidedCameraRestPose,
+  type PlaybackSpeed,
+} from './missionStore.ts'
 
 const CONTROL_RELOAD_SNAPSHOT_KEY = 'apollo11.control.reload-snapshot.v1'
 const CONTROL_TRAVERSAL_SNAPSHOTS_KEY = 'apollo11.control.traversal-snapshots.v1'
@@ -41,6 +45,7 @@ export interface ControlPlaybackSnapshot {
   sourcePathname: string
   path: string
   metSeconds: number
+  speed: PlaybackSpeed
   visualTimeMs: number
   visualTransitionAnchors: Readonly<Record<string, number>>
   suppressedGuidedCameraTransitionEventIds: readonly string[]
@@ -50,6 +55,7 @@ export interface ControlPlaybackSnapshot {
 export interface ControlTraversalSnapshot {
   path: string
   metSeconds: number
+  speed: PlaybackSpeed
   visualTimeMs: number
   visualTransitionAnchors: Readonly<Record<string, number>>
   suppressedGuidedCameraTransitionEventIds: readonly string[]
@@ -59,6 +65,7 @@ export interface ControlTraversalSnapshot {
 interface StoredControlTraversalSnapshot {
   entryId: string
   path: string
+  speed?: unknown
   visualTimeMs?: unknown
   visualTransitionAnchors?: unknown
   suppressedGuidedCameraTransitionEventIds?: unknown
@@ -66,6 +73,7 @@ interface StoredControlTraversalSnapshot {
 }
 
 export interface ControlVisualSnapshotState {
+  speed: PlaybackSpeed
   visualTimeMs: number
   visualTransitionAnchors: Readonly<Record<string, number>>
   suppressedGuidedCameraTransitionEventIds: readonly string[]
@@ -76,6 +84,7 @@ const canonicalReplayEventIds = new Set(replayEvents.map((event) => event.id))
 const canonicalGuidedCameraShotIds = new Set<string>(GUIDED_CAMERA_REST_POSE_SHOT_IDS)
 const MAX_SNAPSHOT_TRANSITIONS = 12
 const emptyVisualSnapshot = (): ControlVisualSnapshotState => ({
+  speed: 100,
   visualTimeMs: 0,
   visualTransitionAnchors: {},
   suppressedGuidedCameraTransitionEventIds: [],
@@ -117,12 +126,14 @@ function validatedCameraRestPose(value: unknown): GuidedCameraRestPose | null | 
 }
 
 function validatedVisualSnapshot(value: {
+  speed?: unknown
   visualTimeMs?: unknown
   visualTransitionAnchors?: unknown
   suppressedGuidedCameraTransitionEventIds?: unknown
   guidedCameraRestPose?: unknown
 }): ControlVisualSnapshotState | undefined {
   const legacy =
+    value.speed === undefined &&
     value.visualTimeMs === undefined &&
     value.visualTransitionAnchors === undefined &&
     value.suppressedGuidedCameraTransitionEventIds === undefined &&
@@ -140,6 +151,9 @@ function validatedVisualSnapshot(value: {
   ) {
     return undefined
   }
+
+  const speed = value.speed === undefined ? 100 : value.speed
+  if (speed !== 1 && speed !== 10 && speed !== 100 && speed !== 1000) return undefined
 
   const anchorEntries = Object.entries(value.visualTransitionAnchors)
   if (anchorEntries.length > MAX_SNAPSHOT_TRANSITIONS) return undefined
@@ -172,6 +186,7 @@ function validatedVisualSnapshot(value: {
   }
 
   return {
+    speed,
     visualTimeMs: value.visualTimeMs,
     visualTransitionAnchors,
     suppressedGuidedCameraTransitionEventIds: [...new Set(suppressed)],

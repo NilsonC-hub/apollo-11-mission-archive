@@ -160,6 +160,7 @@ function useControlDeepLink(): number | undefined {
   const location = useLocation()
   const navigate = useNavigate()
   const appliedPath = useRef<string | null>(null)
+  const restoredPathInFlight = useRef<string | null>(null)
   const restoreSnapshot = useRef<
     | {
         locationKey: string
@@ -170,6 +171,7 @@ function useControlDeepLink(): number | undefined {
             ControlPlaybackSnapshot,
             | 'path'
             | 'metSeconds'
+            | 'speed'
             | 'visualTimeMs'
             | 'visualTransitionAnchors'
             | 'suppressedGuidedCameraTransitionEventIds'
@@ -200,16 +202,24 @@ function useControlDeepLink(): number | undefined {
   const targetMet = restore?.snapshot.metSeconds ?? metForControlPath(location.pathname)
   const pendingMet = restore
     ? targetMet
-    : appliedPath.current === effectivePath
+    : restoredPathInFlight.current
       ? undefined
-      : targetMet
+      : appliedPath.current === effectivePath
+        ? undefined
+        : targetMet
 
   useLayoutEffect(() => {
-    appliedPath.current = effectivePath
+    if (restoredPathInFlight.current === location.pathname) {
+      appliedPath.current = location.pathname
+      restoredPathInFlight.current = null
+    } else if (!restoredPathInFlight.current) {
+      appliedPath.current = effectivePath
+    }
     if (pendingMet !== undefined) {
       const store = useMissionStore.getState()
       if (restore) {
         store.restoreTraversalMet(pendingMet, {
+          speed: restore.snapshot.speed,
           visualTimeMs: restore.snapshot.visualTimeMs,
           visualTransitionAnchors: restore.snapshot.visualTransitionAnchors,
           suppressedGuidedCameraTransitionEventIds:
@@ -226,7 +236,14 @@ function useControlDeepLink(): number | undefined {
       restoreSnapshot.current = { locationKey: location.key, restore: null }
       if (restore.kind === 'reload') clearControlReloadSnapshot()
       else if (restore.entryId) clearControlTraversalSnapshot(restore.entryId)
-      if (restoredPath !== location.pathname) void navigate(restoredPath, { replace: true })
+      if (restoredPath !== location.pathname) {
+        // Restoring the store schedules a render before React Router's replace
+        // reaches its canonical destination. Suppress ordinary deep-link
+        // relocation across that gap; otherwise setMet() clears the restored
+        // visual clocks, anchors, suppression list, and camera rest pose.
+        restoredPathInFlight.current = restoredPath
+        void navigate(restoredPath, { replace: true })
+      }
     }
   }, [effectivePath, location.key, location.pathname, navigate, pendingMet, restore])
 

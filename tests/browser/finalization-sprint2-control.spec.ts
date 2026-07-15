@@ -94,6 +94,14 @@ test('Inspector Archive return and browser traversal preserve exact route identi
   await page.goBack()
   await expect(page).toHaveURL(new RegExp(`${SATURN_V_INSPECTOR_PATH}$`))
   await expect(page.getByRole('heading', { name: 'SATURN V STRUCTURE INSPECTOR' })).toBeVisible()
+  // MissionScene is already cached on this SPA POP. The Inspector must still
+  // establish loading before that runtime can publish ready, then remain
+  // interactive after the definitive semantic binding arrives.
+  await waitForScene(page)
+  await waitForInspectionCamera(page, 's-ic')
+  await expect(page.getByRole('button', { name: 'ROTATE −', exact: true })).toBeEnabled()
+  await inspectorComponentButton(page, 'S-II SECOND STAGE').click()
+  await waitForInspectionCamera(page, 's-ii')
   await page.goForward()
   await expect(page).toHaveURL(/\/archive#saturn-v$/)
 })
@@ -215,6 +223,206 @@ test('launch guided shot stays safe and continuous across start, midpoint and re
   expect(cameraDistance(start, midpoint)).toBeGreaterThan(0.001)
   expect(cameraDistance(midpoint, endpoint)).toBeGreaterThan(0.001)
   await page.getByRole('button', { name: 'PAUSE', exact: true }).click()
+})
+
+test('beforeunload freezes the visual clock at the earliest canonical snapshot', async ({
+  page,
+}) => {
+  await page.goto('/control/met/s162.2')
+  await waitForScene(page)
+  await page.getByRole('button', { name: '1×', exact: true }).click()
+  await page.getByRole('button', { name: 'PLAY', exact: true }).click()
+  await page.waitForFunction(() => {
+    const root = document.documentElement
+    const progress = Number(root.dataset.cameraShotProgress)
+    return root.dataset.cameraGuidance === 'active' && progress > 0 && progress < 0.8
+  })
+  const sourcePath = new URL(page.url()).pathname
+
+  await page.evaluate(() => window.dispatchEvent(new Event('beforeunload', { cancelable: true })))
+  await expect(page.getByRole('button', { name: 'PLAY', exact: true })).toBeVisible()
+  const frozenVisualTime = await page.locator('html').getAttribute('data-control-visual-time-ms')
+  await page.waitForTimeout(160)
+  await expect(page.locator('html')).toHaveAttribute(
+    'data-control-visual-time-ms',
+    frozenVisualTime ?? '',
+  )
+
+  const snapshot = await page.evaluate(() => {
+    const serialized = sessionStorage.getItem('apollo11.control.reload-snapshot.v1')
+    return serialized ? JSON.parse(serialized) : null
+  })
+  expect(snapshot.sourcePathname).toBe(sourcePath)
+  expect(snapshot.path).toBe(new URL(page.url()).pathname)
+  expect(snapshot.speed).toBe(1)
+  expect(String(snapshot.visualTimeMs)).toBe(frozenVisualTime)
+})
+
+test('playing reload inside separation restores the canonical visual transaction', async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    const reloadKey = 'apollo11.control.reload-snapshot.v1'
+    const removeItem = Storage.prototype.removeItem
+    Storage.prototype.removeItem = function retainReloadAudit(key: string) {
+      if (this === window.sessionStorage && key === reloadKey) return
+      return removeItem.call(this, key)
+    }
+    window.addEventListener(
+      'beforeunload',
+      () => {
+        const root = document.documentElement
+        sessionStorage.setItem(
+          'apollo11.control.beforeunload-audit',
+          JSON.stringify({
+            cameraGuidance: root.dataset.cameraGuidance,
+            cameraProgress: Number(root.dataset.cameraShotProgress),
+            visualTimeMs: Number(root.dataset.controlVisualTimeMs),
+          }),
+        )
+      },
+      { capture: true },
+    )
+  })
+  await page.goto('/control/met/s162.2')
+  await waitForScene(page)
+  await page.getByRole('button', { name: '1×', exact: true }).click()
+  await page.getByRole('button', { name: 'PLAY', exact: true }).click()
+  await page.waitForFunction(() => {
+    const root = document.documentElement
+    const progress = Number(root.dataset.cameraShotProgress)
+    const anchors = JSON.parse(root.dataset.controlVisualTransitionAnchors ?? '{}') as Record<
+      string,
+      number
+    >
+    return (
+      root.dataset.cameraShot === 'ascent-upper-reference' &&
+      root.dataset.cameraGuidance === 'active' &&
+      progress > 0.15 &&
+      progress < 0.7 &&
+      root.dataset.launchDeparture?.split(',').includes('s-ic') &&
+      Number.isFinite(anchors['a11-sic-sii-separation'])
+    )
+  })
+
+  const html = page.locator('html')
+  const before = {
+    position: cameraPosition(await html.getAttribute('data-camera-position')),
+    target: cameraPosition(await html.getAttribute('data-camera-target')),
+    shot: await html.getAttribute('data-camera-shot'),
+    separationProgress: JSON.parse(
+      (await html.getAttribute('data-launch-departure-progress')) ?? '{}',
+    )['s-ic'] as number,
+  }
+  const reloadSourcePath = new URL(page.url()).pathname
+
+  await page.reload()
+  await waitForScene(page)
+
+  const { snapshot, unloadAudit } = await page.evaluate(() => {
+    const serialized = sessionStorage.getItem('apollo11.control.reload-snapshot.v1')
+    const audit = sessionStorage.getItem('apollo11.control.beforeunload-audit')
+    return {
+      snapshot: serialized ? JSON.parse(serialized) : null,
+      unloadAudit: audit ? JSON.parse(audit) : null,
+    }
+  })
+  expect(snapshot).not.toBeNull()
+  expect(unloadAudit).not.toBeNull()
+  const reloadDebug = {
+    currentAnchors: JSON.parse(
+      (await html.getAttribute('data-control-visual-transition-anchors')) ?? '{}',
+    ),
+    currentGuidance: await html.getAttribute('data-camera-guidance'),
+    currentProgress: Number(await html.getAttribute('data-camera-shot-progress')),
+    currentRestPose: JSON.parse(
+      (await html.getAttribute('data-control-guided-camera-rest-pose')) ?? 'null',
+    ),
+    currentSpeedOnePressed: await page
+      .getByRole('button', { name: '1×', exact: true })
+      .getAttribute('aria-pressed'),
+    currentSuppressed: JSON.parse(
+      (await html.getAttribute('data-control-suppressed-guided-transitions')) ?? '[]',
+    ),
+    currentVisualTime: Number(await html.getAttribute('data-control-visual-time-ms')),
+    snapshotAnchor: snapshot.visualTransitionAnchors['a11-sic-sii-separation'],
+    snapshotVisualTime: snapshot.visualTimeMs,
+    unloadAudit,
+  }
+  expect(reloadDebug.currentGuidance).toBe('active')
+  expect(reloadDebug.currentProgress).toBeGreaterThan(0)
+  expect(reloadDebug.currentProgress).toBeLessThan(1)
+  expect(reloadDebug.currentSpeedOnePressed).toBe('true')
+  expect(reloadDebug.unloadAudit.cameraGuidance).toBe('active')
+  expect(Math.abs(snapshot.visualTimeMs - reloadDebug.unloadAudit.visualTimeMs)).toBeLessThan(20)
+  const pathname = new URL(page.url()).pathname
+  expect(snapshot.sourcePathname).toBe(reloadSourcePath)
+  expect(snapshot.path).toBe(pathname)
+  expect(snapshot.path).not.toBe(snapshot.sourcePathname)
+  expect(snapshot.speed).toBe(1)
+  expect(snapshot.visualTimeMs).toBeGreaterThan(0)
+  expect(snapshot.visualTransitionAnchors['a11-sic-sii-separation']).toBeLessThanOrEqual(
+    snapshot.visualTimeMs,
+  )
+  expect(snapshot.guidedCameraRestPose?.shotId).toBe('ascent-lower-reference')
+
+  await expect(html).toHaveAttribute('data-control-visual-time-ms', String(snapshot.visualTimeMs))
+  expect(
+    JSON.parse((await html.getAttribute('data-control-visual-transition-anchors')) ?? '{}'),
+  ).toEqual(snapshot.visualTransitionAnchors)
+  expect(
+    JSON.parse((await html.getAttribute('data-control-suppressed-guided-transitions')) ?? '[]'),
+  ).toEqual(snapshot.suppressedGuidedCameraTransitionEventIds)
+  expect(
+    JSON.parse((await html.getAttribute('data-control-guided-camera-rest-pose')) ?? 'null'),
+  ).toEqual(snapshot.guidedCameraRestPose)
+  expect(
+    cameraDistance(
+      before.position,
+      cameraPosition(await html.getAttribute('data-camera-position')),
+    ),
+  ).toBeLessThan(1.5)
+  expect(
+    cameraDistance(before.target, cameraPosition(await html.getAttribute('data-camera-target'))),
+  ).toBeLessThan(0.75)
+  expect(await html.getAttribute('data-camera-shot')).toBe(before.shot)
+  const afterSeparationProgress = JSON.parse(
+    (await html.getAttribute('data-launch-departure-progress')) ?? '{}',
+  )['s-ic'] as number
+  expect(Math.abs(afterSeparationProgress - before.separationProgress)).toBeLessThan(0.2)
+  await expect(page.getByRole('button', { name: '1×', exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  )
+  await expect(page.getByRole('button', { name: 'PLAY', exact: true })).toBeVisible()
+
+  // A second reload starts and ends at the already canonical pathname. It must
+  // consume the same visual transaction without entering the replace gate or
+  // clearing any serialized input.
+  const samePathPosition = cameraPosition(await html.getAttribute('data-camera-position'))
+  const samePath = new URL(page.url()).pathname
+  await page.reload()
+  await waitForScene(page)
+  const samePathSnapshot = await page.evaluate(() => {
+    const serialized = sessionStorage.getItem('apollo11.control.reload-snapshot.v1')
+    return serialized ? JSON.parse(serialized) : null
+  })
+  expect(samePathSnapshot.sourcePathname).toBe(samePath)
+  expect(samePathSnapshot.path).toBe(samePath)
+  expect(samePathSnapshot.speed).toBe(1)
+  expect(samePathSnapshot.visualTimeMs).toBe(snapshot.visualTimeMs)
+  expect(samePathSnapshot.visualTransitionAnchors).toEqual(snapshot.visualTransitionAnchors)
+  await expect(html).toHaveAttribute(
+    'data-control-visual-time-ms',
+    String(samePathSnapshot.visualTimeMs),
+  )
+  expect(
+    cameraDistance(
+      samePathPosition,
+      cameraPosition(await html.getAttribute('data-camera-position')),
+    ),
+  ).toBeLessThan(0.01)
+  await expect(page.getByRole('button', { name: 'PLAY', exact: true })).toBeVisible()
 })
 
 test('Earth-orbit union transition remains authored and safe at 10×', async ({ page }) => {

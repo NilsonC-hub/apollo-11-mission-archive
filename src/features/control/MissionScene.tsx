@@ -1005,6 +1005,7 @@ function RuntimeSceneState({
   configurationKey: string
 }) {
   const scene = useThree((three) => three.scene)
+  const camera = useThree((three) => three.camera)
   const invalidate = useThree((three) => three.invalidate)
   const stateRef = useRef(state)
   stateRef.current = state
@@ -1017,15 +1018,52 @@ function RuntimeSceneState({
     useMissionStore.getState().setSceneRuntime('ready', inspectable)
     html.dataset.controlScene = 'ready'
     invalidate()
+    const projectionFrame = requestAnimationFrame(() => {
+      scene.updateMatrixWorld(true)
+      camera.updateMatrixWorld(true)
+      const projections: Record<string, readonly [number, number]> = {}
+      for (const componentId of inspectable) {
+        const targets = findInspectableComponentNodes(scene, componentId, stateRef.current)
+        if (targets.length !== 1) continue
+        const center = new Box3().setFromObject(targets[0]).getCenter(new Vector3()).project(camera)
+        if (
+          !Number.isFinite(center.x) ||
+          !Number.isFinite(center.y) ||
+          !Number.isFinite(center.z) ||
+          Math.abs(center.x) > 1 ||
+          Math.abs(center.y) > 1 ||
+          center.z < -1 ||
+          center.z > 1
+        ) {
+          continue
+        }
+        projections[componentId] = [(center.x + 1) / 2, (1 - center.y) / 2]
+      }
+      html.dataset.inspectableProjections = JSON.stringify(projections)
+    })
     return () => {
+      cancelAnimationFrame(projectionFrame)
       if (html.dataset.controlScene === 'ready') delete html.dataset.controlScene
+      delete html.dataset.inspectableProjections
     }
-  }, [configurationKey, invalidate, scene])
+  }, [camera, configurationKey, invalidate, scene])
 
   return null
 }
 
-function LaunchAuditState({ visual }: { visual: LaunchVisualState }) {
+function LaunchAuditState({
+  visual,
+  visualTimeMs,
+  transitionAnchors,
+  suppressedGuidedCameraTransitionEventIds,
+  guidedCameraRestPose,
+}: {
+  visual: LaunchVisualState
+  visualTimeMs: number
+  transitionAnchors: VisualTransitionAnchors
+  suppressedGuidedCameraTransitionEventIds: readonly string[]
+  guidedCameraRestPose: GuidedCameraRestPose | null
+}) {
   useEffect(() => {
     const html = document.documentElement
     html.dataset.launchVisualPolicy = visual.policy
@@ -1036,14 +1074,39 @@ function LaunchAuditState({ visual }: { visual: LaunchVisualState }) {
       .filter(([, departure]) => departure.progress > 0 && departure.progress < 1)
       .map(([componentId]) => componentId)
       .join(',')
+    html.dataset.launchDepartureProgress = JSON.stringify(
+      Object.fromEntries(
+        Object.entries(visual.departures).map(([componentId, departure]) => [
+          componentId,
+          departure.progress,
+        ]),
+      ),
+    )
+    html.dataset.controlVisualTimeMs = String(visualTimeMs)
+    html.dataset.controlVisualTransitionAnchors = JSON.stringify(transitionAnchors)
+    html.dataset.controlSuppressedGuidedTransitions = JSON.stringify(
+      suppressedGuidedCameraTransitionEventIds,
+    )
+    html.dataset.controlGuidedCameraRestPose = JSON.stringify(guidedCameraRestPose)
     return () => {
       delete html.dataset.launchVisualPolicy
       delete html.dataset.launchGuidedShot
       delete html.dataset.earthPresentation
       delete html.dataset.earthRotationY
       delete html.dataset.launchDeparture
+      delete html.dataset.launchDepartureProgress
+      delete html.dataset.controlVisualTimeMs
+      delete html.dataset.controlVisualTransitionAnchors
+      delete html.dataset.controlSuppressedGuidedTransitions
+      delete html.dataset.controlGuidedCameraRestPose
     }
-  }, [visual])
+  }, [
+    guidedCameraRestPose,
+    suppressedGuidedCameraTransitionEventIds,
+    transitionAnchors,
+    visual,
+    visualTimeMs,
+  ])
 
   return null
 }
@@ -1073,6 +1136,7 @@ function SceneContents({
 }) {
   const phaseProgress = visualStateAtStoryTime(mission.narrative, storyTimeMs).progress
   const runtimeState = stateAtMet(mission, met)
+  const guidedCameraRestPose = useMissionStore((state) => state.guidedCameraRestPose)
   const mode = sceneModeAtMet(met)
   const launchVisual = launchVisualStateAt({
     storyTimeMs,
@@ -1125,7 +1189,15 @@ function SceneContents({
           mode === 'launch' ? launchVisual.guidedCameraTransitionEventId : null
         }
       />
-      {mode === 'launch' && <LaunchAuditState visual={launchVisual} />}
+      {mode === 'launch' && (
+        <LaunchAuditState
+          visual={launchVisual}
+          visualTimeMs={visualTimeMs}
+          transitionAnchors={transitionAnchors}
+          suppressedGuidedCameraTransitionEventIds={suppressedGuidedCameraTransitionEventIds}
+          guidedCameraRestPose={guidedCameraRestPose}
+        />
+      )}
       <RuntimeSceneState state={runtimeState} configurationKey={configurationKey} />
     </>
   )

@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useLayoutEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import { mission, replayStartMet } from '../../app/mission.ts'
@@ -107,6 +107,7 @@ function SaturnComponentTree({
 
 export function SaturnVInspector() {
   const [manualSelection, setManualSelection] = useState(saturnComponents[0].id)
+  const [sceneTransactionStarted, setSceneTransactionStarted] = useState(false)
   const quality = useMissionStore((state) => state.quality)
   const sceneAvailability = useMissionStore((state) => state.sceneAvailability)
   const interaction = useMissionStore((state) => state.interaction)
@@ -119,14 +120,19 @@ export function SaturnVInspector() {
   const selectedId = manualSelection
   const selected = saturnComponents.find((component) => component.id === selectedId)!
   const initialState = stateAtMet(mission, inspectorMet).components[selected.id]
-  const sceneInteractive = quality !== 'fallback' && sceneAvailability === 'ready'
+  const sceneInteractive =
+    sceneTransactionStarted && quality !== 'fallback' && sceneAvailability === 'ready'
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const store = useMissionStore.getState()
     // Convert any playback-resuming inspection inherited from Control into the
     // normal explicit-resume transaction before this reference route loads.
+    // The scene is deliberately absent from this first commit: a cached lazy
+    // module (and R3F's separate root) therefore cannot publish `ready` before
+    // this route has established its own `loading` transaction.
     store.pauseForModeSwitch()
     store.setSceneRuntime('loading')
+    setSceneTransactionStarted(true)
     return () => {
       useMissionStore.getState().closeInspection()
     }
@@ -139,12 +145,12 @@ export function SaturnVInspector() {
   }, [interaction])
 
   useEffect(() => {
-    if (sceneAvailability !== 'ready') return
+    if (!sceneTransactionStarted || sceneAvailability !== 'ready') return
     const frame = requestAnimationFrame(() => {
       useMissionStore.getState().inspectComponent(manualSelection)
     })
     return () => cancelAnimationFrame(frame)
-  }, [manualSelection, sceneAvailability])
+  }, [manualSelection, sceneAvailability, sceneTransactionStarted])
 
   const command = (kind: CameraCommandKind) => {
     requestCameraCommand(kind)
@@ -268,19 +274,25 @@ export function SaturnVInspector() {
               command(kind)
             }}
           >
-            <Suspense fallback={<div className="scene-loading outside">INITIALIZING 3D VIEW</div>}>
-              <MissionScene
-                met={inspectorMet}
-                storyTimeMs={inspectorStoryTime}
-                visualTimeMs={0}
-                transitionAnchors={{}}
-                suppressedGuidedCameraTransitionEventIds={[]}
-                speed={100}
-                interaction={interaction}
-                cameraCommand={cameraCommand}
-                quality={quality}
-              />
-            </Suspense>
+            {sceneTransactionStarted ? (
+              <Suspense
+                fallback={<div className="scene-loading outside">INITIALIZING 3D VIEW</div>}
+              >
+                <MissionScene
+                  met={inspectorMet}
+                  storyTimeMs={inspectorStoryTime}
+                  visualTimeMs={0}
+                  transitionAnchors={{}}
+                  suppressedGuidedCameraTransitionEventIds={[]}
+                  speed={100}
+                  interaction={interaction}
+                  cameraCommand={cameraCommand}
+                  quality={quality}
+                />
+              </Suspense>
+            ) : (
+              <div className="scene-loading outside">INITIALIZING 3D VIEW</div>
+            )}
             <div className="saturn-inspector__legend">
               <span>ROTATE / DRAG · ZOOM / PINCH OR WHEEL</span>
               <span>STRUCTURAL PRESENTATION / SCHEMATIC</span>

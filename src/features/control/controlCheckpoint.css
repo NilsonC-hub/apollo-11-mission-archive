@@ -60,6 +60,337 @@
   line-height: 1.45;
 }
 
+/*
+ * Replay legibility checkpoint
+ *
+ * Keep these overrides under the Control route contract. The base console was
+ * authored at a dense desktop scale; this layer preserves that information
+ * hierarchy while enforcing the Production Spec's type and touch floors.
+ */
+html[data-mode='control'] .wordmark small,
+html[data-mode='control'] .mode-nav a,
+html[data-mode='control'] .mode-nav a span,
+html[data-mode='control'] .source-link,
+.control-shell .mission-status span,
+.control-shell .phase-rail button,
+.control-shell .phase-rail button span,
+.control-shell .panel-head h2,
+.control-shell .panel-head span,
+.control-shell .viewport-tools span,
+.control-shell .viewport-tools label,
+.control-shell .camera-tools button,
+.control-shell .scene-corner,
+.control-shell .scene-loading,
+.control-shell .event-readout span,
+.control-shell .event-readout details,
+.control-shell .event-readout summary,
+.control-shell .control-event-log time,
+.control-shell .control-event-log i,
+.control-shell .subpanel-head h3,
+.control-shell .subpanel-head span,
+.control-shell .transcript-records button > span,
+.control-shell .configuration-change span,
+.control-shell .resume-notice span,
+.control-shell .resume-notice button,
+.control-shell .editorial-pause-notice span,
+.control-shell .editorial-pause-notice button,
+.control-shell .component-inspection span,
+.control-shell .component-inspection small,
+.control-shell .component-inspection button,
+.control-shell .mission-complete span,
+.control-shell .data-availability h3,
+.control-shell .data-availability dt,
+.control-shell .transport-controls button,
+.control-shell .speed-controls > span,
+.control-shell .speed-controls button,
+.control-shell .keyboard-note,
+.control-shell .interface-audio-control span,
+.control-shell .interface-audio-control button {
+  font-size: 12px;
+}
+
+.control-shell .mission-status b,
+.control-shell .control-event-log button > span,
+.control-shell .viewport-tools b,
+.control-shell .camera-mode b,
+.control-shell .event-readout b,
+.control-shell .systems-list .system-row > span,
+.control-shell .systems-list b,
+.control-shell .transcript-records q,
+.control-shell .resume-notice b,
+.control-shell .editorial-pause-notice b,
+.control-shell .component-inspection b,
+.control-shell .mission-complete b,
+.control-shell .data-availability dd,
+.control-shell .interface-audio-control b,
+.control-shell .static-vehicle-fallback b {
+  font-size: 14px;
+}
+
+.control-shell .viewport-tools select {
+  font-size: 14px;
+}
+
+.control-shell .event-readout p,
+.control-shell .data-availability p,
+.control-shell .editorial-pause-notice p,
+.control-shell .component-inspection p,
+.control-shell .mission-complete p,
+.control-shell .interface-audio-control > p,
+.control-shell .scene-corner.bottom-left,
+.control-shell .static-vehicle-fallback span,
+.control-shell .configuration-change {
+  font-size: 14px;
+}
+
+.control-shell button,
+.control-shell summary,
+.control-shell input,
+.control-shell select {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.control-shell .visualization-panel {
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+}
+
+.control-shell .viewport-tools,
+.control-shell .event-readout,
+.control-shell .event-readout > div,
+.control-shell .event-readout details,
+.control-shell .systems-list .system-row,
+.control-shell .control-event-log button,
+.control-shell .data-availability dl > div {
+  height: auto;
+}
+
+.control-shell .mission-status b,
+.control-shell .control-event-log button > span,
+.control-shell .viewport-tools b,
+.control-shell .viewport-tools > div:first-child b,
+.control-shell .event-readout b,
+.control-shell .event-readout p,
+.control-shell .systems-list .system-row > span,
+.control-shell .systems-list b,
+.control-shell .data-availability dt,
+.control-shell .data-availability dd {
+  overflow: visible;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+.control-shell .viewport-tools > div:first-child {
+  min-width: 0;
+}
+
+.control-shell .event-readout summary {
+  display: flex;
+  align-items: center;
+}
+
+.control-shell .systems-list .system-row {
+  align-items: start;
+}
+
+.control-shell .systems-list b {
+  line-height: 1.35;
+}
+
+.control-shell .data-availability dl > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(92px, auto);
+  gap: 10px;
+  padding: 7px 0;
+}
+
+.control-shell .data-availability dd {
+  justify-content: end;
+  text-align: right;
+}
+
+.control-shell .transport-controls button,
+.control-shell .speed-controls button {
+  min-height: 44px;
+}
+
+.control-shell .timeline-slider,
+.control-shell .timeline-slider input {
+  height: 44px;
+  min-height: 44px;
+}
+
+.control-shell .timeline-slider > span:last-child {
+  top: 20px;
+}
+
+@media (max-width: 899px) {
+  html[data-mode='control'] .source-link,
+  html[data-mode='control'] .mode-nav a {
+    font-size: 12px;
+  }
+
+  .control-shell {
+    padding: 6px;
+  }
+
+  .control-shell .console-grid {
+    display: flex;
+    height: auto;
+    min-height: 0;
+    flex-direction: column;
+  }
+
+  .control-shell .visualization-panel {
+    order: 1;
+    height: auto;
+    min-height: 0;
+  }
+
+  .control-shell .systems-panel {
+    order: 2;
+    max-height: 360px;
+  }
+
+  .control-shell .event-log-panel {
+    order: 3;
+    height: 320px;
+  }
+
+  .control-shell .control-event-log {
+    display: block;
+  }
+
+  .control-shell .viewport-tools {
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    align-items: stretch;
+  }
+
+  .control-shell .viewport-tools > div:first-child {
+    flex: 1 0 100%;
+  }
+
+  .control-shell .viewport-tools label {
+    display: flex;
+    min-height: 44px;
+  }
+
+  .control-shell .camera-tools {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .control-shell .scene-frame {
+    height: clamp(220px, 42dvh, 400px);
+    min-height: 220px;
+  }
+
+  .control-shell .scene-corner {
+    max-width: calc(50% - 16px);
+    overflow-wrap: anywhere;
+    line-height: 1.35;
+    white-space: normal;
+  }
+
+  .control-shell .scene-corner.top-left {
+    max-width: 56%;
+  }
+
+  .control-shell .scene-corner.bottom-left {
+    right: 10px;
+    max-width: calc(100% - 20px);
+    padding: 5px 6px;
+    background: rgba(7, 9, 8, 0.78);
+    font-size: 16px;
+    line-height: 1.4;
+  }
+
+  .control-shell .scene-corner.bottom-right {
+    top: 10px;
+    right: 10px;
+    bottom: auto;
+    max-width: 38%;
+    text-align: right;
+  }
+
+  .control-shell .event-readout {
+    grid-template-columns: minmax(0, 1fr) minmax(84px, 0.45fr);
+  }
+
+  .control-shell .event-readout details {
+    display: flex;
+    grid-column: 1 / -1;
+    min-height: 44px;
+  }
+
+  .control-shell .playback-deck {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .control-shell .transport-controls,
+  .control-shell .timeline-slider,
+  .control-shell .speed-controls {
+    grid-column: 1;
+  }
+
+  .control-shell .transport-controls .play-button {
+    flex: 1;
+  }
+
+  .control-shell .speed-controls {
+    grid-column: 1 / -1;
+  }
+
+  .control-shell .speed-controls > span {
+    min-width: 72px;
+  }
+
+  .control-shell .speed-controls button {
+    min-width: 44px;
+  }
+
+  .control-shell .data-availability dl > div {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 3px;
+  }
+
+  .control-shell .data-availability dd {
+    justify-content: start;
+    text-align: left;
+  }
+
+  .control-shell .mission-status b,
+  .control-shell .control-event-log button > span,
+  .control-shell .viewport-tools b,
+  .control-shell .camera-mode b,
+  .control-shell .event-readout b,
+  .control-shell .systems-list .system-row > span,
+  .control-shell .systems-list b,
+  .control-shell .transcript-records q,
+  .control-shell .resume-notice b,
+  .control-shell .editorial-pause-notice b,
+  .control-shell .component-inspection b,
+  .control-shell .mission-complete b,
+  .control-shell .data-availability dd,
+  .control-shell .interface-audio-control b,
+  .control-shell .viewport-tools select,
+  .control-shell .scene-corner.bottom-left,
+  .control-shell .static-vehicle-fallback b,
+  .control-shell .static-vehicle-fallback span,
+  .control-shell .configuration-change,
+  .control-shell .event-readout p,
+  .control-shell .data-availability p,
+  .control-shell .editorial-pause-notice p,
+  .control-shell .component-inspection p,
+  .control-shell .mission-complete p,
+  .control-shell .interface-audio-control > p {
+    font-size: 16px;
+  }
+}
+
 .saturn-inspector {
   min-height: calc(100vh - 68px);
   padding: 18px;

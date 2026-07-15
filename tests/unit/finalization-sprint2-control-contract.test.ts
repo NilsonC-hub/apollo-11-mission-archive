@@ -29,6 +29,35 @@ test('continuous replay captures a fractional wall-time anchor for canonical eve
   assert.equal(useMissionStore.getState().visualTransitionAnchors[event.id], 700)
 })
 
+test('visual traversal restore reapplies its playback-rate input while remaining paused', () => {
+  const event = getEvent('a11-sic-sii-separation')
+  const visualState = {
+    speed: 1 as const,
+    visualTimeMs: 420,
+    visualTransitionAnchors: { [event.id]: 120 },
+    suppressedGuidedCameraTransitionEventIds: ['a11-liftoff'],
+    guidedCameraRestPose: {
+      shotId: 'ascent-lower-reference' as const,
+      position: [7, 4, 12] as const,
+      target: [0, 0, 0] as const,
+    },
+  }
+  useMissionStore.setState({ speed: 100, playing: true })
+
+  useMissionStore.getState().restoreTraversalMet(event.metSeconds, visualState)
+
+  const restored = useMissionStore.getState()
+  assert.equal(restored.speed, 1)
+  assert.equal(restored.playing, false)
+  assert.equal(restored.visualTimeMs, visualState.visualTimeMs)
+  assert.deepEqual(restored.visualTransitionAnchors, visualState.visualTransitionAnchors)
+  assert.deepEqual(
+    restored.suppressedGuidedCameraTransitionEventIds,
+    visualState.suppressedGuidedCameraTransitionEventIds,
+  )
+  assert.deepEqual(restored.guidedCameraRestPose, visualState.guidedCameraRestPose)
+})
+
 test('advancePlayback preserves the same separation wall duration at 1x and 10x', () => {
   const event = getEvent('a11-sic-sii-separation')
   const eventStoryTime = storyTimeAtMet(mission.narrative, event.metSeconds)
