@@ -50,6 +50,7 @@ test('advancePlayback preserves the same separation wall duration at 1x and 10x'
         storyTimeMs: state.storyTimeMs,
         visualTimeMs: state.visualTimeMs,
         transitionAnchors: state.visualTransitionAnchors,
+        suppressedGuidedCameraTransitionEventIds: state.suppressedGuidedCameraTransitionEventIds,
         metSeconds: metAtStoryTime(mission.narrative, state.storyTimeMs),
         speed,
         reducedMotion: false,
@@ -64,13 +65,36 @@ test('advancePlayback preserves the same separation wall duration at 1x and 10x'
   assert.equal(one.departure, ten.departure)
 })
 
+test('visual time remains bounded when a delayed frame reaches replay end', () => {
+  useMissionStore.setState({
+    storyTimeMs: replayNarrative.at(-1)!.storyEndMs - 10,
+    visualTimeMs: replayNarrative.at(-1)!.storyEndMs - 20,
+    playing: true,
+    speed: 1,
+  })
+
+  useMissionStore.getState().advancePlayback(60_000)
+
+  assert.equal(useMissionStore.getState().storyTimeMs, replayNarrative.at(-1)!.storyEndMs)
+  assert.equal(useMissionStore.getState().visualTimeMs, replayNarrative.at(-1)!.storyEndMs)
+  assert.equal(useMissionStore.getState().playing, false)
+})
+
 test('crossing the transient/overview speed class clears active visual anchors', () => {
   useMissionStore.setState({
     speed: 10,
     visualTransitionAnchors: { 'a11-liftoff': 120 },
+    suppressedGuidedCameraTransitionEventIds: ['a11-liftoff'],
+    guidedCameraRestPose: {
+      shotId: 'launch-pad-reference',
+      position: [1, 2, 3],
+      target: [0, 0, 0],
+    },
   })
   useMissionStore.getState().setSpeed(100)
   assert.deepEqual(useMissionStore.getState().visualTransitionAnchors, {})
+  assert.deepEqual(useMissionStore.getState().suppressedGuidedCameraTransitionEventIds, [])
+  assert.equal(useMissionStore.getState().guidedCameraRestPose, null)
 
   useMissionStore.setState({ visualTransitionAnchors: { 'a11-liftoff': 180 } })
   useMissionStore.getState().setSpeed(1000)
@@ -80,6 +104,23 @@ test('crossing the transient/overview speed class clears active visual anchors',
 
   useMissionStore.getState().setSpeed(10)
   assert.deepEqual(useMissionStore.getState().visualTransitionAnchors, {})
+})
+
+test('free look retains the released pose only as an explicit same-shot return point', () => {
+  const restPose = {
+    shotId: 'ascent-lower-reference',
+    position: [8, 4, 12] as const,
+    target: [0, 0, 0] as const,
+  }
+  useMissionStore.setState({ guidedCameraRestPose: restPose })
+  useMissionStore.getState().enterFreeLook()
+  assert.deepEqual(useMissionStore.getState().guidedCameraRestPose, restPose)
+  useMissionStore.getState().returnToGuided()
+  assert.equal(useMissionStore.getState().interaction.mode, 'guided')
+  assert.deepEqual(useMissionStore.getState().guidedCameraRestPose, restPose)
+
+  useMissionStore.getState().setMet(getEvent('a11-sivb-first-cutoff').metSeconds)
+  assert.equal(useMissionStore.getState().guidedCameraRestPose, null)
 })
 
 test('procedure editorial boundary resolves to a stable endpoint with no carried transient', () => {
@@ -100,8 +141,7 @@ test('procedure editorial boundary resolves to a stable endpoint with no carried
 })
 
 test('noncontinuous relocation clears visual transition anchors', () => {
-  const seed = () =>
-    useMissionStore.setState({ visualTransitionAnchors: { 'a11-liftoff': 20 } })
+  const seed = () => useMissionStore.setState({ visualTransitionAnchors: { 'a11-liftoff': 20 } })
 
   seed()
   useMissionStore.getState().setStoryTime(100)

@@ -1,6 +1,10 @@
 import { useEffect, useRef } from 'react'
 
-import { controlMetPath, recordControlPlaybackSnapshot } from '../../app/controlDeepLink.ts'
+import {
+  controlMetPath,
+  isControlPlaybackPath,
+  recordControlPlaybackSnapshot,
+} from '../../app/controlDeepLink.ts'
 import { snapshotActiveControlHistoryEntry } from '../../app/controlTraversal.ts'
 import { mission } from '../../app/mission.ts'
 import { useMissionStore } from '../../app/missionStore.ts'
@@ -14,11 +18,16 @@ function flushPlaybackUrl(
   navigationSource: NavigationSourceRef,
   persistReloadSnapshot = true,
 ): void {
-  if (!window.location.pathname.startsWith('/control')) return
+  if (!isControlPlaybackPath(window.location.pathname)) return
   const state = useMissionStore.getState()
   const met = metAtStoryTime(mission.narrative, state.storyTimeMs)
   if (persistReloadSnapshot) {
-    recordControlPlaybackSnapshot(navigationSource.current ?? window.location.pathname, met)
+    recordControlPlaybackSnapshot(navigationSource.current ?? window.location.pathname, met, {
+      visualTimeMs: state.visualTimeMs,
+      visualTransitionAnchors: state.visualTransitionAnchors,
+      suppressedGuidedCameraTransitionEventIds: state.suppressedGuidedCameraTransitionEventIds,
+      guidedCameraRestPose: state.guidedCameraRestPose,
+    })
   }
   window.history.replaceState(window.history.state, '', controlMetPath(met))
 }

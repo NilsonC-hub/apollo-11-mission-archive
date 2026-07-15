@@ -1,14 +1,5 @@
-import {
-  Component,
-  Suspense,
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react'
-import { Canvas, useFrame, useLoader, useThree, type ThreeEvent } from '@react-three/fiber'
+import { Component, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { Canvas, useLoader, useThree, type ThreeEvent } from '@react-three/fiber'
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader.js'
@@ -22,6 +13,7 @@ import {
   Float32BufferAttribute,
   Mesh,
   MeshBasicMaterial,
+  PerspectiveCamera,
   Sphere,
   Vector3,
   type Group,
@@ -33,6 +25,7 @@ import {
   useMissionStore,
   type CameraCommand,
   type ControlInteractionState,
+  type GuidedCameraRestPose,
   type ModelQuality,
   type PlaybackSpeed,
   type VisualTransitionAnchors,
@@ -50,6 +43,14 @@ import {
   type LaunchVisualState,
   type VisualVector3,
 } from './launchVisualState.ts'
+import {
+  applyGuidedCameraPose,
+  guidedBoundsAreVisible,
+  guidedPoseFramesBounds,
+  interpolateGuidedCameraPose,
+  resolveGuidedShotFraming,
+  type GuidedCameraPose,
+} from './guidedCameraFraming.ts'
 
 const MODEL_ROOT = '/missions/apollo11/models'
 const DRACO_ROOT = '/missions/apollo11/decoders/three-draco/'
@@ -245,10 +246,7 @@ function SaturnStack({
   const postCsmSeparation = met >= getEvent('a11-csm-sivb-separation').metSeconds
 
   useLayoutEffect(() => {
-    for (const [stageId, anchorId] of Object.entries(plumeAnchors) as [
-      LaunchStageId,
-      string,
-    ][]) {
+    for (const [stageId, anchorId] of Object.entries(plumeAnchors) as [LaunchStageId, string][]) {
       resolveSemanticNode(scene, 'apollo11-saturn-v', anchorId).add(plumes[stageId])
     }
     return () => {
@@ -297,7 +295,11 @@ function SaturnStack({
   }, [plumes, postCsmSeparation, scene, state.components, visual])
 
   return (
-    <group rotation={visual.vehicleRotation} position={visual.vehiclePosition}>
+    <group
+      name="launch-vehicle-visual"
+      rotation={visual.vehicleRotation}
+      position={visual.vehiclePosition}
+    >
       <group name="launch-camera-anchor" position={[0, 3.7, 0]} />
       <primitive object={scene} scale={0.067} onClick={handleSemanticClick} />
     </group>
@@ -387,11 +389,13 @@ function Planet({
   position,
   radius,
   rotationY = 0,
+  name,
 }: {
   kind: 'earth' | 'moon'
   position: Position
   radius: number
   rotationY?: number
+  name?: string
 }) {
   const gl = useThree((state) => state.gl)
   const url =
@@ -403,8 +407,8 @@ function Planet({
   )
 
   return (
-    <mesh position={position} rotation={[0, rotationY, 0]}>
-      <sphereGeometry args={[radius, 64, 32]} />
+    <mesh name={name} position={position} rotation={[0, rotationY, 0]} scale={radius}>
+      <sphereGeometry args={[1, 64, 32]} />
       <meshStandardMaterial map={texture} roughness={1} metalness={0} />
     </mesh>
   )
@@ -472,6 +476,7 @@ function MissionConfiguration({
       <>
         <Planet
           kind="earth"
+          name="launch-earth-reference"
           position={[...launchVisual.earthPosition]}
           radius={launchVisual.earthRadius}
           rotationY={launchVisual.earthRotationY}
@@ -604,17 +609,19 @@ function CameraRig({
   interaction,
   cameraCommand,
   guidedShotId,
-  guidedShotDurationMs,
-  guidedShotAnchorVisualTimeMs,
-  visualTimeMs,
+  guidedCameraFromShotId,
+  guidedCameraProgress,
+  guidedCameraActive,
+  guidedCameraTransitionEventId,
 }: {
   met: number
   interaction: ControlInteractionState
   cameraCommand: CameraCommand | null
   guidedShotId: LaunchVisualState['guidedShotId'] | null
-  guidedShotDurationMs: number
-  guidedShotAnchorVisualTimeMs: number | null
-  visualTimeMs: number
+  guidedCameraFromShotId: LaunchVisualState['guidedCameraFromShotId'] | null
+  guidedCameraProgress: number
+  guidedCameraActive: boolean
+  guidedCameraTransitionEventId: string | null
 }) {
   const camera = useThree((state) => state.camera)
   const gl = useThree((state) => state.gl)
@@ -624,46 +631,16 @@ function CameraRig({
   const tweenFrame = useRef<number | null>(null)
   const settleFrame = useRef<number | null>(null)
   const pointerStart = useRef<{ id: number; x: number; y: number } | null>(null)
-  const previousSkipRevision = useRef(useMissionStore.getState().guidedCameraSkipRevision)
-  const guidedCameraSkipRevision = useMissionStore((state) => state.guidedCameraSkipRevision)
-  const followPosition = useMemo(() => new Vector3(), [])
-  const followTarget = useMemo(() => new Vector3(), [])
+  const guidedCameraRestPose = useMissionStore((state) => state.guidedCameraRestPose)
+  const lastGuidedPose = useRef<GuidedCameraPose | null>(null)
   const metRef = useRef(met)
-  const visualTimeRef = useRef(visualTimeMs)
   metRef.current = met
-  visualTimeRef.current = visualTimeMs
-
-  const guidedPose = useCallback(
-    (targetPosition: Vector3, targetLookAt: Vector3): boolean => {
-      if (!guidedShotId) {
-        targetPosition.copy(guidedCameraPosition)
-        targetLookAt.copy(guidedCameraTarget)
-        return true
-      }
-      const shot = launchGuidedShots[guidedShotId]
-      const anchor = scene.getObjectByName(shot.targetAnchorName)
-      if (!anchor) return false
-      anchor.getWorldPosition(targetLookAt)
-      targetLookAt.set(
-        targetLookAt.x + shot.targetOffset[0],
-        targetLookAt.y + shot.targetOffset[1],
-        targetLookAt.z + shot.targetOffset[2],
-      )
-      targetPosition.set(
-        targetLookAt.x + shot.cameraOffset[0],
-        targetLookAt.y + shot.cameraOffset[1],
-        targetLookAt.z + shot.cameraOffset[2],
-      )
-      return true
-    },
-    [guidedShotId, scene],
-  )
 
   useEffect(() => {
     controls.enableDamping = false
     controls.enablePan = true
     controls.minDistance = 1.2
-    controls.maxDistance = 80
+    controls.maxDistance = 480
     const onChange = () => invalidate()
     const onPointerDown = (event: PointerEvent) => {
       pointerStart.current = { id: event.pointerId, x: event.clientX, y: event.clientY }
@@ -718,8 +695,14 @@ function CameraRig({
     if (cameraCommand.kind === 'zoom-in') offset.multiplyScalar(0.82)
     if (cameraCommand.kind === 'zoom-out') offset.multiplyScalar(1.22)
     if (cameraCommand.kind === 'reset') {
-      camera.position.copy(guidedCameraPosition)
-      controls.target.copy(guidedCameraTarget)
+      const resetPose = lastGuidedPose.current
+      if (resetPose) {
+        camera.position.set(...resetPose.position)
+        controls.target.set(...resetPose.target)
+      } else {
+        camera.position.copy(guidedCameraPosition)
+        controls.target.copy(guidedCameraTarget)
+      }
     } else {
       camera.position.copy(controls.target).add(offset)
     }
@@ -728,74 +711,245 @@ function CameraRig({
     document.documentElement.dataset.cameraCommand = cameraCommand.kind
   }, [camera, cameraCommand, controls, invalidate])
 
-  useFrame(() => {
-    if (interaction.mode !== 'guided' || tweenFrame.current !== null) return
-    if (!guidedPose(followPosition, followTarget)) return
-    camera.position.copy(followPosition)
-    controls.target.copy(followTarget)
+  useLayoutEffect(() => {
+    const html = document.documentElement
+    const store = useMissionStore.getState()
+    if (interaction.mode !== 'guided') {
+      if (store.guidedCameraActive) store.setGuidedCameraStatus(false)
+      html.dataset.cameraGuidance = 'manual'
+      delete html.dataset.cameraShotProgress
+      delete html.dataset.cameraVisibility
+      delete html.dataset.cameraVisibilityGuard
+      delete html.dataset.cameraVisibilityTargets
+      delete html.dataset.cameraDestinationTargets
+      delete html.dataset.cameraTransitionOrigin
+      delete html.dataset.cameraPosition
+      delete html.dataset.cameraTarget
+      delete html.dataset.cameraSettled
+      return
+    }
+
+    const setStatus = (active: boolean) => {
+      const current = useMissionStore.getState()
+      if (
+        current.guidedCameraActive === active &&
+        (!active ||
+          (current.guidedCameraShotId === guidedShotId &&
+            current.guidedCameraTransitionEventId === guidedCameraTransitionEventId))
+      ) {
+        return
+      }
+      current.setGuidedCameraStatus(
+        active,
+        guidedShotId ?? 'mission-reference',
+        guidedCameraTransitionEventId ?? undefined,
+      )
+    }
+
+    if (!guidedShotId || !guidedCameraFromShotId || !(camera instanceof PerspectiveCamera)) {
+      const pose: GuidedCameraPose = {
+        position: [guidedCameraPosition.x, guidedCameraPosition.y, guidedCameraPosition.z],
+        target: [guidedCameraTarget.x, guidedCameraTarget.y, guidedCameraTarget.z],
+      }
+      camera.position.set(...pose.position)
+      controls.target.set(...pose.target)
+      controls.update()
+      lastGuidedPose.current = pose
+      setStatus(false)
+      html.dataset.cameraShot = 'mission-reference'
+      html.dataset.cameraGuidance = 'released'
+      html.dataset.cameraSettled = 'guided'
+      delete html.dataset.cameraVisibility
+      delete html.dataset.cameraVisibilityGuard
+      delete html.dataset.cameraVisibilityTargets
+      delete html.dataset.cameraDestinationTargets
+      invalidate()
+      return
+    }
+
+    const shot = launchGuidedShots[guidedShotId]
+    const activateStaticFallback = (reason: string) => {
+      setStatus(false)
+      html.dataset.cameraShot = guidedShotId
+      html.dataset.cameraGuidance = 'released'
+      html.dataset.cameraVisibility = 'static-fallback'
+      html.dataset.cameraVisibilityGuard = reason
+      html.dataset.cameraFallbackReason = reason
+      html.dataset.cameraVisibilityTargets = shot.targetObjectNames.join(',')
+      html.dataset.cameraDestinationTargets = shot.targetObjectNames.join(',')
+      useMissionStore.getState().setQuality('fallback')
+    }
+
+    const framing = resolveGuidedShotFraming(scene, camera, shot)
+    if (!framing) {
+      activateStaticFallback('static-fallback-missing-target')
+      return
+    }
+
+    const restMatchesShot = guidedCameraRestPose?.shotId === guidedShotId
+    const previousShot = launchGuidedShots[guidedCameraFromShotId]
+    const previousFraming = resolveGuidedShotFraming(scene, camera, previousShot)
+    const storedFromPose: GuidedCameraPose | null =
+      guidedCameraRestPose?.shotId === guidedCameraFromShotId
+        ? {
+            position: guidedCameraRestPose.position,
+            target: guidedCameraRestPose.target,
+          }
+        : null
+    const storedFromPoseIsSafe =
+      storedFromPose !== null &&
+      previousFraming !== null &&
+      guidedPoseFramesBounds(
+        camera,
+        previousFraming.bounds,
+        storedFromPose,
+        previousShot.minProjectedDiameterNdc,
+      )
+    const fromPose: GuidedCameraPose = storedFromPoseIsSafe
+      ? storedFromPose
+      : (previousFraming?.pose ?? framing.pose)
+    let pose = guidedCameraActive
+      ? interpolateGuidedCameraPose(fromPose, framing.pose, guidedCameraProgress)
+      : restMatchesShot
+        ? {
+            position: guidedCameraRestPose.position,
+            target: guidedCameraRestPose.target,
+          }
+        : framing.pose
+
+    applyGuidedCameraPose(camera, pose)
+    controls.target.set(...pose.target)
     controls.update()
-  })
+    const previousVisible =
+      guidedCameraActive &&
+      previousFraming !== null &&
+      guidedBoundsAreVisible(camera, previousFraming.bounds, previousShot.minProjectedDiameterNdc)
+    let visible = guidedBoundsAreVisible(camera, framing.bounds, shot.minProjectedDiameterNdc)
+    let guard = 'authored-fit'
+    let visibleTargetNames = shot.targetObjectNames
+    // During a live handoff, retain the prior composition until the destination
+    // bounds enter the safe frame. This keeps the camera path continuous while
+    // ensuring at least one declared target set is protected on every frame.
+    if (!visible && previousVisible) {
+      visible = true
+      guard = 'transition-previous-fit'
+      visibleTargetNames = previousShot.targetObjectNames
+    }
+    if (!visible) {
+      const fallback = resolveGuidedShotFraming(scene, camera, shot, shot.fallbackSafeMargin)
+      if (fallback) {
+        pose = fallback.pose
+        applyGuidedCameraPose(camera, pose)
+        controls.target.set(...pose.target)
+        controls.update()
+        visible = guidedBoundsAreVisible(camera, fallback.bounds, shot.minProjectedDiameterNdc)
+        guard = 'deterministic-safe-fit'
+        visibleTargetNames = shot.targetObjectNames
+      }
+    }
+
+    if (!visible) {
+      activateStaticFallback('static-fallback-visibility-guard')
+      return
+    }
+
+    lastGuidedPose.current = pose
+    setStatus(guidedCameraActive)
+    html.dataset.cameraShot = guidedShotId
+    html.dataset.cameraShotProgress = guidedCameraProgress.toFixed(4)
+    html.dataset.cameraGuidance = guidedCameraActive ? 'active' : 'released'
+    html.dataset.cameraVisibility = 'safe'
+    html.dataset.cameraVisibilityGuard = guard
+    html.dataset.cameraVisibilityTargets = visibleTargetNames.join(',')
+    html.dataset.cameraDestinationTargets = shot.targetObjectNames.join(',')
+    html.dataset.cameraTransitionOrigin = storedFromPoseIsSafe
+      ? 'persisted-safe-rest'
+      : 'canonical-safe-composition'
+    html.dataset.cameraPosition = pose.position.map((value) => value.toFixed(6)).join(',')
+    html.dataset.cameraTarget = pose.target.map((value) => value.toFixed(6)).join(',')
+    if (guidedCameraActive) delete html.dataset.cameraSettled
+    else html.dataset.cameraSettled = 'guided'
+
+    if (!guidedCameraActive) {
+      const nextRestPose: GuidedCameraRestPose = {
+        shotId: guidedShotId,
+        position: pose.position,
+        target: pose.target,
+      }
+      const currentRest = useMissionStore.getState().guidedCameraRestPose
+      if (
+        currentRest?.shotId !== nextRestPose.shotId ||
+        currentRest.position.some((value, index) => value !== nextRestPose.position[index]) ||
+        currentRest.target.some((value, index) => value !== nextRestPose.target[index])
+      ) {
+        useMissionStore.getState().setGuidedCameraRestPose(nextRestPose)
+      }
+    }
+    invalidate()
+  }, [
+    camera,
+    controls,
+    guidedCameraActive,
+    guidedCameraFromShotId,
+    guidedCameraProgress,
+    guidedCameraRestPose,
+    guidedCameraTransitionEventId,
+    guidedShotId,
+    interaction.mode,
+    invalidate,
+    scene,
+  ])
 
   useEffect(() => {
     if (tweenFrame.current !== null) cancelAnimationFrame(tweenFrame.current)
     if (settleFrame.current !== null) cancelAnimationFrame(settleFrame.current)
-    delete document.documentElement.dataset.cameraSettled
     delete document.documentElement.dataset.inspectTarget
     delete document.documentElement.dataset.inspectTargetCount
+    if (interaction.mode !== 'inspect' || interaction.cameraControl !== 'guided-focus') return
 
-    let targetPosition: Vector3 | undefined
-    let targetLookAt: Vector3 | undefined
-    if (interaction.mode === 'guided') {
-      targetPosition = new Vector3()
-      targetLookAt = new Vector3()
-      if (!guidedPose(targetPosition, targetLookAt)) return
-      document.documentElement.dataset.cameraShot = guidedShotId ?? 'mission-reference'
-    } else if (interaction.mode === 'inspect' && interaction.cameraControl === 'guided-focus') {
-      const targets = findInspectableComponentNodes(
-        scene,
-        interaction.componentId,
-        stateAtMet(mission, metRef.current),
-      )
-      document.documentElement.dataset.inspectTargetCount = String(targets.length)
-      const targetObject = targets.length === 1 ? targets[0] : undefined
-      if (targetObject) {
-        document.documentElement.dataset.inspectTarget = interaction.componentId
-        const sphere = new Box3().setFromObject(targetObject).getBoundingSphere(new Sphere())
-        const direction = camera.position.clone().sub(controls.target).normalize()
-        const distance = Math.max(3.5, sphere.radius * 5)
-        targetLookAt = sphere.center.clone()
-        targetPosition = sphere.center.clone().add(direction.multiplyScalar(distance))
-      }
-    }
+    const targets = findInspectableComponentNodes(
+      scene,
+      interaction.componentId,
+      stateAtMet(mission, metRef.current),
+    )
+    document.documentElement.dataset.inspectTargetCount = String(targets.length)
+    const targetObject = targets.length === 1 ? targets[0] : undefined
+    if (!targetObject) return
+    document.documentElement.dataset.inspectTarget = interaction.componentId
+    delete document.documentElement.dataset.cameraSettled
 
-    if (!targetPosition || !targetLookAt) return
+    const sphere = new Box3().setFromObject(targetObject).getBoundingSphere(new Sphere())
+    const direction = camera.position.clone().sub(controls.target).normalize()
+    const distance = Math.max(3.5, sphere.radius * 5)
+    const targetLookAt = sphere.center.clone()
+    const targetPosition = sphere.center.clone().add(direction.multiplyScalar(distance))
     const startPosition = camera.position.clone()
     const startTarget = controls.target.clone()
-    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    const skipped = guidedCameraSkipRevision !== previousSkipRevision.current
-    previousSkipRevision.current = guidedCameraSkipRevision
-    const elapsedSinceAnchor =
-      guidedShotAnchorVisualTimeMs === null
-        ? Number.POSITIVE_INFINITY
-        : Math.max(0, visualTimeRef.current - guidedShotAnchorVisualTimeMs)
-    const remainingGuidedDuration = Math.max(0, guidedShotDurationMs - elapsedSinceAnchor)
-    const durationMs = reduceMotion
-      ? 0
-      : interaction.mode === 'guided'
-        ? skipped
-          ? 0
-          : remainingGuidedDuration
-        : 550
+    const durationMs = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 550
     const startedAt = performance.now()
 
-    if (interaction.mode === 'guided') {
-      useMissionStore
-        .getState()
-        .setGuidedCameraStatus(durationMs > 0, guidedShotId ?? 'mission-reference')
+    const settle = () => {
+      settleFrame.current = requestAnimationFrame(() => {
+        invalidate()
+        settleFrame.current = requestAnimationFrame(() => {
+          document.documentElement.dataset.cameraSettled = interaction.componentId
+          settleFrame.current = null
+        })
+      })
     }
-
+    const snapForLifecycle = () => {
+      if (tweenFrame.current !== null) cancelAnimationFrame(tweenFrame.current)
+      tweenFrame.current = null
+      camera.position.copy(targetPosition)
+      controls.target.copy(targetLookAt)
+      controls.update()
+      invalidate()
+      document.documentElement.dataset.cameraSettled = interaction.componentId
+    }
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') snapForLifecycle()
+    }
     const update = (now: number) => {
-      if (interaction.mode === 'guided') guidedPose(targetPosition, targetLookAt)
       const progress = durationMs === 0 ? 1 : Math.min(1, (now - startedAt) / durationMs)
       const eased = 1 - (1 - progress) ** 3
       camera.position.lerpVectors(startPosition, targetPosition, eased)
@@ -805,42 +959,40 @@ function CameraRig({
       if (progress < 1) tweenFrame.current = requestAnimationFrame(update)
       else {
         tweenFrame.current = null
-        if (interaction.mode === 'guided') {
-          useMissionStore.getState().setGuidedCameraStatus(false)
-        }
-        const settledLabel =
-          interaction.mode === 'inspect' ? interaction.componentId : interaction.mode
-        settleFrame.current = requestAnimationFrame(() => {
-          invalidate()
-          settleFrame.current = requestAnimationFrame(() => {
-            document.documentElement.dataset.cameraSettled = settledLabel
-            settleFrame.current = null
-          })
-        })
+        settle()
       }
     }
+
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    window.addEventListener('pagehide', snapForLifecycle)
     tweenFrame.current = requestAnimationFrame(update)
     return () => {
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+      window.removeEventListener('pagehide', snapForLifecycle)
       if (tweenFrame.current !== null) cancelAnimationFrame(tweenFrame.current)
       if (settleFrame.current !== null) cancelAnimationFrame(settleFrame.current)
       tweenFrame.current = null
       settleFrame.current = null
-      if (interaction.mode === 'guided') {
-        useMissionStore.getState().setGuidedCameraStatus(false)
-      }
     }
-  }, [
-    camera,
-    controls,
-    guidedCameraSkipRevision,
-    guidedShotAnchorVisualTimeMs,
-    guidedShotDurationMs,
-    guidedShotId,
-    guidedPose,
-    interaction,
-    invalidate,
-    scene,
-  ])
+  }, [camera, controls, interaction, invalidate, scene])
+
+  useEffect(
+    () => () => {
+      useMissionStore.getState().setGuidedCameraStatus(false)
+      const html = document.documentElement
+      if (html.dataset.cameraVisibility !== 'static-fallback') {
+        delete html.dataset.cameraGuidance
+        delete html.dataset.cameraVisibility
+        delete html.dataset.cameraVisibilityGuard
+        delete html.dataset.cameraVisibilityTargets
+        delete html.dataset.cameraDestinationTargets
+        delete html.dataset.cameraTransitionOrigin
+        delete html.dataset.cameraPosition
+        delete html.dataset.cameraTarget
+      }
+    },
+    [],
+  )
 
   return null
 }
@@ -866,7 +1018,7 @@ function RuntimeSceneState({
     html.dataset.controlScene = 'ready'
     invalidate()
     return () => {
-      delete html.dataset.controlScene
+      if (html.dataset.controlScene === 'ready') delete html.dataset.controlScene
     }
   }, [configurationKey, invalidate, scene])
 
@@ -901,6 +1053,7 @@ function SceneContents({
   storyTimeMs,
   visualTimeMs,
   transitionAnchors,
+  suppressedGuidedCameraTransitionEventIds,
   speed,
   reducedMotion,
   interaction,
@@ -911,6 +1064,7 @@ function SceneContents({
   storyTimeMs: number
   visualTimeMs: number
   transitionAnchors: VisualTransitionAnchors
+  suppressedGuidedCameraTransitionEventIds: readonly string[]
   speed: PlaybackSpeed
   reducedMotion: boolean
   interaction: ControlInteractionState
@@ -924,6 +1078,7 @@ function SceneContents({
     storyTimeMs,
     visualTimeMs,
     transitionAnchors,
+    suppressedGuidedCameraTransitionEventIds,
     metSeconds: met,
     speed,
     reducedMotion,
@@ -932,13 +1087,11 @@ function SceneContents({
     () =>
       new Color('#1a292e').lerp(
         new Color('#050706'),
-        mode === 'launch' ? launchVisual.atmosphereToSpace : 1,
+        mode === 'launch' ? launchVisual.backgroundSpaceMix : 1,
       ),
-    [launchVisual.atmosphereToSpace, mode],
+    [launchVisual.backgroundSpaceMix, mode],
   )
-  const configurationKey = `${quality}:${mode}:${Object.entries(
-    runtimeState.components,
-  )
+  const configurationKey = `${quality}:${mode}:${Object.entries(runtimeState.components)
     .map(
       ([id, component]) =>
         `${id}:${component.lifecycle}:${component.parentId ?? '-'}:${component.visible}`,
@@ -965,17 +1118,12 @@ function SceneContents({
         interaction={interaction}
         cameraCommand={cameraCommand}
         guidedShotId={mode === 'launch' ? launchVisual.guidedShotId : null}
-        guidedShotDurationMs={
-          mode === 'launch'
-            ? launchVisual.guidedShotDurationMs
-            : reducedMotion || speed >= 100
-              ? 0
-              : 550
+        guidedCameraFromShotId={mode === 'launch' ? launchVisual.guidedCameraFromShotId : null}
+        guidedCameraProgress={mode === 'launch' ? launchVisual.guidedCameraProgress : 1}
+        guidedCameraActive={mode === 'launch' && launchVisual.guidedCameraActive}
+        guidedCameraTransitionEventId={
+          mode === 'launch' ? launchVisual.guidedCameraTransitionEventId : null
         }
-        guidedShotAnchorVisualTimeMs={
-          mode === 'launch' ? launchVisual.guidedShotAnchorVisualTimeMs : null
-        }
-        visualTimeMs={visualTimeMs}
       />
       {mode === 'launch' && <LaunchAuditState visual={launchVisual} />}
       <RuntimeSceneState state={runtimeState} configurationKey={configurationKey} />
@@ -1050,12 +1198,29 @@ class SceneErrorBoundary extends Component<
 }
 
 export function StaticVehicleFallback() {
-  useEffect(() => {
+  useLayoutEffect(() => {
     const html = document.documentElement
-    html.dataset.controlScene = 'fallback'
-    useMissionStore.getState().setSceneRuntime('fallback')
+    const reportFallback = () => {
+      html.dataset.controlScene = 'fallback'
+      html.dataset.cameraGuidance = 'released'
+      html.dataset.cameraVisibility = 'static-fallback'
+      html.dataset.cameraVisibilityGuard =
+        html.dataset.cameraFallbackReason ?? 'static-fallback-selected'
+      useMissionStore.getState().setSceneRuntime('fallback')
+    }
+    reportFallback()
+    // A replaced Canvas subtree can finish child layout cleanups later in the
+    // same commit. Re-assert at the next paint boundary against the final tree.
+    const frame = requestAnimationFrame(reportFallback)
     return () => {
-      delete html.dataset.controlScene
+      cancelAnimationFrame(frame)
+      if (html.dataset.controlScene === 'fallback') delete html.dataset.controlScene
+      if (html.dataset.cameraVisibility === 'static-fallback') {
+        delete html.dataset.cameraGuidance
+        delete html.dataset.cameraVisibility
+        delete html.dataset.cameraVisibilityGuard
+        delete html.dataset.cameraFallbackReason
+      }
     }
   }, [])
   return (
@@ -1109,6 +1274,7 @@ export function MissionScene({
   storyTimeMs,
   visualTimeMs,
   transitionAnchors,
+  suppressedGuidedCameraTransitionEventIds,
   speed,
   interaction,
   cameraCommand,
@@ -1118,6 +1284,7 @@ export function MissionScene({
   storyTimeMs: number
   visualTimeMs: number
   transitionAnchors: VisualTransitionAnchors
+  suppressedGuidedCameraTransitionEventIds: readonly string[]
   speed: PlaybackSpeed
   interaction: ControlInteractionState
   cameraCommand: CameraCommand | null
@@ -1130,7 +1297,7 @@ export function MissionScene({
     <SceneErrorBoundary fallback={<StaticVehicleFallback />}>
       <Canvas
         dpr={[1, quality === 'high' ? 2 : 1.5]}
-        camera={{ position: [9.2, 4.8, 12.8], fov: 38, near: 0.1, far: 120 }}
+        camera={{ position: [9.2, 4.8, 12.8], fov: 38, near: 0.1, far: 500 }}
         frameloop="demand"
         gl={{ antialias: quality !== 'low', powerPreference: 'high-performance' }}
         fallback={<CanvasSupportFallback />}
@@ -1142,6 +1309,7 @@ export function MissionScene({
             storyTimeMs={storyTimeMs}
             visualTimeMs={visualTimeMs}
             transitionAnchors={transitionAnchors}
+            suppressedGuidedCameraTransitionEventIds={suppressedGuidedCameraTransitionEventIds}
             speed={speed}
             reducedMotion={reducedMotion}
             interaction={interaction}

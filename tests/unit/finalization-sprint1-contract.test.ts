@@ -19,6 +19,7 @@ import {
   readControlTraversalSnapshot,
   recordControlPlaybackSnapshot,
   recordControlTraversalSnapshot,
+  SATURN_V_INSPECTOR_PATH,
 } from '../../src/app/controlDeepLink.ts'
 import {
   setActiveControlHistoryEntry,
@@ -37,7 +38,7 @@ function enableInspection(...componentIds: string[]): void {
   useMissionStore.getState().setSceneRuntime('ready', componentIds)
 }
 
-function withMemorySessionStorage(run: () => void): void {
+function withMemorySessionStorage(run: (storage: Storage) => void): void {
   const original = Object.getOwnPropertyDescriptor(globalThis, 'sessionStorage')
   const entries = new Map<string, string>()
   const storage = {
@@ -55,7 +56,7 @@ function withMemorySessionStorage(run: () => void): void {
     value: storage,
   })
   try {
-    run()
+    run(storage as Storage)
   } finally {
     if (original) Object.defineProperty(globalThis, 'sessionStorage', original)
     else delete (globalThis as typeof globalThis & { sessionStorage?: unknown }).sessionStorage
@@ -199,6 +200,54 @@ test('inspection is unavailable until one runtime semantic target is ready', () 
   assert.equal(useMissionStore.getState().interaction.mode, 'inspect')
 })
 
+test('runtime loading retains a paused inspection until a definitive rebind result', () => {
+  useMissionStore.setState({
+    playing: false,
+    sceneAvailability: 'ready',
+    runtimeInspectableComponentIds: ['s-ic'],
+    interaction: {
+      mode: 'inspect',
+      componentId: 's-ic',
+      returnMode: 'guided',
+      resumePlaybackOnClose: true,
+      cameraControl: 'guided-focus',
+    },
+  })
+
+  useMissionStore.getState().setSceneRuntime('loading')
+  assert.equal(useMissionStore.getState().playing, false)
+  assert.equal(useMissionStore.getState().interaction.mode, 'inspect')
+  assert.deepEqual(useMissionStore.getState().runtimeInspectableComponentIds, ['s-ic'])
+
+  useMissionStore.getState().setSceneRuntime('ready', ['s-ic'])
+  assert.equal(useMissionStore.getState().playing, false)
+  assert.equal(useMissionStore.getState().interaction.mode, 'inspect')
+})
+
+test('a non-playing reference-route load cannot resume playback from inspect history', () => {
+  useMissionStore.setState({
+    playing: false,
+    interaction: {
+      mode: 'inspect',
+      componentId: 's-ic',
+      returnMode: 'guided',
+      resumePlaybackOnClose: true,
+      cameraControl: 'guided-focus',
+    },
+  })
+  useMissionStore.getState().pauseForModeSwitch()
+  useMissionStore.getState().setSceneRuntime('loading')
+  assert.equal(useMissionStore.getState().playing, false)
+  assert.equal(useMissionStore.getState().interaction.mode, 'inspect')
+  const inspection = useMissionStore.getState().interaction
+  assert.equal(inspection.mode === 'inspect' ? inspection.resumePlaybackOnClose : true, false)
+
+  useMissionStore.getState().closeInspection()
+  assert.equal(useMissionStore.getState().playing, false)
+  assert.equal(useMissionStore.getState().resumeAvailable, true)
+  assert.equal(useMissionStore.getState().pauseReason, 'mode-switch')
+})
+
 test('changing inspected components restores guided focus without changing the close transaction', () => {
   useMissionStore.setState({ playing: true, interaction: { mode: 'free-look' } })
   enableInspection('s-ic', 's-ii')
@@ -265,10 +314,144 @@ test('route traversal snapshots are isolated by history entry key, not pathname'
     assert.deepEqual(readControlTraversalSnapshot('control-entry-a'), {
       path: '/control/met/s20',
       metSeconds: 20,
+      visualTimeMs: 0,
+      visualTransitionAnchors: {},
+      suppressedGuidedCameraTransitionEventIds: [],
+      guidedCameraRestPose: null,
     })
 
     clearControlTraversalSnapshot('control-entry-a')
     assert.equal(readControlTraversalSnapshot('control-entry-a'), undefined)
+  })
+})
+
+test('reference route traversal preserves the exact Inspector pathname', () => {
+  withMemorySessionStorage(() => {
+    recordControlTraversalSnapshot('control-inspector-entry', 123, SATURN_V_INSPECTOR_PATH)
+    assert.deepEqual(readControlTraversalSnapshot('control-inspector-entry'), {
+      path: SATURN_V_INSPECTOR_PATH,
+      metSeconds: 0,
+      visualTimeMs: 0,
+      visualTransitionAnchors: {},
+      suppressedGuidedCameraTransitionEventIds: [],
+      guidedCameraRestPose: null,
+    })
+  })
+})
+
+test('visual replay snapshots preserve an exact bounded camera reconstruction', () => {
+  withMemorySessionStorage(() => {
+    const visualState = {
+      visualTimeMs: 8_250.5,
+      visualTransitionAnchors: {
+        'a11-sic-sii-separation': 8_000.25,
+      },
+      suppressedGuidedCameraTransitionEventIds: ['a11-liftoff'],
+      guidedCameraRestPose: {
+        shotId: 'ascent-lower-reference',
+        position: [7.25, 4.5, 13.125] as const,
+        target: [0.25, -0.5, 0] as const,
+      },
+    }
+    recordControlTraversalSnapshot(
+      'control-visual-entry',
+      162.3,
+      '/control/event/a11-sic-sii-separation',
+      visualState,
+    )
+    assert.deepEqual(readControlTraversalSnapshot('control-visual-entry'), {
+      path: '/control/event/a11-sic-sii-separation',
+      metSeconds: 162.3,
+      ...visualState,
+    })
+  })
+})
+
+test('visual traversal snapshot validation fails closed on unbounded or noncanonical state', () => {
+  withMemorySessionStorage((storage) => {
+    const key = 'apollo11.control.traversal-snapshots.v1'
+    const base = {
+      entryId: 'malformed-visual-entry',
+      path: '/control/met/s162.3',
+      visualTimeMs: 100,
+      visualTransitionAnchors: { 'a11-liftoff': 50 },
+      suppressedGuidedCameraTransitionEventIds: [],
+      guidedCameraRestPose: null,
+    }
+    const invalidStates = [
+      { ...base, visualTransitionAnchors: { 'not-a-canonical-event': 50 } },
+      { ...base, visualTransitionAnchors: { 'a11-liftoff': 101 } },
+      {
+        ...base,
+        visualTransitionAnchors: Object.fromEntries(
+          replayEvents.slice(0, 13).map((event, index) => [event.id, index]),
+        ),
+      },
+      { ...base, suppressedGuidedCameraTransitionEventIds: ['not-a-canonical-event'] },
+      {
+        ...base,
+        guidedCameraRestPose: {
+          shotId: 'ascent-lower-reference',
+          position: [Number.NaN, 0, 0],
+          target: [0, 0, 0],
+        },
+      },
+      {
+        ...base,
+        guidedCameraRestPose: {
+          shotId: 'ascent-lower-reference',
+          position: [10_001, 0, 0],
+          target: [0, 0, 0],
+        },
+      },
+      {
+        ...base,
+        guidedCameraRestPose: {
+          shotId: 'not-a-canonical-shot',
+          position: [1, 2, 3],
+          target: [0, 0, 0],
+        },
+      },
+      { ...base, visualTimeMs: Number.MAX_SAFE_INTEGER },
+    ]
+
+    for (const invalid of invalidStates) {
+      storage.setItem(key, JSON.stringify([invalid]))
+      assert.equal(readControlTraversalSnapshot(base.entryId), undefined)
+    }
+  })
+})
+
+test('reload snapshot validation rejects malformed visual state and legacy v1 defaults safely', () => {
+  withMemorySessionStorage((storage) => {
+    const reloadKey = 'apollo11.control.reload-snapshot.v1'
+    const pathname = '/control/met/s162.3'
+    storage.setItem(
+      reloadKey,
+      JSON.stringify({
+        sourcePathname: pathname,
+        path: pathname,
+        visualTimeMs: 100,
+        visualTransitionAnchors: { 'a11-liftoff': 50 },
+        suppressedGuidedCameraTransitionEventIds: ['not-a-canonical-event'],
+        guidedCameraRestPose: null,
+      }),
+    )
+    assert.equal(createControlReloadSnapshotConsumer(pathname).consume(pathname), undefined)
+
+    storage.setItem(
+      reloadKey,
+      JSON.stringify({ sourcePathname: pathname, path: pathname, metSeconds: 162.3 }),
+    )
+    assert.deepEqual(createControlReloadSnapshotConsumer(pathname).consume(pathname), {
+      sourcePathname: pathname,
+      path: pathname,
+      metSeconds: 162.3,
+      visualTimeMs: 0,
+      visualTransitionAnchors: {},
+      suppressedGuidedCameraTransitionEventIds: [],
+      guidedCameraRestPose: null,
+    })
   })
 })
 

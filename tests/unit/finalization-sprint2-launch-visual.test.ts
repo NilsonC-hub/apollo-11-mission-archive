@@ -11,6 +11,7 @@ function poseAt(eventId: string, speed: 1 | 10 | 100 | 1000 = 10, reducedMotion 
     storyTimeMs: storyTimeAtMet(mission.narrative, event.metSeconds),
     visualTimeMs: 0,
     transitionAnchors: {},
+    suppressedGuidedCameraTransitionEventIds: [],
     metSeconds: event.metSeconds,
     speed,
     reducedMotion,
@@ -31,6 +32,7 @@ test('factual separation begins a separate authored displacement window', () => 
     storyTimeMs,
     visualTimeMs: 1_000,
     transitionAnchors: { [event.id]: 1_000 },
+    suppressedGuidedCameraTransitionEventIds: [],
     metSeconds: event.metSeconds,
     speed: 10,
     reducedMotion: false,
@@ -39,6 +41,7 @@ test('factual separation begins a separate authored displacement window', () => 
     storyTimeMs: storyTimeMs + 8_000,
     visualTimeMs: 1_800,
     transitionAnchors: { [event.id]: 1_000 },
+    suppressedGuidedCameraTransitionEventIds: [],
     metSeconds: event.metSeconds + 0.001,
     speed: 10,
     reducedMotion: false,
@@ -69,6 +72,7 @@ test('Earth rotation is story-derived and pauses when story time does not change
     storyTimeMs,
     visualTimeMs: 4_000,
     transitionAnchors: {},
+    suppressedGuidedCameraTransitionEventIds: [],
     metSeconds: event.metSeconds,
     speed: 10 as const,
     reducedMotion: false,
@@ -91,6 +95,7 @@ test('launch plume envelopes stop at their canonical cutoff events', () => {
       storyTimeMs: storyTimeAtMet(mission.narrative, cutoff.metSeconds + 1),
       visualTimeMs: 8_000,
       transitionAnchors: {},
+      suppressedGuidedCameraTransitionEventIds: [],
       metSeconds: cutoff.metSeconds + 1,
       speed: 10,
       reducedMotion: false,
@@ -117,6 +122,7 @@ test('separation transient wall duration is independent of 1x or 10x story rate'
       storyTimeMs: currentStoryTimeMs,
       visualTimeMs: 2_800,
       transitionAnchors,
+      suppressedGuidedCameraTransitionEventIds: [],
       metSeconds: metAtStoryTime(mission.narrative, currentStoryTimeMs),
       speed,
       reducedMotion: false,
@@ -132,6 +138,7 @@ test('direct jump reconstructs stable endpoint instead of replaying a transient'
     storyTimeMs: storyTimeAtMet(mission.narrative, event.metSeconds),
     visualTimeMs: 0,
     transitionAnchors: {},
+    suppressedGuidedCameraTransitionEventIds: [],
     metSeconds: event.metSeconds,
     speed: 10,
     reducedMotion: false,
@@ -149,6 +156,7 @@ test('camera transition policy is wall-duration based at 1x/10x and overview at 
     storyTimeMs: storyTimeAtMet(mission.narrative, event.metSeconds),
     visualTimeMs: 400,
     transitionAnchors,
+    suppressedGuidedCameraTransitionEventIds: [],
     metSeconds: event.metSeconds,
     reducedMotion: false,
   }
@@ -156,4 +164,48 @@ test('camera transition policy is wall-duration based at 1x/10x and overview at 
   assert.equal(launchVisualStateAt({ ...input, speed: 1 }).guidedShotDurationMs, 560)
   assert.equal(launchVisualStateAt({ ...input, speed: 10 }).guidedShotDurationMs, 560)
   assert.equal(launchVisualStateAt({ ...input, speed: 100 }).guidedShotDurationMs, 0)
+})
+
+test('camera skip suppresses only its current guided transition, not separation presentation', () => {
+  const event = getEvent('a11-sic-sii-separation')
+  const storyTimeMs = storyTimeAtMet(mission.narrative, event.metSeconds)
+  const input = {
+    storyTimeMs,
+    visualTimeMs: 1_200,
+    transitionAnchors: { [event.id]: 1_000 },
+    metSeconds: event.metSeconds,
+    speed: 10 as const,
+    reducedMotion: false,
+  }
+  const active = launchVisualStateAt({
+    ...input,
+    suppressedGuidedCameraTransitionEventIds: [],
+  })
+  const skipped = launchVisualStateAt({
+    ...input,
+    suppressedGuidedCameraTransitionEventIds: [event.id],
+  })
+
+  assert.equal(active.guidedCameraActive, true)
+  assert.equal(skipped.guidedCameraActive, false)
+  assert.equal(skipped.guidedCameraProgress, 1)
+  assert.equal(skipped.departures['s-ic'].progress, active.departures['s-ic'].progress)
+  assert.equal(skipped.departures['s-ic'].renderAfterSeparation, true)
+})
+
+test('paused guided progress is a pure visual-time reconstruction', () => {
+  const event = getEvent('a11-liftoff')
+  const base = {
+    storyTimeMs: storyTimeAtMet(mission.narrative, event.metSeconds),
+    visualTimeMs: 1_280,
+    transitionAnchors: { [event.id]: 1_000 },
+    suppressedGuidedCameraTransitionEventIds: [],
+    metSeconds: event.metSeconds,
+    speed: 10 as const,
+    reducedMotion: false,
+  }
+  const first = launchVisualStateAt(base)
+  const restored = launchVisualStateAt({ ...base })
+  assert.equal(first.guidedCameraActive, true)
+  assert.equal(first.guidedCameraProgress, restored.guidedCameraProgress)
 })

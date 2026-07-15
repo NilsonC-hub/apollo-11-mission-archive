@@ -21,6 +21,12 @@ export function snapshotActiveControlHistoryEntry(): void {
     activeControlEntry.entryId,
     metSeconds,
     activeControlEntry.pathname ?? undefined,
+    {
+      visualTimeMs: state.visualTimeMs,
+      visualTransitionAnchors: state.visualTransitionAnchors,
+      suppressedGuidedCameraTransitionEventIds: state.suppressedGuidedCameraTransitionEventIds,
+      guidedCameraRestPose: state.guidedCameraRestPose,
+    },
   )
 }
 

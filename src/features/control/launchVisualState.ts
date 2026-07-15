@@ -1,5 +1,9 @@
 import { getEvent, mission, replayNarrative } from '../../app/mission.ts'
-import type { PlaybackSpeed, VisualTransitionAnchors } from '../../app/missionStore.ts'
+import type {
+  GuidedCameraRestPoseShotId,
+  PlaybackSpeed,
+  VisualTransitionAnchors,
+} from '../../app/missionStore.ts'
 import { storyTimeAtMet } from '../../mission-core/index.ts'
 
 export type VisualVector3 = readonly [number, number, number]
@@ -14,45 +18,56 @@ export interface AuthoredDeparture {
   progress: number
 }
 
-export type LaunchGuidedShotId =
-  | 'launch-pad-reference'
-  | 'ascent-lower-reference'
-  | 'ascent-upper-reference'
-  | 'earth-orbit-reference'
+export type LaunchGuidedShotId = GuidedCameraRestPoseShotId
 
 export interface LaunchGuidedShotDefinition {
   id: LaunchGuidedShotId
-  targetAnchorName: 'launch-camera-anchor'
-  cameraOffset: VisualVector3
-  targetOffset: VisualVector3
+  targetObjectNames: readonly ('launch-vehicle-visual' | 'launch-earth-reference')[]
+  viewDirection: VisualVector3
+  safeMargin: number
+  /** Authored clearance in normalized scene coordinates, not a flight dimension. */
+  paddingSceneUnits: number
+  /** Deterministic second-pass fit used only when the authored fit misses the visibility guard. */
+  fallbackSafeMargin: number
+  minProjectedDiameterNdc: number
 }
 
-export const launchGuidedShots: Readonly<
-  Record<LaunchGuidedShotId, LaunchGuidedShotDefinition>
-> = {
+export const launchGuidedShots: Readonly<Record<LaunchGuidedShotId, LaunchGuidedShotDefinition>> = {
   'launch-pad-reference': {
     id: 'launch-pad-reference',
-    targetAnchorName: 'launch-camera-anchor',
-    cameraOffset: [9.2, 4.8, 12.8],
-    targetOffset: [0, 0, 0],
+    targetObjectNames: ['launch-vehicle-visual'],
+    viewDirection: [1, 0.48, 1.4],
+    safeMargin: 1.34,
+    paddingSceneUnits: 6,
+    fallbackSafeMargin: 1.8,
+    minProjectedDiameterNdc: 0.18,
   },
   'ascent-lower-reference': {
     id: 'ascent-lower-reference',
-    targetAnchorName: 'launch-camera-anchor',
-    cameraOffset: [10.4, 4.2, 13.6],
-    targetOffset: [0, 0.15, 0],
+    targetObjectNames: ['launch-vehicle-visual'],
+    viewDirection: [1.05, 0.42, 1.36],
+    safeMargin: 1.38,
+    paddingSceneUnits: 6,
+    fallbackSafeMargin: 1.86,
+    minProjectedDiameterNdc: 0.18,
   },
   'ascent-upper-reference': {
     id: 'ascent-upper-reference',
-    targetAnchorName: 'launch-camera-anchor',
-    cameraOffset: [11.2, 4.7, 14.4],
-    targetOffset: [0, 0.1, 0],
+    targetObjectNames: ['launch-vehicle-visual'],
+    viewDirection: [1.1, 0.47, 1.42],
+    safeMargin: 1.42,
+    paddingSceneUnits: 6,
+    fallbackSafeMargin: 1.92,
+    minProjectedDiameterNdc: 0.18,
   },
   'earth-orbit-reference': {
     id: 'earth-orbit-reference',
-    targetAnchorName: 'launch-camera-anchor',
-    cameraOffset: [9.8, 5.2, 13.2],
-    targetOffset: [0, 0, 0],
+    targetObjectNames: ['launch-vehicle-visual', 'launch-earth-reference'],
+    viewDirection: [1.06, 0.5, 1.38],
+    safeMargin: 1.48,
+    paddingSceneUnits: 3,
+    fallbackSafeMargin: 2,
+    minProjectedDiameterNdc: 0.24,
   },
 }
 
@@ -64,12 +79,16 @@ export interface LaunchVisualState {
   earthPosition: VisualVector3
   earthRadius: number
   earthRotationY: number
-  atmosphereToSpace: number
+  backgroundSpaceMix: number
   starOpacity: number
   launchReferenceOpacity: number
   guidedShotId: LaunchGuidedShotId
   guidedShotDurationMs: number
   guidedShotAnchorVisualTimeMs: number | null
+  guidedCameraFromShotId: LaunchGuidedShotId
+  guidedCameraProgress: number
+  guidedCameraActive: boolean
+  guidedCameraTransitionEventId: string | null
   departures: Readonly<Record<string, AuthoredDeparture>>
   plumeIntensity: Readonly<Record<'s-ic' | 's-ii' | 's-ivb', number>>
 }
@@ -78,6 +97,7 @@ interface LaunchVisualInput {
   storyTimeMs: number
   visualTimeMs: number
   transitionAnchors: VisualTransitionAnchors
+  suppressedGuidedCameraTransitionEventIds: readonly string[]
   metSeconds: number
   speed: PlaybackSpeed
   reducedMotion: boolean
@@ -155,11 +175,7 @@ function lerp(start: number, end: number, progress: number): number {
   return start + (end - start) * progress
 }
 
-function lerpVector(
-  start: VisualVector3,
-  end: VisualVector3,
-  progress: number,
-): VisualVector3 {
+function lerpVector(start: VisualVector3, end: VisualVector3, progress: number): VisualVector3 {
   return [
     lerp(start[0], end[0], progress),
     lerp(start[1], end[1], progress),
@@ -200,9 +216,7 @@ function departureAt(
     return { renderAfterSeparation: false, offsetMeters: method.offset, progress: 1 }
   }
 
-  const progress = easeOutCubic(
-    (input.visualTimeMs - anchorVisualTimeMs) / method.durationMs,
-  )
+  const progress = easeOutCubic((input.visualTimeMs - anchorVisualTimeMs) / method.durationMs)
   return {
     renderAfterSeparation: progress < 1,
     offsetMeters: method.offset.map((value) => value * progress) as unknown as VisualVector3,
@@ -235,6 +249,13 @@ function guidedShotMilestone(shotId: LaunchGuidedShotId): EventMilestone | null 
   if (shotId === 'ascent-upper-reference') return milestones.sicSeparation
   if (shotId === 'earth-orbit-reference') return orbitInsertion
   return null
+}
+
+function previousGuidedShot(shotId: LaunchGuidedShotId): LaunchGuidedShotId {
+  if (shotId === 'ascent-lower-reference') return 'launch-pad-reference'
+  if (shotId === 'ascent-upper-reference') return 'ascent-lower-reference'
+  if (shotId === 'earth-orbit-reference') return 'ascent-upper-reference'
+  return shotId
 }
 
 /**
@@ -278,7 +299,8 @@ export function launchVisualStateAt(input: LaunchVisualInput): LaunchVisualState
     ]),
   ) as Record<string, AuthoredDeparture>
 
-  const normalRotation = Math.max(0, input.storyTimeMs - milestones.liftoff.storyTimeMs) * 0.000_0035
+  const normalRotation =
+    Math.max(0, input.storyTimeMs - milestones.liftoff.storyTimeMs) * 0.000_0035
   const overviewRotation =
     input.metSeconds >= orbitInsertion.metSeconds
       ? 0.32
@@ -294,32 +316,33 @@ export function launchVisualStateAt(input: LaunchVisualInput): LaunchVisualState
   const guidedShotAnchorVisualTimeMs = guidedMilestone
     ? (input.transitionAnchors[guidedMilestone.eventId] ?? null)
     : null
+  const guidedCameraSuppressed = guidedMilestone
+    ? input.suppressedGuidedCameraTransitionEventIds.includes(guidedMilestone.eventId)
+    : false
+  const guidedCameraProgress =
+    transientMotionAllowed && guidedShotAnchorVisualTimeMs !== null && !guidedCameraSuppressed
+      ? easeOutCubic((input.visualTimeMs - guidedShotAnchorVisualTimeMs) / 560)
+      : 1
+  const guidedCameraFromShotId = previousGuidedShot(guidedShotId)
+  const guidedCameraActive =
+    transientMotionAllowed &&
+    guidedShotAnchorVisualTimeMs !== null &&
+    !guidedCameraSuppressed &&
+    guidedCameraProgress < 1
 
   return {
     evidence: 'schematic',
     policy,
-    vehiclePosition: lerpVector(
-      [0, -3.7, 0],
-      [0.35, 0.2, 0],
-      easeOutCubic(ascentProgress),
-    ),
+    vehiclePosition: lerpVector([0, -3.7, 0], [0.35, 0.2, 0], easeOutCubic(ascentProgress)),
     vehicleRotation: [
       lerp(0, -0.08, ascentProgress),
       lerp(0, 0.24, ascentProgress),
       lerp(0, -Math.PI / 2, ascentProgress),
     ],
-    earthPosition: lerpVector(
-      [-7.6, -4.8, -7],
-      [-4.9, -6.3, -9],
-      easeOutCubic(ascentProgress),
-    ),
+    earthPosition: lerpVector([-7.6, -4.8, -7], [-4.9, -6.3, -9], easeOutCubic(ascentProgress)),
     earthRadius: lerp(5.5, 6.15, easeOutCubic(ascentProgress)),
-    earthRotationY: input.reducedMotion
-      ? 0
-      : highRate
-        ? overviewRotation
-        : normalRotation,
-    atmosphereToSpace: Math.max(spaceProgress, orbitSettle),
+    earthRotationY: input.reducedMotion ? 0 : highRate ? overviewRotation : normalRotation,
+    backgroundSpaceMix: Math.max(spaceProgress, orbitSettle),
     starOpacity: lerp(0.12, 1, Math.max(spaceProgress, orbitSettle)),
     launchReferenceOpacity: input.reducedMotion
       ? input.metSeconds < milestones.liftoff.metSeconds
@@ -327,17 +350,15 @@ export function launchVisualStateAt(input: LaunchVisualInput): LaunchVisualState
         : 0
       : 1 - easeOutCubic(ascentProgress * 3.4),
     guidedShotId,
-    guidedShotDurationMs:
-      transientMotionAllowed && guidedShotAnchorVisualTimeMs !== null ? 560 : 0,
+    guidedShotDurationMs: guidedCameraActive ? 560 : 0,
     guidedShotAnchorVisualTimeMs,
+    guidedCameraFromShotId,
+    guidedCameraProgress,
+    guidedCameraActive,
+    guidedCameraTransitionEventId: guidedMilestone?.eventId ?? null,
     departures,
     plumeIntensity: {
-      's-ic': burnEnvelope(
-        input,
-        milestones.liftoff,
-        milestones.sicCutoff,
-        transientMotionAllowed,
-      ),
+      's-ic': burnEnvelope(input, milestones.liftoff, milestones.sicCutoff, transientMotionAllowed),
       's-ii': burnEnvelope(
         input,
         milestones.siiIgnition,

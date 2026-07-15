@@ -10,6 +10,7 @@ import {
   currentControlHistoryEntryId,
   metForControlPath,
   readControlTraversalSnapshot,
+  SATURN_V_INSPECTOR_PATH,
   type ControlPlaybackSnapshot,
 } from '../../app/controlDeepLink.ts'
 import {
@@ -35,6 +36,9 @@ import {
   type MissionState,
 } from '../../mission-core/index.ts'
 import { useMissionPlayback } from './useMissionPlayback.ts'
+import { InterfaceToneControl } from './InterfaceToneControl.tsx'
+import { playInterfaceTone } from './interfaceTones.ts'
+import { SaturnVInspector } from './SaturnVInspector.tsx'
 
 const MissionScene = lazy(() =>
   import('./MissionScene.tsx').then((module) => ({ default: module.MissionScene })),
@@ -162,7 +166,15 @@ function useControlDeepLink(): number | undefined {
         restore: {
           kind: 'reload' | 'traversal'
           entryId?: string
-          snapshot: Pick<ControlPlaybackSnapshot, 'path' | 'metSeconds'>
+          snapshot: Pick<
+            ControlPlaybackSnapshot,
+            | 'path'
+            | 'metSeconds'
+            | 'visualTimeMs'
+            | 'visualTransitionAnchors'
+            | 'suppressedGuidedCameraTransitionEventIds'
+            | 'guidedCameraRestPose'
+          >
         } | null
       }
     | undefined
@@ -196,8 +208,14 @@ function useControlDeepLink(): number | undefined {
     appliedPath.current = effectivePath
     if (pendingMet !== undefined) {
       const store = useMissionStore.getState()
-      if (restore?.kind === 'traversal') {
-        store.restoreTraversalMet(pendingMet)
+      if (restore) {
+        store.restoreTraversalMet(pendingMet, {
+          visualTimeMs: restore.snapshot.visualTimeMs,
+          visualTransitionAnchors: restore.snapshot.visualTransitionAnchors,
+          suppressedGuidedCameraTransitionEventIds:
+            restore.snapshot.suppressedGuidedCameraTransitionEventIds,
+          guidedCameraRestPose: restore.snapshot.guidedCameraRestPose,
+        })
       } else {
         store.setMet(pendingMet)
         store.setPlaying(false)
@@ -497,6 +515,7 @@ function PlaybackControls({ met, jump }: { met: number; jump: ControlJump }) {
       false,
       true,
     )
+    playInterfaceTone('action')
   }
 
   return (
@@ -509,7 +528,14 @@ function PlaybackControls({ met, jump }: { met: number; jump: ControlJump }) {
         >
           ←
         </button>
-        <button className="play-button" type="button" onClick={togglePlaying}>
+        <button
+          className="play-button"
+          type="button"
+          onClick={() => {
+            togglePlaying()
+            playInterfaceTone('action')
+          }}
+        >
           {editorialPause ? 'CONTINUE REPLAY' : playing ? 'PAUSE' : 'PLAY'}
         </button>
         <button type="button" onClick={() => goToAdjacentEvent('next')} aria-label="Next event">
@@ -540,7 +566,10 @@ function PlaybackControls({ met, jump }: { met: number; jump: ControlJump }) {
             type="button"
             key={option}
             className={speed === option ? 'is-active' : undefined}
-            onClick={() => setSpeed(option)}
+            onClick={() => {
+              setSpeed(option)
+              playInterfaceTone('action')
+            }}
             aria-pressed={speed === option}
           >
             {option}×
@@ -556,8 +585,7 @@ function sceneCopy(mode: ConsoleMode): { heading: string; truth: string; body: s
     return {
       heading: 'VIEW / NASA MODEL ASSETS',
       truth: 'SATURN V: NASA VISUALIZATION · CSM: RECONSTRUCTED',
-      body:
-        'EARTH TEXTURE / MODERN NASA COMPOSITE · ROTATION SCHEMATIC / NOT EPOCH-ACCURATE',
+      body: 'EARTH TEXTURE / MODERN NASA COMPOSITE · ROTATION SCHEMATIC / NOT EPOCH-ACCURATE',
     }
   }
   if (mode === 'translunar') {
@@ -588,7 +616,7 @@ function sceneCopy(mode: ConsoleMode): { heading: string; truth: string; body: s
   }
 }
 
-export function Component() {
+function ControlReplayRoute() {
   const deepLinkMet = useControlDeepLink()
   const jump = useControlJump()
   useMissionPlayback()
@@ -597,6 +625,9 @@ export function Component() {
   const storyTimeMs = useMissionStore((state) => state.storyTimeMs)
   const visualTimeMs = useMissionStore((state) => state.visualTimeMs)
   const transitionAnchors = useMissionStore((state) => state.visualTransitionAnchors)
+  const suppressedGuidedCameraTransitionEventIds = useMissionStore(
+    (state) => state.suppressedGuidedCameraTransitionEventIds,
+  )
   const storeMet = metAtStoryTime(mission.narrative, storyTimeMs)
   const met = deepLinkMet ?? storeMet
   const quality = useMissionStore((state) => state.quality)
@@ -632,6 +663,10 @@ export function Component() {
       ? mission.vehicle.components.find((component) => component.id === interaction.componentId)
       : undefined
   const sceneInteractive = quality !== 'fallback' && sceneAvailability === 'ready'
+  const cameraAction = (kind: Parameters<typeof requestCameraCommand>[0]) => {
+    requestCameraCommand(kind)
+    playInterfaceTone('action')
+  }
 
   useEffect(() => {
     if (
@@ -797,40 +832,47 @@ export function Component() {
             <button
               type="button"
               disabled={!sceneInteractive}
-              onClick={() => requestCameraCommand('rotate-left')}
+              onClick={() => cameraAction('rotate-left')}
             >
               ROTATE −
             </button>
             <button
               type="button"
               disabled={!sceneInteractive}
-              onClick={() => requestCameraCommand('rotate-right')}
+              onClick={() => cameraAction('rotate-right')}
             >
               ROTATE +
             </button>
             <button
               type="button"
               disabled={!sceneInteractive}
-              onClick={() => requestCameraCommand('zoom-in')}
+              onClick={() => cameraAction('zoom-in')}
             >
               ZOOM +
             </button>
             <button
               type="button"
               disabled={!sceneInteractive}
-              onClick={() => requestCameraCommand('zoom-out')}
+              onClick={() => cameraAction('zoom-out')}
             >
               ZOOM −
             </button>
             <button
               type="button"
               disabled={!sceneInteractive}
-              onClick={() => requestCameraCommand('reset')}
+              onClick={() => cameraAction('reset')}
             >
               RESET VIEW
             </button>
             {guidedCameraActive && interaction.mode === 'guided' && (
-              <button className="skip-guided" type="button" onClick={skipGuidedCamera}>
+              <button
+                className="skip-guided"
+                type="button"
+                onClick={() => {
+                  skipGuidedCamera()
+                  playInterfaceTone('action')
+                }}
+              >
                 SKIP CAMERA MOVE
               </button>
             )}
@@ -865,7 +907,7 @@ export function Component() {
                           : undefined
               if (!command || !sceneInteractive) return
               event.preventDefault()
-              requestCameraCommand(command)
+              cameraAction(command)
             }}
             aria-label={
               sceneInteractive
@@ -879,6 +921,7 @@ export function Component() {
                 storyTimeMs={storyTimeMs}
                 visualTimeMs={visualTimeMs}
                 transitionAnchors={transitionAnchors}
+                suppressedGuidedCameraTransitionEventIds={suppressedGuidedCameraTransitionEventIds}
                 speed={speed}
                 interaction={interaction}
                 cameraCommand={cameraCommand}
@@ -919,7 +962,14 @@ export function Component() {
       </div>
 
       <PlaybackControls met={met} jump={jump} />
+      <InterfaceToneControl />
       <p className="keyboard-note">KEYS: K PLAY/PAUSE · J/L PREVIOUS/NEXT EVENT · [ / ] SPEED</p>
     </main>
   )
+}
+
+export function Component() {
+  const location = useLocation()
+  const normalizedPath = location.pathname.replace(/\/+$/, '')
+  return normalizedPath === SATURN_V_INSPECTOR_PATH ? <SaturnVInspector /> : <ControlReplayRoute />
 }
