@@ -15,6 +15,37 @@ async function displayedMetSeconds(page: import('@playwright/test').Page): Promi
   return parseMet(value ?? '')
 }
 
+async function semanticModelPoint(
+  page: import('@playwright/test').Page,
+  componentId: string,
+): Promise<{ x: number; y: number }> {
+  await expect
+    .poll(async () => {
+      const serialized = await page.locator('html').getAttribute('data-inspectable-projections')
+      if (!serialized) return null
+      return (JSON.parse(serialized) as Record<string, [number, number]>)[componentId] ?? null
+    })
+    .not.toBeNull()
+  const projection = await page.locator('html').evaluate((root, id) => {
+    const projections = JSON.parse(root.dataset.inspectableProjections ?? '{}') as Record<
+      string,
+      [number, number]
+    >
+    return projections[id]
+  }, componentId)
+  expect(projection).toHaveLength(2)
+  expect(projection[0]).toBeGreaterThanOrEqual(0)
+  expect(projection[0]).toBeLessThanOrEqual(1)
+  expect(projection[1]).toBeGreaterThanOrEqual(0)
+  expect(projection[1]).toBeLessThanOrEqual(1)
+  const box = await page.locator('canvas').boundingBox()
+  expect(box).not.toBeNull()
+  return {
+    x: box!.x + box!.width * projection[0],
+    y: box!.y + box!.height * projection[1],
+  }
+}
+
 test('Archive cold route remains isolated from Three, R3F, models, textures, and decoders', async ({
   page,
 }) => {
@@ -232,11 +263,7 @@ test('guided camera yields to user input and exposes keyboard camera alternative
 test('a model drag above the shared threshold never opens inspection', async ({ page }) => {
   await page.goto('/control/event/a11-liftoff')
   await waitForScene(page)
-  const frame = page.locator('.scene-frame')
-  const box = await frame.boundingBox()
-  expect(box).not.toBeNull()
-  const x = box!.x + box!.width * 0.5
-  const y = box!.y + box!.height * 0.7
+  const { x, y } = await semanticModelPoint(page, 's-ic')
   await page.mouse.click(x, y)
   await expect(page.locator('#component-inspection-title')).toHaveText('S-IC FIRST STAGE')
   await page.getByRole('button', { name: 'CLOSE DOSSIER' }).click()
@@ -280,13 +307,14 @@ test('a pointer tap preserves the pre-inspection mode and Escape works from cont
 }) => {
   await page.goto('/control/event/a11-liftoff')
   await waitForScene(page)
-  const frame = page.locator('.scene-frame')
-  const box = await frame.boundingBox()
+  const canvas = page.locator('canvas')
+  const box = await canvas.boundingBox()
   expect(box).not.toBeNull()
   await page.mouse.click(box!.x + 8, box!.y + 8)
   await expect(page.locator('.camera-mode b')).toHaveText('GUIDED VIEW')
 
-  await page.mouse.click(box!.x + box!.width * 0.5, box!.y + box!.height * 0.7)
+  const modelPoint = await semanticModelPoint(page, 's-ic')
+  await page.mouse.click(modelPoint.x, modelPoint.y)
   await expect(page.getByText('COMPONENT INSPECTION · REPLAY PAUSED')).toBeVisible()
   const close = page.getByRole('button', { name: 'CLOSE DOSSIER', exact: true })
   await close.focus()

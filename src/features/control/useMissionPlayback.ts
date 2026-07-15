@@ -1,6 +1,10 @@
 import { useEffect, useRef } from 'react'
 
-import { controlMetPath, recordControlPlaybackSnapshot } from '../../app/controlDeepLink.ts'
+import {
+  controlMetPath,
+  isControlPlaybackPath,
+  recordControlPlaybackSnapshot,
+} from '../../app/controlDeepLink.ts'
 import { snapshotActiveControlHistoryEntry } from '../../app/controlTraversal.ts'
 import { mission } from '../../app/mission.ts'
 import { useMissionStore } from '../../app/missionStore.ts'
@@ -14,11 +18,17 @@ function flushPlaybackUrl(
   navigationSource: NavigationSourceRef,
   persistReloadSnapshot = true,
 ): void {
-  if (!window.location.pathname.startsWith('/control')) return
+  if (!isControlPlaybackPath(window.location.pathname)) return
   const state = useMissionStore.getState()
   const met = metAtStoryTime(mission.narrative, state.storyTimeMs)
   if (persistReloadSnapshot) {
-    recordControlPlaybackSnapshot(navigationSource.current ?? window.location.pathname, met)
+    recordControlPlaybackSnapshot(navigationSource.current ?? window.location.pathname, met, {
+      speed: state.speed,
+      visualTimeMs: state.visualTimeMs,
+      visualTransitionAnchors: state.visualTransitionAnchors,
+      suppressedGuidedCameraTransitionEventIds: state.suppressedGuidedCameraTransitionEventIds,
+      guidedCameraRestPose: state.guidedCameraRestPose,
+    })
   }
   window.history.replaceState(window.history.state, '', controlMetPath(met))
 }
@@ -42,6 +52,11 @@ function usePlaybackInterruptionSafety(navigationSource: NavigationSourceRef): v
     const onBeforeUnload = () => {
       navigationSource.current ??= window.location.pathname
       flushPlaybackUrl(navigationSource)
+      // Freeze at the earliest unload boundary. Waiting for pagehide allows a
+      // short authored camera/staging transition to advance while the next
+      // document is loading, so refresh would no longer reconstruct the pose
+      // the user actually left.
+      pause('page-hide')
     }
     const onPageShow = () => {
       navigationSource.current = null

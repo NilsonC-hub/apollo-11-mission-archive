@@ -1,11 +1,26 @@
 import { parseMet } from '../mission-core/index.ts'
-import { replayEvents } from './mission.ts'
+import { replayEndStoryTime, replayEvents, replayStartMet } from './mission.ts'
+import {
+  GUIDED_CAMERA_REST_POSE_SHOT_IDS,
+  type GuidedCameraRestPose,
+  type PlaybackSpeed,
+} from './missionStore.ts'
 
 const CONTROL_RELOAD_SNAPSHOT_KEY = 'apollo11.control.reload-snapshot.v1'
 const CONTROL_TRAVERSAL_SNAPSHOTS_KEY = 'apollo11.control.traversal-snapshots.v1'
 const CONTROL_HISTORY_ENTRY_ID_KEY = '__apollo11ControlEntryId'
 const MAX_CONTROL_TRAVERSAL_SNAPSHOTS = 32
 const CONTROL_MET_INVERSE_EPSILON_SECONDS = 1e-9
+export const SATURN_V_INSPECTOR_PATH = '/control/inspect/saturn-v'
+
+export function isControlReferencePath(pathname: string): boolean {
+  return pathname.replace(/\/+$/, '') === SATURN_V_INSPECTOR_PATH
+}
+
+export function isControlPlaybackPath(pathname: string): boolean {
+  const normalized = pathname.replace(/\/+$/, '')
+  return normalized === '/control' || /^\/control\/(?:event|met)\/[^/]+$/.test(normalized)
+}
 
 function controlMetSemanticallyEqual(left: number, right: number): boolean {
   return Math.abs(left - right) <= CONTROL_MET_INVERSE_EPSILON_SECONDS
@@ -15,7 +30,7 @@ function controlReloadBootPathname(): string | null {
   if (
     typeof location === 'undefined' ||
     typeof performance === 'undefined' ||
-    !location.pathname.startsWith('/control')
+    !isControlPlaybackPath(location.pathname)
   ) {
     return null
   }
@@ -30,16 +45,153 @@ export interface ControlPlaybackSnapshot {
   sourcePathname: string
   path: string
   metSeconds: number
+  speed: PlaybackSpeed
+  visualTimeMs: number
+  visualTransitionAnchors: Readonly<Record<string, number>>
+  suppressedGuidedCameraTransitionEventIds: readonly string[]
+  guidedCameraRestPose: GuidedCameraRestPose | null
 }
 
 export interface ControlTraversalSnapshot {
   path: string
   metSeconds: number
+  speed: PlaybackSpeed
+  visualTimeMs: number
+  visualTransitionAnchors: Readonly<Record<string, number>>
+  suppressedGuidedCameraTransitionEventIds: readonly string[]
+  guidedCameraRestPose: GuidedCameraRestPose | null
 }
 
 interface StoredControlTraversalSnapshot {
   entryId: string
   path: string
+  speed?: unknown
+  visualTimeMs?: unknown
+  visualTransitionAnchors?: unknown
+  suppressedGuidedCameraTransitionEventIds?: unknown
+  guidedCameraRestPose?: unknown
+}
+
+export interface ControlVisualSnapshotState {
+  speed: PlaybackSpeed
+  visualTimeMs: number
+  visualTransitionAnchors: Readonly<Record<string, number>>
+  suppressedGuidedCameraTransitionEventIds: readonly string[]
+  guidedCameraRestPose: GuidedCameraRestPose | null
+}
+
+const canonicalReplayEventIds = new Set(replayEvents.map((event) => event.id))
+const canonicalGuidedCameraShotIds = new Set<string>(GUIDED_CAMERA_REST_POSE_SHOT_IDS)
+const MAX_SNAPSHOT_TRANSITIONS = 12
+const emptyVisualSnapshot = (): ControlVisualSnapshotState => ({
+  speed: 100,
+  visualTimeMs: 0,
+  visualTransitionAnchors: {},
+  suppressedGuidedCameraTransitionEventIds: [],
+  guidedCameraRestPose: null,
+})
+
+function validatedCameraVector(value: unknown): readonly [number, number, number] | undefined {
+  if (
+    !Array.isArray(value) ||
+    value.length !== 3 ||
+    value.some(
+      (entry) => typeof entry !== 'number' || !Number.isFinite(entry) || Math.abs(entry) > 10_000,
+    )
+  ) {
+    return undefined
+  }
+  return [value[0] as number, value[1] as number, value[2] as number]
+}
+
+function validatedCameraRestPose(value: unknown): GuidedCameraRestPose | null | undefined {
+  if (value === undefined || value === null) return value ?? null
+  if (typeof value !== 'object' || Array.isArray(value)) return undefined
+  const pose = value as Partial<GuidedCameraRestPose>
+  const position = validatedCameraVector(pose.position)
+  const target = validatedCameraVector(pose.target)
+  if (
+    typeof pose.shotId !== 'string' ||
+    !canonicalGuidedCameraShotIds.has(pose.shotId) ||
+    !position ||
+    !target
+  ) {
+    return undefined
+  }
+  return {
+    shotId: pose.shotId as GuidedCameraRestPose['shotId'],
+    position,
+    target,
+  }
+}
+
+function validatedVisualSnapshot(value: {
+  speed?: unknown
+  visualTimeMs?: unknown
+  visualTransitionAnchors?: unknown
+  suppressedGuidedCameraTransitionEventIds?: unknown
+  guidedCameraRestPose?: unknown
+}): ControlVisualSnapshotState | undefined {
+  const legacy =
+    value.speed === undefined &&
+    value.visualTimeMs === undefined &&
+    value.visualTransitionAnchors === undefined &&
+    value.suppressedGuidedCameraTransitionEventIds === undefined &&
+    value.guidedCameraRestPose === undefined
+  if (legacy) return emptyVisualSnapshot()
+  if (
+    typeof value.visualTimeMs !== 'number' ||
+    !Number.isFinite(value.visualTimeMs) ||
+    value.visualTimeMs < 0 ||
+    value.visualTimeMs > replayEndStoryTime ||
+    typeof value.visualTransitionAnchors !== 'object' ||
+    value.visualTransitionAnchors === null ||
+    Array.isArray(value.visualTransitionAnchors) ||
+    !Array.isArray(value.suppressedGuidedCameraTransitionEventIds)
+  ) {
+    return undefined
+  }
+
+  const speed = value.speed === undefined ? 100 : value.speed
+  if (speed !== 1 && speed !== 10 && speed !== 100 && speed !== 1000) return undefined
+
+  const anchorEntries = Object.entries(value.visualTransitionAnchors)
+  if (anchorEntries.length > MAX_SNAPSHOT_TRANSITIONS) return undefined
+  const visualTransitionAnchors: Record<string, number> = {}
+  for (const [eventId, anchor] of anchorEntries) {
+    if (
+      !canonicalReplayEventIds.has(eventId) ||
+      typeof anchor !== 'number' ||
+      !Number.isFinite(anchor) ||
+      anchor < 0 ||
+      anchor > value.visualTimeMs + Number.EPSILON
+    ) {
+      return undefined
+    }
+    visualTransitionAnchors[eventId] = anchor
+  }
+
+  if (value.suppressedGuidedCameraTransitionEventIds.length > MAX_SNAPSHOT_TRANSITIONS) {
+    return undefined
+  }
+  const suppressed = value.suppressedGuidedCameraTransitionEventIds
+  const guidedCameraRestPose = validatedCameraRestPose(value.guidedCameraRestPose)
+  if (
+    guidedCameraRestPose === undefined ||
+    suppressed.some(
+      (eventId) => typeof eventId !== 'string' || !canonicalReplayEventIds.has(eventId),
+    )
+  ) {
+    return undefined
+  }
+
+  return {
+    speed,
+    visualTimeMs: value.visualTimeMs,
+    visualTransitionAnchors,
+    suppressedGuidedCameraTransitionEventIds: [...new Set(suppressed)],
+    guidedCameraRestPose,
+  }
 }
 
 function controlSessionStorage(): Storage | null {
@@ -80,11 +232,13 @@ export function createControlReloadSnapshotConsumer(
         const snapshot = JSON.parse(serialized) as Partial<ControlPlaybackSnapshot>
         const metSeconds =
           typeof snapshot.path === 'string' ? metForControlPath(snapshot.path) : undefined
+        const visualSnapshot = validatedVisualSnapshot(snapshot)
         if (
           snapshot.sourcePathname !== pathname ||
           typeof snapshot.path !== 'string' ||
           metSeconds === undefined ||
-          !Number.isFinite(metSeconds)
+          !Number.isFinite(metSeconds) ||
+          !visualSnapshot
         ) {
           bootSnapshot = null
           return undefined
@@ -93,6 +247,7 @@ export function createControlReloadSnapshotConsumer(
           sourcePathname: snapshot.sourcePathname,
           path: snapshot.path,
           metSeconds,
+          ...visualSnapshot,
         }
         return bootSnapshot
       } catch {
@@ -165,6 +320,7 @@ export function recordControlTraversalSnapshot(
   entryId: string,
   metSeconds: number,
   preferredPathname?: string,
+  visualSnapshot: ControlVisualSnapshotState = emptyVisualSnapshot(),
 ): void {
   const storage = controlSessionStorage()
   if (!storage || entryId.length === 0) return
@@ -175,10 +331,11 @@ export function recordControlTraversalSnapshot(
   const path =
     preferredPathname !== undefined &&
     preferredMet !== undefined &&
-    controlMetSemanticallyEqual(preferredMet, metSeconds)
+    (isControlReferencePath(preferredPathname) ||
+      controlMetSemanticallyEqual(preferredMet, metSeconds))
       ? preferredPathname
       : controlMetPath(metSeconds)
-  snapshots.push({ entryId, path })
+  snapshots.push({ entryId, path, ...visualSnapshot })
   try {
     storage.setItem(
       CONTROL_TRAVERSAL_SNAPSHOTS_KEY,
@@ -197,8 +354,11 @@ export function readControlTraversalSnapshot(
   )
   if (!snapshot) return undefined
   const metSeconds = metForControlPath(snapshot.path)
-  if (metSeconds === undefined || !Number.isFinite(metSeconds)) return undefined
-  return { path: snapshot.path, metSeconds }
+  const visualSnapshot = validatedVisualSnapshot(snapshot)
+  if (metSeconds === undefined || !Number.isFinite(metSeconds) || !visualSnapshot) {
+    return undefined
+  }
+  return { path: snapshot.path, metSeconds, ...visualSnapshot }
 }
 
 export function clearControlTraversalSnapshot(entryId: string): void {
@@ -215,13 +375,18 @@ export function clearControlTraversalSnapshot(entryId: string): void {
   }
 }
 
-export function recordControlPlaybackSnapshot(sourcePathname: string, metSeconds: number): void {
+export function recordControlPlaybackSnapshot(
+  sourcePathname: string,
+  metSeconds: number,
+  visualSnapshot: ControlVisualSnapshotState = emptyVisualSnapshot(),
+): void {
   const storage = controlSessionStorage()
   if (!storage) return
   const snapshot: ControlPlaybackSnapshot = {
     sourcePathname,
     path: controlMetPath(metSeconds),
     metSeconds,
+    ...visualSnapshot,
   }
   try {
     storage.setItem(CONTROL_RELOAD_SNAPSHOT_KEY, JSON.stringify(snapshot))
@@ -241,6 +406,8 @@ export function clearControlReloadSnapshot(): void {
 }
 
 export function metForControlPath(pathname: string): number | undefined {
+  if (isControlReferencePath(pathname)) return replayStartMet
+
   const eventMatch = /^\/control\/event\/([^/]+)\/?$/.exec(pathname)
   if (eventMatch) {
     try {

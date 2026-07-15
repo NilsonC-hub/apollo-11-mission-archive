@@ -7,6 +7,7 @@ import {
   findInspectableComponentNodes,
   inspectableComponentIds,
   nodePathForComponent,
+  nodePathForSemanticId,
   resolveComponentNode,
 } from '../../src/features/control/modelNodeLookup.ts'
 import { stateAtMet } from '../../src/mission-core/index.ts'
@@ -34,6 +35,13 @@ test('runtime lookup walks the complete manifest path instead of matching array 
   }
 
   assert.equal(resolveComponentNode(root, 's-ic'), current)
+})
+
+test('runtime lookup exposes versioned semantic anchors', () => {
+  assert.equal(
+    nodePathForSemanticId('apollo11-saturn-v', 'exhaust.sic'),
+    '/Scene/apollo11-saturn-v/anchor-sic-exhaust',
+  )
 })
 
 test('missing required manifest paths fail explicitly', () => {

@@ -1,4 +1,4 @@
-import { Component, Suspense, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
+import { Component, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useLoader, useThree, type ThreeEvent } from '@react-three/fiber'
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
@@ -7,7 +7,13 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import {
   Box3,
   BufferGeometry,
+  Color,
+  ConeGeometry,
+  DoubleSide,
   Float32BufferAttribute,
+  Mesh,
+  MeshBasicMaterial,
+  PerspectiveCamera,
   Sphere,
   Vector3,
   type Group,
@@ -19,7 +25,10 @@ import {
   useMissionStore,
   type CameraCommand,
   type ControlInteractionState,
+  type GuidedCameraRestPose,
   type ModelQuality,
+  type PlaybackSpeed,
+  type VisualTransitionAnchors,
 } from '../../app/missionStore.ts'
 import { stateAtMet, visualStateAtStoryTime } from '../../mission-core/index.ts'
 import {
@@ -28,6 +37,20 @@ import {
   resolveSemanticNode,
   runtimeInspectableComponentIds,
 } from './modelNodeLookup.ts'
+import {
+  launchGuidedShots,
+  launchVisualStateAt,
+  type LaunchVisualState,
+  type VisualVector3,
+} from './launchVisualState.ts'
+import {
+  applyGuidedCameraPose,
+  guidedBoundsAreVisible,
+  guidedPoseFramesBounds,
+  interpolateGuidedCameraPose,
+  resolveGuidedShotFraming,
+  type GuidedCameraPose,
+} from './guidedCameraFraming.ts'
 
 const MODEL_ROOT = '/missions/apollo11/models'
 const DRACO_ROOT = '/missions/apollo11/decoders/three-draco/'
@@ -73,7 +96,13 @@ function createStarGeometry(count: number, seed: number): BufferGeometry {
   return geometry
 }
 
-function SchematicStarField({ quality }: { quality: Exclude<ModelQuality, 'fallback'> }) {
+function SchematicStarField({
+  quality,
+  opacity = 1,
+}: {
+  quality: Exclude<ModelQuality, 'fallback'>
+  opacity?: number
+}) {
   const [faintCount, brightCount] =
     quality === 'high' ? [420, 48] : quality === 'medium' ? [280, 32] : [150, 18]
   const faint = useMemo(() => createStarGeometry(faintCount, 0x6d2b79f5), [faintCount])
@@ -95,7 +124,7 @@ function SchematicStarField({ quality }: { quality: Exclude<ModelQuality, 'fallb
           size={1}
           sizeAttenuation={false}
           transparent
-          opacity={0.38}
+          opacity={0.38 * opacity}
           depthWrite={false}
           toneMapped={false}
         />
@@ -106,7 +135,7 @@ function SchematicStarField({ quality }: { quality: Exclude<ModelQuality, 'fallb
           size={1.55}
           sizeAttenuation={false}
           transparent
-          opacity={0.72}
+          opacity={0.72 * opacity}
           depthWrite={false}
           toneMapped={false}
         />
@@ -131,14 +160,18 @@ function setComponentPresentation(
   root: Group,
   componentId: string,
   visible: boolean,
-  offsetY = 0,
+  offset: VisualVector3 = [0, 0, 0],
 ): void {
   const node = resolveComponentNode(root, componentId)
+  const baseX = Number(node.userData.presentationBaseX ?? node.position.x)
   const baseY = Number(node.userData.presentationBaseY ?? node.position.y)
+  const baseZ = Number(node.userData.presentationBaseZ ?? node.position.z)
+  node.userData.presentationBaseX = baseX
   node.userData.presentationBaseY = baseY
+  node.userData.presentationBaseZ = baseZ
   node.userData.semanticComponentId = componentId
   node.visible = visible
-  node.position.y = baseY + offsetY
+  node.position.set(baseX + offset[0], baseY + offset[1], baseZ + offset[2])
 }
 
 function handleSemanticClick(event: ThreeEvent<MouseEvent>): void {
@@ -167,17 +200,63 @@ function sceneModeAtMet(met: number): SceneMode {
   return 'launch'
 }
 
+type LaunchStageId = keyof LaunchVisualState['plumeIntensity']
+
+const plumeAnchors: Readonly<Record<LaunchStageId, string>> = {
+  's-ic': 'exhaust.sic',
+  's-ii': 'exhaust.sii',
+  's-ivb': 'exhaust.sivb',
+}
+
+function createPlume(radius: number, height: number): Mesh {
+  const material = new MeshBasicMaterial({
+    color: '#d0a45a',
+    transparent: true,
+    opacity: 0,
+    depthWrite: false,
+    toneMapped: false,
+  })
+  const plume = new Mesh(new ConeGeometry(radius, height, 18, 1, true), material)
+  plume.position.y = -height / 2
+  plume.visible = false
+  plume.userData.presentationRole = 'schematic-engine-plume'
+  return plume
+}
+
 function SaturnStack({
   met,
   quality,
+  visual,
 }: {
   met: number
   quality: Exclude<ModelQuality, 'fallback'>
+  visual: LaunchVisualState
 }) {
   const gltf = useGlb(modelUrl('saturn-v', quality))
   const scene = useMemo(() => gltf.scene.clone(true), [gltf.scene])
+  const plumes = useMemo(
+    () => ({
+      's-ic': createPlume(2.1, 18),
+      's-ii': createPlume(1.7, 14),
+      's-ivb': createPlume(1.25, 10),
+    }),
+    [],
+  )
   const state = stateAtMet(mission, met)
   const postCsmSeparation = met >= getEvent('a11-csm-sivb-separation').metSeconds
+
+  useLayoutEffect(() => {
+    for (const [stageId, anchorId] of Object.entries(plumeAnchors) as [LaunchStageId, string][]) {
+      resolveSemanticNode(scene, 'apollo11-saturn-v', anchorId).add(plumes[stageId])
+    }
+    return () => {
+      for (const plume of Object.values(plumes)) {
+        plume.removeFromParent()
+        plume.geometry.dispose()
+        ;(plume.material as MeshBasicMaterial).dispose()
+      }
+    }
+  }, [plumes, scene])
 
   useLayoutEffect(() => {
     const separatingComponents = [
@@ -190,7 +269,13 @@ function SaturnStack({
 
     for (const componentId of separatingComponents) {
       const discarded = state.components[componentId]?.lifecycle === 'discarded'
-      setComponentPresentation(scene, componentId, !discarded)
+      const departure = visual.departures[componentId]
+      setComponentPresentation(
+        scene,
+        componentId,
+        !discarded || Boolean(departure?.renderAfterSeparation),
+        departure?.offsetMeters,
+      )
     }
     for (const componentId of ['s-ivb', 'instrument-unit', 'spacecraft-lm-adapter']) {
       setComponentPresentation(scene, componentId, true)
@@ -201,18 +286,22 @@ function SaturnStack({
       'spacecraft.csmLaunchRepresentation',
     )
     launchCsm.visible = !postCsmSeparation
-  }, [met, postCsmSeparation, scene, state.components])
+    for (const stageId of Object.keys(plumes) as LaunchStageId[]) {
+      const intensity = visual.plumeIntensity[stageId]
+      const plume = plumes[stageId]
+      plume.visible = intensity > 0
+      ;(plume.material as MeshBasicMaterial).opacity = 0.72 * intensity
+    }
+  }, [plumes, postCsmSeparation, scene, state.components, visual])
 
-  const ascent = state.phaseId === 'prelaunch' || state.phaseId === 'ascent'
   return (
-    <group rotation={[0, 0, ascent ? 0 : -Math.PI / 2]} position={[0, ascent ? -3.7 : 0, 0]}>
+    <group
+      name="launch-vehicle-visual"
+      rotation={visual.vehicleRotation}
+      position={visual.vehiclePosition}
+    >
+      <group name="launch-camera-anchor" position={[0, 3.7, 0]} />
       <primitive object={scene} scale={0.067} onClick={handleSemanticClick} />
-      {state.components['s-ic']?.engineMode === 'burning' && (
-        <mesh position={[0, -4.2, 0]}>
-          <coneGeometry args={[0.2, 1.4, 14]} />
-          <meshBasicMaterial color="#d0a45a" transparent opacity={0.72} />
-        </mesh>
-      )}
     </group>
   )
 }
@@ -299,10 +388,14 @@ function Planet({
   kind,
   position,
   radius,
+  rotationY = 0,
+  name,
 }: {
   kind: 'earth' | 'moon'
   position: Position
   radius: number
+  rotationY?: number
+  name?: string
 }) {
   const gl = useThree((state) => state.gl)
   const url =
@@ -314,10 +407,36 @@ function Planet({
   )
 
   return (
-    <mesh position={position}>
-      <sphereGeometry args={[radius, 64, 32]} />
+    <mesh name={name} position={position} rotation={[0, rotationY, 0]} scale={radius}>
+      <sphereGeometry args={[1, 64, 32]} />
       <meshStandardMaterial map={texture} roughness={1} metalness={0} />
     </mesh>
+  )
+}
+
+function LaunchReferenceFrame({ opacity }: { opacity: number }) {
+  if (opacity <= 0.001) return null
+  return (
+    <group position={[0, -3.69, 0]}>
+      <mesh rotation={[Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[1.5, 1.53, 64]} />
+        <meshBasicMaterial
+          color="#829789"
+          transparent
+          opacity={0.34 * opacity}
+          depthWrite={false}
+          side={DoubleSide}
+        />
+      </mesh>
+      <mesh position={[0, 0, 0]}>
+        <boxGeometry args={[4.2, 0.012, 0.012]} />
+        <meshBasicMaterial color="#829789" transparent opacity={0.24 * opacity} />
+      </mesh>
+      <mesh position={[0, 0, 0]} rotation={[0, Math.PI / 2, 0]}>
+        <boxGeometry args={[4.2, 0.012, 0.012]} />
+        <meshBasicMaterial color="#829789" transparent opacity={0.24 * opacity} />
+      </mesh>
+    </group>
   )
 }
 
@@ -343,18 +462,27 @@ function MissionConfiguration({
   met,
   phaseProgress,
   quality,
+  launchVisual,
 }: {
   met: number
   phaseProgress: number
   quality: Exclude<ModelQuality, 'fallback'>
+  launchVisual: LaunchVisualState
 }) {
   const mode = sceneModeAtMet(met)
 
   if (mode === 'launch') {
     return (
       <>
-        <Planet kind="earth" position={[-7.6, -4.8, -7]} radius={5.5} />
-        <SaturnStack met={met} quality={quality} />
+        <Planet
+          kind="earth"
+          name="launch-earth-reference"
+          position={[...launchVisual.earthPosition]}
+          radius={launchVisual.earthRadius}
+          rotationY={launchVisual.earthRotationY}
+        />
+        <LaunchReferenceFrame opacity={launchVisual.launchReferenceOpacity} />
+        <SaturnStack met={met} quality={quality} visual={launchVisual} />
         <ExtractionAssembly met={met} quality={quality} />
       </>
     )
@@ -480,10 +608,20 @@ function CameraRig({
   met,
   interaction,
   cameraCommand,
+  guidedShotId,
+  guidedCameraFromShotId,
+  guidedCameraProgress,
+  guidedCameraActive,
+  guidedCameraTransitionEventId,
 }: {
   met: number
   interaction: ControlInteractionState
   cameraCommand: CameraCommand | null
+  guidedShotId: LaunchVisualState['guidedShotId'] | null
+  guidedCameraFromShotId: LaunchVisualState['guidedCameraFromShotId'] | null
+  guidedCameraProgress: number
+  guidedCameraActive: boolean
+  guidedCameraTransitionEventId: string | null
 }) {
   const camera = useThree((state) => state.camera)
   const gl = useThree((state) => state.gl)
@@ -493,6 +631,8 @@ function CameraRig({
   const tweenFrame = useRef<number | null>(null)
   const settleFrame = useRef<number | null>(null)
   const pointerStart = useRef<{ id: number; x: number; y: number } | null>(null)
+  const guidedCameraRestPose = useMissionStore((state) => state.guidedCameraRestPose)
+  const lastGuidedPose = useRef<GuidedCameraPose | null>(null)
   const metRef = useRef(met)
   metRef.current = met
 
@@ -500,7 +640,7 @@ function CameraRig({
     controls.enableDamping = false
     controls.enablePan = true
     controls.minDistance = 1.2
-    controls.maxDistance = 80
+    controls.maxDistance = 480
     const onChange = () => invalidate()
     const onPointerDown = (event: PointerEvent) => {
       pointerStart.current = { id: event.pointerId, x: event.clientX, y: event.clientY }
@@ -555,8 +695,14 @@ function CameraRig({
     if (cameraCommand.kind === 'zoom-in') offset.multiplyScalar(0.82)
     if (cameraCommand.kind === 'zoom-out') offset.multiplyScalar(1.22)
     if (cameraCommand.kind === 'reset') {
-      camera.position.copy(guidedCameraPosition)
-      controls.target.copy(guidedCameraTarget)
+      const resetPose = lastGuidedPose.current
+      if (resetPose) {
+        camera.position.set(...resetPose.position)
+        controls.target.set(...resetPose.target)
+      } else {
+        camera.position.copy(guidedCameraPosition)
+        controls.target.copy(guidedCameraTarget)
+      }
     } else {
       camera.position.copy(controls.target).add(offset)
     }
@@ -565,43 +711,244 @@ function CameraRig({
     document.documentElement.dataset.cameraCommand = cameraCommand.kind
   }, [camera, cameraCommand, controls, invalidate])
 
-  useEffect(() => {
-    if (tweenFrame.current !== null) cancelAnimationFrame(tweenFrame.current)
-    if (settleFrame.current !== null) cancelAnimationFrame(settleFrame.current)
-    delete document.documentElement.dataset.cameraSettled
-    delete document.documentElement.dataset.inspectTarget
-    delete document.documentElement.dataset.inspectTargetCount
+  useLayoutEffect(() => {
+    const html = document.documentElement
+    const store = useMissionStore.getState()
+    if (interaction.mode !== 'guided') {
+      if (store.guidedCameraActive) store.setGuidedCameraStatus(false)
+      html.dataset.cameraGuidance = 'manual'
+      delete html.dataset.cameraShotProgress
+      delete html.dataset.cameraVisibility
+      delete html.dataset.cameraVisibilityGuard
+      delete html.dataset.cameraVisibilityTargets
+      delete html.dataset.cameraDestinationTargets
+      delete html.dataset.cameraTransitionOrigin
+      delete html.dataset.cameraPosition
+      delete html.dataset.cameraTarget
+      delete html.dataset.cameraSettled
+      return
+    }
 
-    let targetPosition: Vector3 | undefined
-    let targetLookAt: Vector3 | undefined
-    if (interaction.mode === 'guided') {
-      targetPosition = guidedCameraPosition.clone()
-      targetLookAt = guidedCameraTarget.clone()
-    } else if (interaction.mode === 'inspect' && interaction.cameraControl === 'guided-focus') {
-      const targets = findInspectableComponentNodes(
-        scene,
-        interaction.componentId,
-        stateAtMet(mission, metRef.current),
+    const setStatus = (active: boolean) => {
+      const current = useMissionStore.getState()
+      if (
+        current.guidedCameraActive === active &&
+        (!active ||
+          (current.guidedCameraShotId === guidedShotId &&
+            current.guidedCameraTransitionEventId === guidedCameraTransitionEventId))
+      ) {
+        return
+      }
+      current.setGuidedCameraStatus(
+        active,
+        guidedShotId ?? 'mission-reference',
+        guidedCameraTransitionEventId ?? undefined,
       )
-      document.documentElement.dataset.inspectTargetCount = String(targets.length)
-      const targetObject = targets.length === 1 ? targets[0] : undefined
-      if (targetObject) {
-        document.documentElement.dataset.inspectTarget = interaction.componentId
-        const sphere = new Box3().setFromObject(targetObject).getBoundingSphere(new Sphere())
-        const direction = camera.position.clone().sub(controls.target).normalize()
-        const distance = Math.max(3.5, sphere.radius * 5)
-        targetLookAt = sphere.center.clone()
-        targetPosition = sphere.center.clone().add(direction.multiplyScalar(distance))
+    }
+
+    if (!guidedShotId || !guidedCameraFromShotId || !(camera instanceof PerspectiveCamera)) {
+      const pose: GuidedCameraPose = {
+        position: [guidedCameraPosition.x, guidedCameraPosition.y, guidedCameraPosition.z],
+        target: [guidedCameraTarget.x, guidedCameraTarget.y, guidedCameraTarget.z],
+      }
+      camera.position.set(...pose.position)
+      controls.target.set(...pose.target)
+      controls.update()
+      lastGuidedPose.current = pose
+      setStatus(false)
+      html.dataset.cameraShot = 'mission-reference'
+      html.dataset.cameraGuidance = 'released'
+      html.dataset.cameraSettled = 'guided'
+      delete html.dataset.cameraVisibility
+      delete html.dataset.cameraVisibilityGuard
+      delete html.dataset.cameraVisibilityTargets
+      delete html.dataset.cameraDestinationTargets
+      invalidate()
+      return
+    }
+
+    const shot = launchGuidedShots[guidedShotId]
+    const activateStaticFallback = (reason: string) => {
+      setStatus(false)
+      html.dataset.cameraShot = guidedShotId
+      html.dataset.cameraGuidance = 'released'
+      html.dataset.cameraVisibility = 'static-fallback'
+      html.dataset.cameraVisibilityGuard = reason
+      html.dataset.cameraFallbackReason = reason
+      html.dataset.cameraVisibilityTargets = shot.targetObjectNames.join(',')
+      html.dataset.cameraDestinationTargets = shot.targetObjectNames.join(',')
+      useMissionStore.getState().setQuality('fallback')
+    }
+
+    const framing = resolveGuidedShotFraming(scene, camera, shot)
+    if (!framing) {
+      activateStaticFallback('static-fallback-missing-target')
+      return
+    }
+
+    const restMatchesShot = guidedCameraRestPose?.shotId === guidedShotId
+    const previousShot = launchGuidedShots[guidedCameraFromShotId]
+    const previousFraming = resolveGuidedShotFraming(scene, camera, previousShot)
+    const storedFromPose: GuidedCameraPose | null =
+      guidedCameraRestPose?.shotId === guidedCameraFromShotId
+        ? {
+            position: guidedCameraRestPose.position,
+            target: guidedCameraRestPose.target,
+          }
+        : null
+    const storedFromPoseIsSafe =
+      storedFromPose !== null &&
+      previousFraming !== null &&
+      guidedPoseFramesBounds(
+        camera,
+        previousFraming.bounds,
+        storedFromPose,
+        previousShot.minProjectedDiameterNdc,
+      )
+    const fromPose: GuidedCameraPose = storedFromPoseIsSafe
+      ? storedFromPose
+      : (previousFraming?.pose ?? framing.pose)
+    let pose = guidedCameraActive
+      ? interpolateGuidedCameraPose(fromPose, framing.pose, guidedCameraProgress)
+      : restMatchesShot
+        ? {
+            position: guidedCameraRestPose.position,
+            target: guidedCameraRestPose.target,
+          }
+        : framing.pose
+
+    applyGuidedCameraPose(camera, pose)
+    controls.target.set(...pose.target)
+    controls.update()
+    const previousVisible =
+      guidedCameraActive &&
+      previousFraming !== null &&
+      guidedBoundsAreVisible(camera, previousFraming.bounds, previousShot.minProjectedDiameterNdc)
+    let visible = guidedBoundsAreVisible(camera, framing.bounds, shot.minProjectedDiameterNdc)
+    let guard = 'authored-fit'
+    let visibleTargetNames = shot.targetObjectNames
+    // During a live handoff, retain the prior composition until the destination
+    // bounds enter the safe frame. This keeps the camera path continuous while
+    // ensuring at least one declared target set is protected on every frame.
+    if (!visible && previousVisible) {
+      visible = true
+      guard = 'transition-previous-fit'
+      visibleTargetNames = previousShot.targetObjectNames
+    }
+    if (!visible) {
+      const fallback = resolveGuidedShotFraming(scene, camera, shot, shot.fallbackSafeMargin)
+      if (fallback) {
+        pose = fallback.pose
+        applyGuidedCameraPose(camera, pose)
+        controls.target.set(...pose.target)
+        controls.update()
+        visible = guidedBoundsAreVisible(camera, fallback.bounds, shot.minProjectedDiameterNdc)
+        guard = 'deterministic-safe-fit'
+        visibleTargetNames = shot.targetObjectNames
       }
     }
 
-    if (!targetPosition || !targetLookAt) return
+    if (!visible) {
+      activateStaticFallback('static-fallback-visibility-guard')
+      return
+    }
+
+    lastGuidedPose.current = pose
+    setStatus(guidedCameraActive)
+    html.dataset.cameraShot = guidedShotId
+    html.dataset.cameraShotProgress = guidedCameraProgress.toFixed(4)
+    html.dataset.cameraGuidance = guidedCameraActive ? 'active' : 'released'
+    html.dataset.cameraVisibility = 'safe'
+    html.dataset.cameraVisibilityGuard = guard
+    html.dataset.cameraVisibilityTargets = visibleTargetNames.join(',')
+    html.dataset.cameraDestinationTargets = shot.targetObjectNames.join(',')
+    html.dataset.cameraTransitionOrigin = storedFromPoseIsSafe
+      ? 'persisted-safe-rest'
+      : 'canonical-safe-composition'
+    html.dataset.cameraPosition = pose.position.map((value) => value.toFixed(6)).join(',')
+    html.dataset.cameraTarget = pose.target.map((value) => value.toFixed(6)).join(',')
+    if (guidedCameraActive) delete html.dataset.cameraSettled
+    else html.dataset.cameraSettled = 'guided'
+
+    if (!guidedCameraActive) {
+      const nextRestPose: GuidedCameraRestPose = {
+        shotId: guidedShotId,
+        position: pose.position,
+        target: pose.target,
+      }
+      const currentRest = useMissionStore.getState().guidedCameraRestPose
+      if (
+        currentRest?.shotId !== nextRestPose.shotId ||
+        currentRest.position.some((value, index) => value !== nextRestPose.position[index]) ||
+        currentRest.target.some((value, index) => value !== nextRestPose.target[index])
+      ) {
+        useMissionStore.getState().setGuidedCameraRestPose(nextRestPose)
+      }
+    }
+    invalidate()
+  }, [
+    camera,
+    controls,
+    guidedCameraActive,
+    guidedCameraFromShotId,
+    guidedCameraProgress,
+    guidedCameraRestPose,
+    guidedCameraTransitionEventId,
+    guidedShotId,
+    interaction.mode,
+    invalidate,
+    scene,
+  ])
+
+  useEffect(() => {
+    if (tweenFrame.current !== null) cancelAnimationFrame(tweenFrame.current)
+    if (settleFrame.current !== null) cancelAnimationFrame(settleFrame.current)
+    delete document.documentElement.dataset.inspectTarget
+    delete document.documentElement.dataset.inspectTargetCount
+    if (interaction.mode !== 'inspect' || interaction.cameraControl !== 'guided-focus') return
+
+    const targets = findInspectableComponentNodes(
+      scene,
+      interaction.componentId,
+      stateAtMet(mission, metRef.current),
+    )
+    document.documentElement.dataset.inspectTargetCount = String(targets.length)
+    const targetObject = targets.length === 1 ? targets[0] : undefined
+    if (!targetObject) return
+    document.documentElement.dataset.inspectTarget = interaction.componentId
+    delete document.documentElement.dataset.cameraSettled
+
+    const sphere = new Box3().setFromObject(targetObject).getBoundingSphere(new Sphere())
+    const direction = camera.position.clone().sub(controls.target).normalize()
+    const distance = Math.max(3.5, sphere.radius * 5)
+    const targetLookAt = sphere.center.clone()
+    const targetPosition = sphere.center.clone().add(direction.multiplyScalar(distance))
     const startPosition = camera.position.clone()
     const startTarget = controls.target.clone()
-    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    const durationMs = reduceMotion ? 0 : 550
+    const durationMs = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 550
     const startedAt = performance.now()
 
+    const settle = () => {
+      settleFrame.current = requestAnimationFrame(() => {
+        invalidate()
+        settleFrame.current = requestAnimationFrame(() => {
+          document.documentElement.dataset.cameraSettled = interaction.componentId
+          settleFrame.current = null
+        })
+      })
+    }
+    const snapForLifecycle = () => {
+      if (tweenFrame.current !== null) cancelAnimationFrame(tweenFrame.current)
+      tweenFrame.current = null
+      camera.position.copy(targetPosition)
+      controls.target.copy(targetLookAt)
+      controls.update()
+      invalidate()
+      document.documentElement.dataset.cameraSettled = interaction.componentId
+    }
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') snapForLifecycle()
+    }
     const update = (now: number) => {
       const progress = durationMs === 0 ? 1 : Math.min(1, (now - startedAt) / durationMs)
       const eased = 1 - (1 - progress) ** 3
@@ -612,25 +959,40 @@ function CameraRig({
       if (progress < 1) tweenFrame.current = requestAnimationFrame(update)
       else {
         tweenFrame.current = null
-        const settledLabel =
-          interaction.mode === 'inspect' ? interaction.componentId : interaction.mode
-        settleFrame.current = requestAnimationFrame(() => {
-          invalidate()
-          settleFrame.current = requestAnimationFrame(() => {
-            document.documentElement.dataset.cameraSettled = settledLabel
-            settleFrame.current = null
-          })
-        })
+        settle()
       }
     }
+
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    window.addEventListener('pagehide', snapForLifecycle)
     tweenFrame.current = requestAnimationFrame(update)
     return () => {
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+      window.removeEventListener('pagehide', snapForLifecycle)
       if (tweenFrame.current !== null) cancelAnimationFrame(tweenFrame.current)
       if (settleFrame.current !== null) cancelAnimationFrame(settleFrame.current)
       tweenFrame.current = null
       settleFrame.current = null
     }
   }, [camera, controls, interaction, invalidate, scene])
+
+  useEffect(
+    () => () => {
+      useMissionStore.getState().setGuidedCameraStatus(false)
+      const html = document.documentElement
+      if (html.dataset.cameraVisibility !== 'static-fallback') {
+        delete html.dataset.cameraGuidance
+        delete html.dataset.cameraVisibility
+        delete html.dataset.cameraVisibilityGuard
+        delete html.dataset.cameraVisibilityTargets
+        delete html.dataset.cameraDestinationTargets
+        delete html.dataset.cameraTransitionOrigin
+        delete html.dataset.cameraPosition
+        delete html.dataset.cameraTarget
+      }
+    },
+    [],
+  )
 
   return null
 }
@@ -643,6 +1005,7 @@ function RuntimeSceneState({
   configurationKey: string
 }) {
   const scene = useThree((three) => three.scene)
+  const camera = useThree((three) => three.camera)
   const invalidate = useThree((three) => three.invalidate)
   const stateRef = useRef(state)
   stateRef.current = state
@@ -655,10 +1018,95 @@ function RuntimeSceneState({
     useMissionStore.getState().setSceneRuntime('ready', inspectable)
     html.dataset.controlScene = 'ready'
     invalidate()
+    const projectionFrame = requestAnimationFrame(() => {
+      scene.updateMatrixWorld(true)
+      camera.updateMatrixWorld(true)
+      const projections: Record<string, readonly [number, number]> = {}
+      for (const componentId of inspectable) {
+        const targets = findInspectableComponentNodes(scene, componentId, stateRef.current)
+        if (targets.length !== 1) continue
+        const center = new Box3().setFromObject(targets[0]).getCenter(new Vector3()).project(camera)
+        if (
+          !Number.isFinite(center.x) ||
+          !Number.isFinite(center.y) ||
+          !Number.isFinite(center.z) ||
+          Math.abs(center.x) > 1 ||
+          Math.abs(center.y) > 1 ||
+          center.z < -1 ||
+          center.z > 1
+        ) {
+          continue
+        }
+        projections[componentId] = [(center.x + 1) / 2, (1 - center.y) / 2]
+      }
+      html.dataset.inspectableProjections = JSON.stringify(projections)
+    })
     return () => {
-      delete html.dataset.controlScene
+      cancelAnimationFrame(projectionFrame)
+      if (html.dataset.controlScene === 'ready') delete html.dataset.controlScene
+      delete html.dataset.inspectableProjections
     }
-  }, [configurationKey, invalidate, scene])
+  }, [camera, configurationKey, invalidate, scene])
+
+  return null
+}
+
+function LaunchAuditState({
+  visual,
+  visualTimeMs,
+  transitionAnchors,
+  suppressedGuidedCameraTransitionEventIds,
+  guidedCameraRestPose,
+}: {
+  visual: LaunchVisualState
+  visualTimeMs: number
+  transitionAnchors: VisualTransitionAnchors
+  suppressedGuidedCameraTransitionEventIds: readonly string[]
+  guidedCameraRestPose: GuidedCameraRestPose | null
+}) {
+  useEffect(() => {
+    const html = document.documentElement
+    html.dataset.launchVisualPolicy = visual.policy
+    html.dataset.launchGuidedShot = visual.guidedShotId
+    html.dataset.earthPresentation = 'schematic-not-epoch-accurate'
+    html.dataset.earthRotationY = visual.earthRotationY.toFixed(6)
+    html.dataset.launchDeparture = Object.entries(visual.departures)
+      .filter(([, departure]) => departure.progress > 0 && departure.progress < 1)
+      .map(([componentId]) => componentId)
+      .join(',')
+    html.dataset.launchDepartureProgress = JSON.stringify(
+      Object.fromEntries(
+        Object.entries(visual.departures).map(([componentId, departure]) => [
+          componentId,
+          departure.progress,
+        ]),
+      ),
+    )
+    html.dataset.controlVisualTimeMs = String(visualTimeMs)
+    html.dataset.controlVisualTransitionAnchors = JSON.stringify(transitionAnchors)
+    html.dataset.controlSuppressedGuidedTransitions = JSON.stringify(
+      suppressedGuidedCameraTransitionEventIds,
+    )
+    html.dataset.controlGuidedCameraRestPose = JSON.stringify(guidedCameraRestPose)
+    return () => {
+      delete html.dataset.launchVisualPolicy
+      delete html.dataset.launchGuidedShot
+      delete html.dataset.earthPresentation
+      delete html.dataset.earthRotationY
+      delete html.dataset.launchDeparture
+      delete html.dataset.launchDepartureProgress
+      delete html.dataset.controlVisualTimeMs
+      delete html.dataset.controlVisualTransitionAnchors
+      delete html.dataset.controlSuppressedGuidedTransitions
+      delete html.dataset.controlGuidedCameraRestPose
+    }
+  }, [
+    guidedCameraRestPose,
+    suppressedGuidedCameraTransitionEventIds,
+    transitionAnchors,
+    visual,
+    visualTimeMs,
+  ])
 
   return null
 }
@@ -666,21 +1114,48 @@ function RuntimeSceneState({
 function SceneContents({
   met,
   storyTimeMs,
+  visualTimeMs,
+  transitionAnchors,
+  suppressedGuidedCameraTransitionEventIds,
+  speed,
+  reducedMotion,
   interaction,
   cameraCommand,
   quality,
 }: {
   met: number
   storyTimeMs: number
+  visualTimeMs: number
+  transitionAnchors: VisualTransitionAnchors
+  suppressedGuidedCameraTransitionEventIds: readonly string[]
+  speed: PlaybackSpeed
+  reducedMotion: boolean
   interaction: ControlInteractionState
   cameraCommand: CameraCommand | null
   quality: Exclude<ModelQuality, 'fallback'>
 }) {
   const phaseProgress = visualStateAtStoryTime(mission.narrative, storyTimeMs).progress
   const runtimeState = stateAtMet(mission, met)
-  const configurationKey = `${quality}:${sceneModeAtMet(met)}:${Object.entries(
-    runtimeState.components,
+  const guidedCameraRestPose = useMissionStore((state) => state.guidedCameraRestPose)
+  const mode = sceneModeAtMet(met)
+  const launchVisual = launchVisualStateAt({
+    storyTimeMs,
+    visualTimeMs,
+    transitionAnchors,
+    suppressedGuidedCameraTransitionEventIds,
+    metSeconds: met,
+    speed,
+    reducedMotion,
+  })
+  const background = useMemo(
+    () =>
+      new Color('#1a292e').lerp(
+        new Color('#050706'),
+        mode === 'launch' ? launchVisual.backgroundSpaceMix : 1,
+      ),
+    [launchVisual.backgroundSpaceMix, mode],
   )
+  const configurationKey = `${quality}:${mode}:${Object.entries(runtimeState.components)
     .map(
       ([id, component]) =>
         `${id}:${component.lifecycle}:${component.parentId ?? '-'}:${component.visible}`,
@@ -688,13 +1163,41 @@ function SceneContents({
     .join('|')}`
   return (
     <>
-      <color attach="background" args={['#050706']} />
-      <SchematicStarField quality={quality} />
+      <color attach="background" args={[background]} />
+      <SchematicStarField
+        quality={quality}
+        opacity={mode === 'launch' ? launchVisual.starOpacity : 1}
+      />
       <ambientLight intensity={1.15} />
       <directionalLight position={[8, 7, 10]} intensity={2.5} color="#f3ead8" />
       <directionalLight position={[-6, 2, -4]} intensity={0.7} color="#758a83" />
-      <MissionConfiguration met={met} phaseProgress={phaseProgress} quality={quality} />
-      <CameraRig met={met} interaction={interaction} cameraCommand={cameraCommand} />
+      <MissionConfiguration
+        met={met}
+        phaseProgress={phaseProgress}
+        quality={quality}
+        launchVisual={launchVisual}
+      />
+      <CameraRig
+        met={met}
+        interaction={interaction}
+        cameraCommand={cameraCommand}
+        guidedShotId={mode === 'launch' ? launchVisual.guidedShotId : null}
+        guidedCameraFromShotId={mode === 'launch' ? launchVisual.guidedCameraFromShotId : null}
+        guidedCameraProgress={mode === 'launch' ? launchVisual.guidedCameraProgress : 1}
+        guidedCameraActive={mode === 'launch' && launchVisual.guidedCameraActive}
+        guidedCameraTransitionEventId={
+          mode === 'launch' ? launchVisual.guidedCameraTransitionEventId : null
+        }
+      />
+      {mode === 'launch' && (
+        <LaunchAuditState
+          visual={launchVisual}
+          visualTimeMs={visualTimeMs}
+          transitionAnchors={transitionAnchors}
+          suppressedGuidedCameraTransitionEventIds={suppressedGuidedCameraTransitionEventIds}
+          guidedCameraRestPose={guidedCameraRestPose}
+        />
+      )}
       <RuntimeSceneState state={runtimeState} configurationKey={configurationKey} />
     </>
   )
@@ -767,12 +1270,29 @@ class SceneErrorBoundary extends Component<
 }
 
 export function StaticVehicleFallback() {
-  useEffect(() => {
+  useLayoutEffect(() => {
     const html = document.documentElement
-    html.dataset.controlScene = 'fallback'
-    useMissionStore.getState().setSceneRuntime('fallback')
+    const reportFallback = () => {
+      html.dataset.controlScene = 'fallback'
+      html.dataset.cameraGuidance = 'released'
+      html.dataset.cameraVisibility = 'static-fallback'
+      html.dataset.cameraVisibilityGuard =
+        html.dataset.cameraFallbackReason ?? 'static-fallback-selected'
+      useMissionStore.getState().setSceneRuntime('fallback')
+    }
+    reportFallback()
+    // A replaced Canvas subtree can finish child layout cleanups later in the
+    // same commit. Re-assert at the next paint boundary against the final tree.
+    const frame = requestAnimationFrame(reportFallback)
     return () => {
-      delete html.dataset.controlScene
+      cancelAnimationFrame(frame)
+      if (html.dataset.controlScene === 'fallback') delete html.dataset.controlScene
+      if (html.dataset.cameraVisibility === 'static-fallback') {
+        delete html.dataset.cameraGuidance
+        delete html.dataset.cameraVisibility
+        delete html.dataset.cameraVisibilityGuard
+        delete html.dataset.cameraFallbackReason
+      }
     }
   }, [])
   return (
@@ -806,26 +1326,50 @@ function webglAvailable(): boolean {
   return cachedWebglAvailability
 }
 
+function useReducedMotionPreference(): boolean {
+  const [reducedMotion, setReducedMotion] = useState(
+    () => window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+  )
+
+  useEffect(() => {
+    const query = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const update = () => setReducedMotion(query.matches)
+    query.addEventListener('change', update)
+    return () => query.removeEventListener('change', update)
+  }, [])
+
+  return reducedMotion
+}
+
 export function MissionScene({
   met,
   storyTimeMs,
+  visualTimeMs,
+  transitionAnchors,
+  suppressedGuidedCameraTransitionEventIds,
+  speed,
   interaction,
   cameraCommand,
   quality,
 }: {
   met: number
   storyTimeMs: number
+  visualTimeMs: number
+  transitionAnchors: VisualTransitionAnchors
+  suppressedGuidedCameraTransitionEventIds: readonly string[]
+  speed: PlaybackSpeed
   interaction: ControlInteractionState
   cameraCommand: CameraCommand | null
   quality: ModelQuality
 }) {
+  const reducedMotion = useReducedMotionPreference()
   if (quality === 'fallback' || !webglAvailable()) return <StaticVehicleFallback />
 
   return (
     <SceneErrorBoundary fallback={<StaticVehicleFallback />}>
       <Canvas
         dpr={[1, quality === 'high' ? 2 : 1.5]}
-        camera={{ position: [9.2, 4.8, 12.8], fov: 38, near: 0.1, far: 120 }}
+        camera={{ position: [9.2, 4.8, 12.8], fov: 38, near: 0.1, far: 500 }}
         frameloop="demand"
         gl={{ antialias: quality !== 'low', powerPreference: 'high-performance' }}
         fallback={<CanvasSupportFallback />}
@@ -835,6 +1379,11 @@ export function MissionScene({
           <SceneContents
             met={met}
             storyTimeMs={storyTimeMs}
+            visualTimeMs={visualTimeMs}
+            transitionAnchors={transitionAnchors}
+            suppressedGuidedCameraTransitionEventIds={suppressedGuidedCameraTransitionEventIds}
+            speed={speed}
+            reducedMotion={reducedMotion}
             interaction={interaction}
             cameraCommand={cameraCommand}
             quality={quality}

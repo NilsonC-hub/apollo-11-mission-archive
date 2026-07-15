@@ -10,6 +10,7 @@ import {
   currentControlHistoryEntryId,
   metForControlPath,
   readControlTraversalSnapshot,
+  SATURN_V_INSPECTOR_PATH,
   type ControlPlaybackSnapshot,
 } from '../../app/controlDeepLink.ts'
 import {
@@ -35,6 +36,9 @@ import {
   type MissionState,
 } from '../../mission-core/index.ts'
 import { useMissionPlayback } from './useMissionPlayback.ts'
+import { InterfaceToneControl } from './InterfaceToneControl.tsx'
+import { playInterfaceTone } from './interfaceTones.ts'
+import { SaturnVInspector } from './SaturnVInspector.tsx'
 
 const MissionScene = lazy(() =>
   import('./MissionScene.tsx').then((module) => ({ default: module.MissionScene })),
@@ -156,13 +160,23 @@ function useControlDeepLink(): number | undefined {
   const location = useLocation()
   const navigate = useNavigate()
   const appliedPath = useRef<string | null>(null)
+  const restoredPathInFlight = useRef<string | null>(null)
   const restoreSnapshot = useRef<
     | {
         locationKey: string
         restore: {
           kind: 'reload' | 'traversal'
           entryId?: string
-          snapshot: Pick<ControlPlaybackSnapshot, 'path' | 'metSeconds'>
+          snapshot: Pick<
+            ControlPlaybackSnapshot,
+            | 'path'
+            | 'metSeconds'
+            | 'speed'
+            | 'visualTimeMs'
+            | 'visualTransitionAnchors'
+            | 'suppressedGuidedCameraTransitionEventIds'
+            | 'guidedCameraRestPose'
+          >
         } | null
       }
     | undefined
@@ -188,16 +202,30 @@ function useControlDeepLink(): number | undefined {
   const targetMet = restore?.snapshot.metSeconds ?? metForControlPath(location.pathname)
   const pendingMet = restore
     ? targetMet
-    : appliedPath.current === effectivePath
+    : restoredPathInFlight.current
       ? undefined
-      : targetMet
+      : appliedPath.current === effectivePath
+        ? undefined
+        : targetMet
 
   useLayoutEffect(() => {
-    appliedPath.current = effectivePath
+    if (restoredPathInFlight.current === location.pathname) {
+      appliedPath.current = location.pathname
+      restoredPathInFlight.current = null
+    } else if (!restoredPathInFlight.current) {
+      appliedPath.current = effectivePath
+    }
     if (pendingMet !== undefined) {
       const store = useMissionStore.getState()
-      if (restore?.kind === 'traversal') {
-        store.restoreTraversalMet(pendingMet)
+      if (restore) {
+        store.restoreTraversalMet(pendingMet, {
+          speed: restore.snapshot.speed,
+          visualTimeMs: restore.snapshot.visualTimeMs,
+          visualTransitionAnchors: restore.snapshot.visualTransitionAnchors,
+          suppressedGuidedCameraTransitionEventIds:
+            restore.snapshot.suppressedGuidedCameraTransitionEventIds,
+          guidedCameraRestPose: restore.snapshot.guidedCameraRestPose,
+        })
       } else {
         store.setMet(pendingMet)
         store.setPlaying(false)
@@ -208,7 +236,14 @@ function useControlDeepLink(): number | undefined {
       restoreSnapshot.current = { locationKey: location.key, restore: null }
       if (restore.kind === 'reload') clearControlReloadSnapshot()
       else if (restore.entryId) clearControlTraversalSnapshot(restore.entryId)
-      if (restoredPath !== location.pathname) void navigate(restoredPath, { replace: true })
+      if (restoredPath !== location.pathname) {
+        // Restoring the store schedules a render before React Router's replace
+        // reaches its canonical destination. Suppress ordinary deep-link
+        // relocation across that gap; otherwise setMet() clears the restored
+        // visual clocks, anchors, suppression list, and camera rest pose.
+        restoredPathInFlight.current = restoredPath
+        void navigate(restoredPath, { replace: true })
+      }
     }
   }, [effectivePath, location.key, location.pathname, navigate, pendingMet, restore])
 
@@ -497,6 +532,7 @@ function PlaybackControls({ met, jump }: { met: number; jump: ControlJump }) {
       false,
       true,
     )
+    playInterfaceTone('action')
   }
 
   return (
@@ -509,7 +545,14 @@ function PlaybackControls({ met, jump }: { met: number; jump: ControlJump }) {
         >
           ←
         </button>
-        <button className="play-button" type="button" onClick={togglePlaying}>
+        <button
+          className="play-button"
+          type="button"
+          onClick={() => {
+            togglePlaying()
+            playInterfaceTone('action')
+          }}
+        >
           {editorialPause ? 'CONTINUE REPLAY' : playing ? 'PAUSE' : 'PLAY'}
         </button>
         <button type="button" onClick={() => goToAdjacentEvent('next')} aria-label="Next event">
@@ -540,7 +583,10 @@ function PlaybackControls({ met, jump }: { met: number; jump: ControlJump }) {
             type="button"
             key={option}
             className={speed === option ? 'is-active' : undefined}
-            onClick={() => setSpeed(option)}
+            onClick={() => {
+              setSpeed(option)
+              playInterfaceTone('action')
+            }}
             aria-pressed={speed === option}
           >
             {option}×
@@ -556,7 +602,7 @@ function sceneCopy(mode: ConsoleMode): { heading: string; truth: string; body: s
     return {
       heading: 'VIEW / NASA MODEL ASSETS',
       truth: 'SATURN V: NASA VISUALIZATION · CSM: RECONSTRUCTED',
-      body: 'EARTH TEXTURE / MODERN NASA COMPOSITE',
+      body: 'EARTH TEXTURE / MODERN NASA COMPOSITE · ROTATION SCHEMATIC / NOT EPOCH-ACCURATE',
     }
   }
   if (mode === 'translunar') {
@@ -587,16 +633,22 @@ function sceneCopy(mode: ConsoleMode): { heading: string; truth: string; body: s
   }
 }
 
-export function Component() {
+function ControlReplayRoute() {
   const deepLinkMet = useControlDeepLink()
   const jump = useControlJump()
   useMissionPlayback()
   useControlKeyboard()
 
   const storyTimeMs = useMissionStore((state) => state.storyTimeMs)
+  const visualTimeMs = useMissionStore((state) => state.visualTimeMs)
+  const transitionAnchors = useMissionStore((state) => state.visualTransitionAnchors)
+  const suppressedGuidedCameraTransitionEventIds = useMissionStore(
+    (state) => state.suppressedGuidedCameraTransitionEventIds,
+  )
   const storeMet = metAtStoryTime(mission.narrative, storyTimeMs)
   const met = deepLinkMet ?? storeMet
   const quality = useMissionStore((state) => state.quality)
+  const speed = useMissionStore((state) => state.speed)
   const sceneAvailability = useMissionStore((state) => state.sceneAvailability)
   const setQuality = useMissionStore((state) => state.setQuality)
   const resumeAvailable = useMissionStore((state) => state.resumeAvailable)
@@ -605,8 +657,10 @@ export function Component() {
   const pauseReason = useMissionStore((state) => state.pauseReason)
   const interaction = useMissionStore((state) => state.interaction)
   const cameraCommand = useMissionStore((state) => state.cameraCommand)
+  const guidedCameraActive = useMissionStore((state) => state.guidedCameraActive)
   const enterFreeLook = useMissionStore((state) => state.enterFreeLook)
   const requestCameraCommand = useMissionStore((state) => state.requestCameraCommand)
+  const skipGuidedCamera = useMissionStore((state) => state.skipGuidedCamera)
   const returnToGuided = useMissionStore((state) => state.returnToGuided)
   const closeInspection = useMissionStore((state) => state.closeInspection)
   const resumeAfterModeSwitch = useMissionStore((state) => state.resumeAfterModeSwitch)
@@ -626,6 +680,10 @@ export function Component() {
       ? mission.vehicle.components.find((component) => component.id === interaction.componentId)
       : undefined
   const sceneInteractive = quality !== 'fallback' && sceneAvailability === 'ready'
+  const cameraAction = (kind: Parameters<typeof requestCameraCommand>[0]) => {
+    requestCameraCommand(kind)
+    playInterfaceTone('action')
+  }
 
   useEffect(() => {
     if (
@@ -791,38 +849,50 @@ export function Component() {
             <button
               type="button"
               disabled={!sceneInteractive}
-              onClick={() => requestCameraCommand('rotate-left')}
+              onClick={() => cameraAction('rotate-left')}
             >
               ROTATE −
             </button>
             <button
               type="button"
               disabled={!sceneInteractive}
-              onClick={() => requestCameraCommand('rotate-right')}
+              onClick={() => cameraAction('rotate-right')}
             >
               ROTATE +
             </button>
             <button
               type="button"
               disabled={!sceneInteractive}
-              onClick={() => requestCameraCommand('zoom-in')}
+              onClick={() => cameraAction('zoom-in')}
             >
               ZOOM +
             </button>
             <button
               type="button"
               disabled={!sceneInteractive}
-              onClick={() => requestCameraCommand('zoom-out')}
+              onClick={() => cameraAction('zoom-out')}
             >
               ZOOM −
             </button>
             <button
               type="button"
               disabled={!sceneInteractive}
-              onClick={() => requestCameraCommand('reset')}
+              onClick={() => cameraAction('reset')}
             >
               RESET VIEW
             </button>
+            {guidedCameraActive && interaction.mode === 'guided' && (
+              <button
+                className="skip-guided"
+                type="button"
+                onClick={() => {
+                  skipGuidedCamera()
+                  playInterfaceTone('action')
+                }}
+              >
+                SKIP CAMERA MOVE
+              </button>
+            )}
             {interaction.mode === 'free-look' && (
               <button className="return-guided" type="button" onClick={returnToGuided}>
                 RETURN TO GUIDED VIEW
@@ -854,7 +924,7 @@ export function Component() {
                           : undefined
               if (!command || !sceneInteractive) return
               event.preventDefault()
-              requestCameraCommand(command)
+              cameraAction(command)
             }}
             aria-label={
               sceneInteractive
@@ -866,6 +936,10 @@ export function Component() {
               <MissionScene
                 met={met}
                 storyTimeMs={storyTimeMs}
+                visualTimeMs={visualTimeMs}
+                transitionAnchors={transitionAnchors}
+                suppressedGuidedCameraTransitionEventIds={suppressedGuidedCameraTransitionEventIds}
+                speed={speed}
                 interaction={interaction}
                 cameraCommand={cameraCommand}
                 quality={quality}
@@ -905,7 +979,14 @@ export function Component() {
       </div>
 
       <PlaybackControls met={met} jump={jump} />
+      <InterfaceToneControl />
       <p className="keyboard-note">KEYS: K PLAY/PAUSE · J/L PREVIOUS/NEXT EVENT · [ / ] SPEED</p>
     </main>
   )
+}
+
+export function Component() {
+  const location = useLocation()
+  const normalizedPath = location.pathname.replace(/\/+$/, '')
+  return normalizedPath === SATURN_V_INSPECTOR_PATH ? <SaturnVInspector /> : <ControlReplayRoute />
 }

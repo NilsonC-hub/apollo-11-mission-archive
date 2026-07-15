@@ -17,6 +17,15 @@ export type PlaybackPauseReason = 'mode-switch' | 'visibility' | 'page-hide' | '
 export type ModelQuality = 'high' | 'medium' | 'low' | 'fallback'
 export type SceneAvailability = 'loading' | 'ready' | 'fallback'
 export type CameraCommandKind = 'rotate-left' | 'rotate-right' | 'zoom-in' | 'zoom-out' | 'reset'
+export type VisualTransitionAnchors = Readonly<Record<string, number>>
+
+export const GUIDED_CAMERA_REST_POSE_SHOT_IDS = [
+  'launch-pad-reference',
+  'ascent-lower-reference',
+  'ascent-upper-reference',
+  'earth-orbit-reference',
+] as const
+export type GuidedCameraRestPoseShotId = (typeof GUIDED_CAMERA_REST_POSE_SHOT_IDS)[number]
 
 export type ControlInteractionState =
   | { mode: 'guided' }
@@ -34,9 +43,24 @@ export interface CameraCommand {
   revision: number
 }
 
+export interface VisualTransitionRestoreState {
+  speed: PlaybackSpeed
+  visualTimeMs: number
+  visualTransitionAnchors: VisualTransitionAnchors
+  suppressedGuidedCameraTransitionEventIds: readonly string[]
+  guidedCameraRestPose: GuidedCameraRestPose | null
+}
+
+export interface GuidedCameraRestPose {
+  shotId: GuidedCameraRestPoseShotId
+  position: readonly [number, number, number]
+  target: readonly [number, number, number]
+}
+
 interface MissionUiState {
   storyTimeMs: number
   visualTimeMs: number
+  visualTransitionAnchors: VisualTransitionAnchors
   playing: boolean
   resumeAvailable: boolean
   pauseReason: PlaybackPauseReason | null
@@ -48,9 +72,16 @@ interface MissionUiState {
   runtimeInspectableComponentIds: readonly string[]
   interaction: ControlInteractionState
   cameraCommand: CameraCommand | null
+  guidedCameraActive: boolean
+  guidedCameraShotId: string | null
+  guidedCameraTransitionEventId: string | null
+  guidedCameraSkipRevision: number
+  suppressedGuidedCameraTransitionEventIds: readonly string[]
+  guidedCameraRestPose: GuidedCameraRestPose | null
+  interfaceTonesEnabled: boolean
   setStoryTime: (storyTimeMs: number) => void
   setMet: (metSeconds: number) => void
-  restoreTraversalMet: (metSeconds: number) => void
+  restoreTraversalMet: (metSeconds: number, visualState?: VisualTransitionRestoreState) => void
   advancePlayback: (wallDeltaMs: number) => void
   setPlaying: (playing: boolean) => void
   togglePlaying: () => void
@@ -71,6 +102,10 @@ interface MissionUiState {
   enterFreeLook: () => void
   returnToGuided: () => void
   requestCameraCommand: (kind: CameraCommandKind) => void
+  setGuidedCameraStatus: (active: boolean, shotId?: string, transitionEventId?: string) => void
+  skipGuidedCamera: () => void
+  setInterfaceTonesEnabled: (enabled: boolean) => void
+  setGuidedCameraRestPose: (pose: GuidedCameraRestPose | null) => void
   inspectComponent: (componentId: string) => void
   closeInspection: () => void
   nextEvent: () => number | undefined
@@ -89,6 +124,35 @@ function currentMet(state: Pick<MissionUiState, 'storyTimeMs'>): number {
   return metAtStoryTime(mission.narrative, state.storyTimeMs)
 }
 
+const replayEventStoryTimes = replayEvents.map((event) => ({
+  id: event.id,
+  storyTimeMs: storyTimeAtMet(mission.narrative, event.metSeconds),
+}))
+const MAX_VISUAL_TRANSITION_ANCHORS = 12
+
+function captureVisualTransitionAnchors(
+  state: Pick<MissionUiState, 'storyTimeMs' | 'visualTimeMs' | 'visualTransitionAnchors' | 'speed'>,
+  nextStoryTimeMs: number,
+): VisualTransitionAnchors {
+  const crossed = replayEventStoryTimes.filter(
+    (event) => event.storyTimeMs > state.storyTimeMs && event.storyTimeMs <= nextStoryTimeMs,
+  )
+  if (crossed.length === 0) return state.visualTransitionAnchors
+
+  const anchors = new Map(Object.entries(state.visualTransitionAnchors))
+  for (const event of crossed) {
+    anchors.set(
+      event.id,
+      state.visualTimeMs + (event.storyTimeMs - state.storyTimeMs) / state.speed,
+    )
+  }
+  return Object.fromEntries(
+    [...anchors.entries()]
+      .sort((left, right) => right[1] - left[1])
+      .slice(0, MAX_VISUAL_TRANSITION_ANCHORS),
+  )
+}
+
 function withoutInspectResume(interaction: ControlInteractionState): ControlInteractionState {
   return interaction.mode === 'inspect'
     ? { ...interaction, resumePlaybackOnClose: false }
@@ -98,6 +162,7 @@ function withoutInspectResume(interaction: ControlInteractionState): ControlInte
 export const useMissionStore = create<MissionUiState>((set, get) => ({
   storyTimeMs: replayStartStoryTime,
   visualTimeMs: 0,
+  visualTransitionAnchors: {},
   playing: false,
   resumeAvailable: false,
   pauseReason: null,
@@ -109,20 +174,48 @@ export const useMissionStore = create<MissionUiState>((set, get) => ({
   runtimeInspectableComponentIds: [],
   interaction: { mode: 'guided' },
   cameraCommand: null,
-  setStoryTime: (storyTimeMs) => set({ storyTimeMs: clampStoryTime(storyTimeMs) }),
+  guidedCameraActive: false,
+  guidedCameraShotId: null,
+  guidedCameraTransitionEventId: null,
+  guidedCameraSkipRevision: 0,
+  suppressedGuidedCameraTransitionEventIds: [],
+  guidedCameraRestPose: null,
+  interfaceTonesEnabled: false,
+  setStoryTime: (storyTimeMs) =>
+    set({
+      storyTimeMs: clampStoryTime(storyTimeMs),
+      visualTimeMs: 0,
+      visualTransitionAnchors: {},
+      suppressedGuidedCameraTransitionEventIds: [],
+      guidedCameraRestPose: null,
+    }),
   setMet: (metSeconds) =>
     set({
       storyTimeMs: storyTimeAtMet(mission.narrative, clampMet(metSeconds)),
       visualTimeMs: 0,
+      visualTransitionAnchors: {},
       resumeAvailable: false,
       pauseReason: null,
       editorialPauseSegmentId: null,
+      guidedCameraActive: false,
+      guidedCameraShotId: null,
+      guidedCameraTransitionEventId: null,
+      suppressedGuidedCameraTransitionEventIds: [],
+      guidedCameraRestPose: null,
     }),
-  restoreTraversalMet: (metSeconds) =>
+  restoreTraversalMet: (metSeconds, visualState) =>
     set({
       storyTimeMs: storyTimeAtMet(mission.narrative, clampMet(metSeconds)),
-      visualTimeMs: 0,
+      speed: visualState?.speed ?? get().speed,
+      visualTimeMs: visualState?.visualTimeMs ?? 0,
+      visualTransitionAnchors: visualState?.visualTransitionAnchors ?? {},
       playing: false,
+      guidedCameraActive: false,
+      guidedCameraShotId: null,
+      guidedCameraTransitionEventId: null,
+      suppressedGuidedCameraTransitionEventIds:
+        visualState?.suppressedGuidedCameraTransitionEventIds ?? [],
+      guidedCameraRestPose: visualState?.guidedCameraRestPose ?? null,
     }),
   advancePlayback: (wallDeltaMs) => {
     if (!Number.isFinite(wallDeltaMs) || wallDeltaMs < 0) {
@@ -147,7 +240,8 @@ export const useMissionStore = create<MissionUiState>((set, get) => ({
 
     set({
       storyTimeMs: next,
-      visualTimeMs: state.visualTimeMs + wallDeltaMs,
+      visualTimeMs: Math.min(replayEndStoryTime, state.visualTimeMs + wallDeltaMs),
+      visualTransitionAnchors: captureVisualTransitionAnchors(state, next),
       ...(next >= replayEndStoryTime ? { playing: false } : {}),
     })
   },
@@ -171,10 +265,24 @@ export const useMissionStore = create<MissionUiState>((set, get) => ({
     }))
   },
   setPlaybackPolicy: (playbackPolicy) => set({ playbackPolicy }),
-  setSpeed: (speed) => set({ speed }),
+  setSpeed: (speed) =>
+    set((state) => ({
+      speed,
+      ...(state.speed >= 100 !== speed >= 100
+        ? {
+            visualTransitionAnchors: {},
+            suppressedGuidedCameraTransitionEventIds: [],
+            guidedCameraRestPose: null,
+          }
+        : {}),
+    })),
   setQuality: (quality) => set({ quality }),
   setSceneRuntime: (sceneAvailability, componentIds = []) =>
     set((state) => {
+      // Loading is not evidence that an inspected semantic node disappeared.
+      // Preserve the paused inspection transaction until a definitive runtime
+      // result (ready/fallback) can validate its binding.
+      if (sceneAvailability === 'loading') return { sceneAvailability }
       const runtimeInspectableComponentIds = [...new Set(componentIds)].sort()
       if (
         state.interaction.mode === 'inspect' &&
@@ -216,6 +324,8 @@ export const useMissionStore = create<MissionUiState>((set, get) => ({
       resumeAvailable: false,
       pauseReason: null,
       editorialPauseSegmentId: segmentId,
+      visualTransitionAnchors: {},
+      suppressedGuidedCameraTransitionEventIds: [],
     }),
   continueEditorialPause: () => {
     const segment = replayNarrative.find(
@@ -230,6 +340,8 @@ export const useMissionStore = create<MissionUiState>((set, get) => ({
       resumeAvailable: false,
       pauseReason: null,
       editorialPauseSegmentId: null,
+      visualTransitionAnchors: {},
+      suppressedGuidedCameraTransitionEventIds: [],
     })
   },
   enterFreeLook: () =>
@@ -238,6 +350,9 @@ export const useMissionStore = create<MissionUiState>((set, get) => ({
         state.interaction.mode === 'inspect'
           ? { ...state.interaction, cameraControl: 'free-look' }
           : { mode: 'free-look' },
+      guidedCameraActive: false,
+      guidedCameraShotId: null,
+      guidedCameraTransitionEventId: null,
     })),
   returnToGuided: () =>
     set((state) => ({
@@ -254,7 +369,37 @@ export const useMissionStore = create<MissionUiState>((set, get) => ({
           ? { ...state.interaction, cameraControl: 'free-look' }
           : { mode: 'free-look' },
       cameraCommand: { kind, revision: (state.cameraCommand?.revision ?? 0) + 1 },
+      guidedCameraActive: false,
+      guidedCameraShotId: null,
+      guidedCameraTransitionEventId: null,
     })),
+  setGuidedCameraStatus: (guidedCameraActive, shotId, transitionEventId) =>
+    set({
+      guidedCameraActive,
+      guidedCameraShotId: guidedCameraActive ? (shotId ?? null) : null,
+      guidedCameraTransitionEventId: guidedCameraActive ? (transitionEventId ?? null) : null,
+    }),
+  skipGuidedCamera: () =>
+    set((state) =>
+      state.guidedCameraActive
+        ? {
+            guidedCameraSkipRevision: state.guidedCameraSkipRevision + 1,
+            guidedCameraActive: false,
+            guidedCameraShotId: null,
+            guidedCameraTransitionEventId: null,
+            suppressedGuidedCameraTransitionEventIds: state.guidedCameraTransitionEventId
+              ? [
+                  ...state.suppressedGuidedCameraTransitionEventIds.filter(
+                    (eventId) => eventId !== state.guidedCameraTransitionEventId,
+                  ),
+                  state.guidedCameraTransitionEventId,
+                ].slice(-MAX_VISUAL_TRANSITION_ANCHORS)
+              : state.suppressedGuidedCameraTransitionEventIds,
+          }
+        : state,
+    ),
+  setInterfaceTonesEnabled: (interfaceTonesEnabled) => set({ interfaceTonesEnabled }),
+  setGuidedCameraRestPose: (guidedCameraRestPose) => set({ guidedCameraRestPose }),
   inspectComponent: (componentId) =>
     set((state) => {
       if (
@@ -313,6 +458,9 @@ export const useMissionStore = create<MissionUiState>((set, get) => ({
       resumeAvailable: false,
       pauseReason: null,
       editorialPauseSegmentId: null,
+      visualTransitionAnchors: {},
+      suppressedGuidedCameraTransitionEventIds: [],
+      guidedCameraRestPose: null,
     })
     return targetMet
   },
