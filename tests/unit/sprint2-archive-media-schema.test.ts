@@ -19,6 +19,7 @@ function imageRecord(): HistoricalImageRecord {
       originalUrl: 'https://images-assets.nasa.gov/image/example/example~orig.jpg',
       effectiveDownloadUrl: 'https://images-assets.nasa.gov/image/example/example~orig.jpg',
       accessedAt: '2026-07-15',
+      publicationDate: '1969-07-01',
     },
     nasaImageId: 'S69-TEST',
     caption: 'A factual test caption.',
@@ -73,20 +74,20 @@ function documentRecord(): DocumentPlateRecord {
     kind: 'document-plate',
     id: 'a11-document-test',
     source: {
-      sourceId: 'NASA-A11-MR',
-      landingPageUrl: 'https://ntrs.nasa.gov/citations/19720015535',
-      originalUrl: 'https://ntrs.nasa.gov/api/citations/19720015535/downloads/19720015535.pdf',
-      effectiveDownloadUrl:
-        'https://ntrs.nasa.gov/api/citations/19720015535/downloads/19720015535.pdf',
+      sourceId: 'NASA-TEST-DOCUMENT',
+      landingPageUrl: 'https://ntrs.nasa.gov/citations/00000000000',
+      originalUrl: 'https://ntrs.nasa.gov/api/citations/00000000000/downloads/test.pdf',
+      effectiveDownloadUrl: 'https://ntrs.nasa.gov/api/citations/00000000000/downloads/test.pdf',
       accessedAt: '2026-07-15',
+      publicationDate: '1969-01-01',
     },
-    documentId: 'NASA SP-238',
-    locator: { pdfPage: 18, printedPage: '3-4', label: 'Table 3-I' },
-    caption: 'Launch sequence excerpt from the Apollo 11 Mission Report.',
-    alt: 'Apollo 11 Mission Report page containing launch sequence data.',
-    subjectTags: ['mission-report', 'saturn-v'],
+    documentId: 'TEST-DOCUMENT-001',
+    locator: { pdfPage: 18, printedPage: 'T-4', label: 'Test excerpt' },
+    caption: 'A factual caption for a fictional schema-validation document.',
+    alt: 'A fictional NASA document page used only to validate the media schema.',
+    subjectTags: ['test-document', 'schema-fixture'],
     sourceDocument: {
-      localPath: 'assets/raw/NASA-A11-MR.pdf',
+      localPath: 'assets/raw/TEST-DOCUMENT.pdf',
       sha256: hash,
       bytes: 10000,
     },
@@ -165,12 +166,14 @@ test('Sprint 2 Archive media schema rejects aspect-ratio distortion', () => {
 test('Sprint 2 Archive media schema rejects malformed dates and cross-wired local paths', () => {
   const first = imageRecord()
   first.capturedAt = 'July 1, 1969'
+  first.source.publicationDate = 'July 1, 1969'
   const second = imageRecord()
   second.id = 'a11-image-test-two'
   second.nasaImageId = 'S69-TEST-TWO'
 
   const issues = validateArchiveMediaRecords([first, second])
   assert.ok(issues.some((issue) => issue.field === 'capturedAt'))
+  assert.ok(issues.some((issue) => issue.field === 'source.publicationDate'))
   assert.ok(issues.some((issue) => issue.field === 'raw.localPath'))
   assert.ok(issues.some((issue) => issue.field.endsWith('.publicPath')))
   assert.ok(issues.some((issue) => issue.field.endsWith('.localPath')))
@@ -182,9 +185,29 @@ test('Sprint 2 Archive media schema rejects unscoped document paths and inconsis
   first.renderedPage.localPath = 'tmp/page.png'
   const second = documentRecord()
   second.id = 'a11-document-test-two'
+  second.sourceDocument.localPath = first.sourceDocument.localPath
   second.sourceDocument.sha256 = 'b'.repeat(64)
 
   const issues = validateArchiveMediaRecords([first, second])
-  assert.ok(issues.some((issue) => issue.field === 'sourceDocument.localPath'))
-  assert.ok(issues.some((issue) => issue.field === 'renderedPage.localPath'))
+  assert.ok(
+    issues.some(
+      (issue) =>
+        issue.field === 'sourceDocument.localPath' &&
+        issue.message === 'source document must use assets/raw/',
+    ),
+  )
+  assert.ok(
+    issues.some(
+      (issue) =>
+        issue.field === 'sourceDocument.localPath' &&
+        issue.message === 'a repeated source document path must resolve to the same sha256',
+    ),
+  )
+  assert.ok(
+    issues.some(
+      (issue) =>
+        issue.field === 'renderedPage.localPath' &&
+        issue.message === 'rendered document plates must use assets/derived/images/',
+    ),
+  )
 })

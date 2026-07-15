@@ -17,6 +17,7 @@ export const apollo11ArchiveMediaRecords = [
       effectiveDownloadUrl:
         'https://www.nasa.gov/wp-content/uploads/static/history/ap11ann/kippsphotos/38660.jpg',
       accessedAt: '2026-07-15',
+      publicationDate: '1969-07-01',
     },
     nasaImageId: 'S69-38660',
     caption:
@@ -63,7 +64,7 @@ export const apollo11ArchiveMediaRecords = [
     ],
     evidence: 'actual',
     rightsStatus:
-      'NASA photograph — U.S. government work. NASA-hosted scan credited to Kipp Teague; use subject to NASA media guidelines; no endorsement implied.',
+      'NASA photograph — U.S. government work; NASA-hosted scan credited to Kipp Teague; use subject to NASA media guidelines; no endorsement implied',
     processingNote:
       'Full 800 × 663 NASA-hosted scan retained; no crop; no color or tonal adjustment; responsive Lanczos downsample and WebP/JPEG encoding only.',
   },
@@ -76,6 +77,7 @@ export const apollo11ArchiveMediaRecords = [
       originalUrl: 'https://images.nasa.gov/details/s69-39525',
       effectiveDownloadUrl: 'https://images-assets.nasa.gov/image/s69-39525/s69-39525~orig.jpg',
       accessedAt: '2026-07-15',
+      publicationDate: '1969-07-16',
     },
     nasaImageId: 'S69-39525',
     caption:
@@ -131,7 +133,7 @@ export const apollo11ArchiveMediaRecords = [
     ],
     evidence: 'actual',
     rightsStatus:
-      'NASA photograph — U.S. government work; use subject to NASA media guidelines; credit NASA; no endorsement implied.',
+      'NASA photograph — U.S. government work; use subject to NASA media guidelines; credit NASA; no endorsement implied',
     processingNote:
       'Full vertical frame retained; EXIF orientation normalized; no crop; no color or tonal adjustment; responsive Lanczos downsample and WebP/JPEG encoding only.',
   },
@@ -144,6 +146,7 @@ export const apollo11ArchiveMediaRecords = [
       originalUrl: 'https://images.nasa.gov/details/S69-39961',
       effectiveDownloadUrl: 'https://images-assets.nasa.gov/image/S69-39961/S69-39961~orig.jpg',
       accessedAt: '2026-07-15',
+      publicationDate: '1969-07-16',
     },
     nasaImageId: 'S69-39961',
     caption:
@@ -200,7 +203,7 @@ export const apollo11ArchiveMediaRecords = [
     ],
     evidence: 'actual',
     rightsStatus:
-      'NASA photograph — U.S. government work; use subject to NASA media guidelines; credit NASA; no endorsement implied.',
+      'NASA photograph — U.S. government work; use subject to NASA media guidelines; credit NASA; no endorsement implied',
     processingNote:
       'Full fisheye frame retained; EXIF orientation normalized; no crop; no color or tonal adjustment; responsive Lanczos downsample and WebP/JPEG encoding only.',
   },
@@ -214,6 +217,7 @@ export const apollo11ArchiveMediaRecords = [
       effectiveDownloadUrl:
         'https://ntrs.nasa.gov/api/citations/19700008096/downloads/19700008096.pdf',
       accessedAt: '2026-07-13',
+      publicationDate: '1969-11-01',
     },
     documentId: 'MSC-00171 / NASA-TM-X-62633',
     locator: {
@@ -269,7 +273,7 @@ export const apollo11ArchiveMediaRecords = [
     ],
     evidence: 'actual',
     rightsStatus:
-      'NASA technical report — U.S. government work, public domain (NTRS determination: public use permitted).',
+      'U.S. government work, public domain (NTRS determinationType: GOV_PUBLIC_USE_PERMITTED)',
     processingNote:
       'Full PDF page 334 (printed A-10) rendered at 2.25×; no crop; no color or tonal adjustment; responsive Lanczos downsample and WebP/JPEG encoding only.',
   },

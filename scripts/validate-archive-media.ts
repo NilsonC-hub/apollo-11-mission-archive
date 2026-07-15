@@ -11,6 +11,7 @@ import type {
 } from '../src/missions/apollo11/mediaSchema.ts'
 import { validateArchiveMediaRecords } from '../src/missions/apollo11/mediaSchema.ts'
 import sourceManifestJson from '../src/missions/apollo11/source-manifest.json' with { type: 'json' }
+import processingReportJson from '../docs/audit/SPRINT-2-ARCHIVE-MEDIA-PROCESSING.json' with { type: 'json' }
 
 export interface ArchiveMediaDiskIssue {
   id: string
@@ -20,6 +21,7 @@ export interface ArchiveMediaDiskIssue {
 
 interface ManifestSource {
   id: string
+  kind: string
   originalUrl: string
   effectiveDownloadUrl?: string
   landingPageUrl?: string
@@ -27,6 +29,41 @@ interface ManifestSource {
   localPath?: string | null
   sha256?: string | null
   bytes?: number
+  rightsStatus: string
+  nasaImageId?: string
+  publicationDate: string
+  width?: number
+  height?: number
+  format?: string
+}
+
+interface ProcessingReportFile extends ArchiveMediaFile {
+  publicPath?: string
+}
+
+interface ProcessingReportDocumentFile extends ProcessingReportFile {
+  sourceDocument: string
+  sourceDocumentSha256: string
+  pdfPage: number
+  printedPage: string
+}
+
+interface ProcessingReportItem {
+  id: string
+  raw?: ProcessingReportFile
+  renderedPage?: ProcessingReportDocumentFile
+  delivery: ProcessingReportFile[]
+}
+
+export interface ArchiveMediaProcessingReport {
+  schemaVersion: number
+  policy: {
+    crop: string
+    colorOrTonalAdjustment: string
+    resize: string
+    delivery: string
+  }
+  items: ProcessingReportItem[]
 }
 
 function hash(buffer: Buffer): string {
@@ -158,11 +195,194 @@ function valuesMatch(actual: unknown, expected: unknown): boolean {
   return actual === expected
 }
 
+function normalizeManifestFormat(format: string | undefined): string | undefined {
+  return format === 'jpg' ? 'jpeg' : format
+}
+
+function compareProcessingFile(
+  issues: ArchiveMediaDiskIssue[],
+  record: ArchiveMediaRecord,
+  field: string,
+  reportFile: ProcessingReportFile | undefined,
+  recordFile: ArchiveMediaFile & { publicPath?: string },
+) {
+  if (!reportFile) {
+    issues.push({ id: record.id, field, message: 'processing report file record is missing' })
+    return
+  }
+  const fields = ['localPath', 'sha256', 'bytes', 'width', 'height', 'format'] as const
+  for (const key of fields) {
+    if (!valuesMatch(reportFile[key], recordFile[key])) {
+      issues.push({
+        id: record.id,
+        field: `${field}.${key}`,
+        message: 'processing report does not match media record',
+      })
+    }
+  }
+  if (recordFile.publicPath !== undefined && reportFile.publicPath !== recordFile.publicPath) {
+    issues.push({
+      id: record.id,
+      field: `${field}.publicPath`,
+      message: 'processing report does not match media record',
+    })
+  }
+}
+
+function validateProcessingReport(
+  issues: ArchiveMediaDiskIssue[],
+  records: readonly ArchiveMediaRecord[],
+  report: ArchiveMediaProcessingReport,
+) {
+  const expectedPolicy = {
+    crop: 'none; full source frame/full PDF page retained',
+    colorOrTonalAdjustment: 'none',
+    resize: 'Lanczos downsample only; no upscaling',
+    delivery: 'responsive WebP plus local JPEG fallback',
+  } as const
+  if (report.schemaVersion !== 1) {
+    issues.push({
+      id: 'processing-report',
+      field: 'processingReport.schemaVersion',
+      message: 'processing report schema version must be 1',
+    })
+  }
+  for (const [key, expected] of Object.entries(expectedPolicy)) {
+    if (report.policy[key as keyof typeof expectedPolicy] !== expected) {
+      issues.push({
+        id: 'processing-report',
+        field: `processingReport.policy.${key}`,
+        message: 'processing recipe policy drifted from the pinned checkpoint recipe',
+      })
+    }
+  }
+
+  const reportIds = new Set<string>()
+  for (const item of report.items) {
+    if (reportIds.has(item.id)) {
+      issues.push({
+        id: item.id,
+        field: 'processingReport.items.id',
+        message: 'processing report record ID is duplicated',
+      })
+    }
+    reportIds.add(item.id)
+  }
+  const reportById = new Map(report.items.map((item) => [item.id, item]))
+
+  for (const record of records) {
+    const item = reportById.get(record.id)
+    if (!item) {
+      issues.push({
+        id: record.id,
+        field: 'processingReport.items.id',
+        message: 'media record is missing from processing report',
+      })
+      continue
+    }
+
+    if (record.kind === 'historical-image') {
+      compareProcessingFile(issues, record, 'processingReport.raw', item.raw, record.raw)
+      if (item.renderedPage) {
+        issues.push({
+          id: record.id,
+          field: 'processingReport.renderedPage',
+          message: 'historical image cannot use a document rendered-page input',
+        })
+      }
+    } else {
+      compareProcessingFile(
+        issues,
+        record,
+        'processingReport.renderedPage',
+        item.renderedPage,
+        record.renderedPage,
+      )
+      if (!item.renderedPage) {
+        // The generic missing-file issue above is sufficient.
+      } else {
+        const documentChecks = [
+          ['sourceDocument', item.renderedPage.sourceDocument, record.sourceDocument.localPath],
+          [
+            'sourceDocumentSha256',
+            item.renderedPage.sourceDocumentSha256,
+            record.sourceDocument.sha256,
+          ],
+          ['pdfPage', item.renderedPage.pdfPage, record.locator.pdfPage],
+          ['printedPage', item.renderedPage.printedPage, record.locator.printedPage],
+        ] as const
+        for (const [key, actual, expected] of documentChecks) {
+          if (!valuesMatch(actual, expected)) {
+            issues.push({
+              id: record.id,
+              field: `processingReport.renderedPage.${key}`,
+              message: 'processing report document input does not match media record',
+            })
+          }
+        }
+      }
+      if (item.raw) {
+        issues.push({
+          id: record.id,
+          field: 'processingReport.raw',
+          message: 'document record cannot use a historical-image raw input',
+        })
+      }
+    }
+
+    if (item.delivery.length !== record.delivery.length) {
+      issues.push({
+        id: record.id,
+        field: 'processingReport.delivery',
+        message: 'processing report delivery count does not match media record',
+      })
+    }
+    const deliveryByPath = new Map(item.delivery.map((variant) => [variant.localPath, variant]))
+    record.delivery.forEach((variant, index) =>
+      compareProcessingFile(
+        issues,
+        record,
+        `processingReport.delivery.${index}`,
+        deliveryByPath.get(variant.localPath),
+        variant,
+      ),
+    )
+
+    const noteChecks = [
+      ['crop', /no crop/i],
+      ['colorOrTonalAdjustment', /no color or tonal adjustment/i],
+      ['resize', /Lanczos/i],
+      ['delivery', /WebP\/JPEG/i],
+    ] as const
+    for (const [key, pattern] of noteChecks) {
+      if (!pattern.test(record.processingNote)) {
+        issues.push({
+          id: record.id,
+          field: `processingReport.recipe.${key}`,
+          message: 'media processing note does not disclose the pinned recipe',
+        })
+      }
+    }
+  }
+
+  for (const item of report.items) {
+    if (!records.some((record) => record.id === item.id)) {
+      issues.push({
+        id: item.id,
+        field: 'processingReport.items.id',
+        message: 'processing report contains an unknown media record',
+      })
+    }
+  }
+}
+
 export function validateApollo11ArchiveMedia(
   records: readonly ArchiveMediaRecord[] = apollo11ArchiveMediaRecords,
   rootDir = resolve(fileURLToPath(new URL('..', import.meta.url))),
+  processingReport: ArchiveMediaProcessingReport = processingReportJson as ArchiveMediaProcessingReport,
 ): ArchiveMediaDiskIssue[] {
   const issues: ArchiveMediaDiskIssue[] = validateArchiveMediaRecords(records)
+  validateProcessingReport(issues, records, processingReport)
   const manifestById = new Map(
     (sourceManifestJson.sources as ManifestSource[]).map((source) => [source.id, source]),
   )
@@ -191,10 +411,36 @@ export function validateApollo11ArchiveMedia(
         source.landingPageUrl ?? source.originalUrl,
       ],
       ['source.accessedAt', record.source.accessedAt, source.accessedAt],
+      ['source.publicationDate', record.source.publicationDate, source.publicationDate],
+      ['rightsStatus', record.rightsStatus, source.rightsStatus],
     ] as const
     for (const [field, actual, expected] of sourceChecks) {
       if (!valuesMatch(actual, expected)) {
         issues.push({ id: record.id, field, message: 'does not match canonical source manifest' })
+      }
+    }
+
+    const expectedSourceKind = record.kind === 'historical-image' ? 'image' : 'pdf'
+    if (source.kind !== expectedSourceKind) {
+      issues.push({
+        id: record.id,
+        field: 'source.kind',
+        message: 'does not match canonical source manifest',
+      })
+    }
+
+    if (record.kind === 'historical-image') {
+      const imageChecks = [
+        ['nasaImageId', record.nasaImageId, source.nasaImageId],
+        ['capturedAt', record.capturedAt, source.publicationDate],
+        ['raw.width', record.raw.width, source.width],
+        ['raw.height', record.raw.height, source.height],
+        ['raw.format', record.raw.format, normalizeManifestFormat(source.format)],
+      ] as const
+      for (const [field, actual, expected] of imageChecks) {
+        if (!valuesMatch(actual, expected)) {
+          issues.push({ id: record.id, field, message: 'does not match canonical source manifest' })
+        }
       }
     }
 

@@ -6,6 +6,7 @@ export interface ArchiveMediaSourceBinding {
   originalUrl: string
   effectiveDownloadUrl: string
   accessedAt: string
+  publicationDate: string
 }
 
 export interface ArchiveMediaFile {
@@ -222,6 +223,13 @@ export function validateArchiveMediaRecords(
       'source.accessedAt',
       ISO_DATE.test(record.source.accessedAt),
       'accessedAt must be YYYY-MM-DD',
+    )
+    add(
+      issues,
+      record,
+      'source.publicationDate',
+      ISO_DATE.test(record.source.publicationDate),
+      'publicationDate must be YYYY-MM-DD',
     )
     add(issues, record, 'caption', record.caption.trim().length > 0, 'caption is required')
     add(issues, record, 'alt', record.alt.trim().length > 0, 'alt text is required')

@@ -72,6 +72,9 @@ function SourceMetadataRows({ record }: { record: HistoricalImageRecord | Docume
       <MetadataRow label="SUBJECT TAGS">{record.subjectTags.join(' · ')}</MetadataRow>
       <MetadataRow label="SOURCE ID">{record.source.sourceId}</MetadataRow>
       <MetadataRow label="ACCESSED">{record.source.accessedAt}</MetadataRow>
+      <MetadataRow label="SOURCE DATE">
+        <time dateTime={record.source.publicationDate}>{record.source.publicationDate}</time>
+      </MetadataRow>
       <MetadataRow label="ORIGINAL URL">
         <a href={record.source.originalUrl} target="_blank" rel="noreferrer">
           <code>{record.source.originalUrl}</code>

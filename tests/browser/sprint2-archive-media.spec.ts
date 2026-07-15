@@ -40,6 +40,7 @@ test('Archive Saturn V evidence plates expose complete keyboard-accessible recor
   await expect(imageDetails).toHaveAttribute('open', '')
   await expect(imageDetails.getByText('PROJECT RECORD')).toBeVisible()
   await expect(imageDetails.getByText('SUBJECT TAGS')).toBeVisible()
+  await expect(imageDetails.getByText('SOURCE DATE')).toBeVisible()
   await expect(imageDetails.getByText('ORIGINAL URL')).toBeVisible()
   await expect(imageDetails.getByText('EFFECTIVE DOWNLOAD URL')).toBeVisible()
   await expect(imageDetails.getByText('CAMERA CONTEXT')).toBeVisible()
