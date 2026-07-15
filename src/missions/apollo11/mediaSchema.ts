@@ -30,7 +30,6 @@ export interface HistoricalImageRecord {
   alt: string
   subjectTags: readonly string[]
   capturedAt?: string
-  metSeconds?: number
   camera?: string
   raw: ArchiveMediaFile
   delivery: readonly ArchiveMediaDeliveryVariant[]
@@ -107,6 +106,23 @@ function validateFile(
   add(issues, record, `${field}.height`, file.height > 0, 'height must be positive')
 }
 
+function claimUniquePath(
+  issues: ArchiveMediaValidationIssue[],
+  record: ArchiveMediaRecord,
+  field: string,
+  value: string,
+  claimed: Set<string>,
+) {
+  add(
+    issues,
+    record,
+    field,
+    value.length > 0 && !claimed.has(value),
+    `${field} must be nonempty and unique`,
+  )
+  if (value.length > 0) claimed.add(value)
+}
+
 function validateDelivery(
   issues: ArchiveMediaValidationIssue[],
   record: ArchiveMediaRecord,
@@ -164,6 +180,10 @@ export function validateArchiveMediaRecords(
   const issues: ArchiveMediaValidationIssue[] = []
   const ids = new Set<string>()
   const nasaImageIds = new Set<string>()
+  const rawLocalPaths = new Set<string>()
+  const deliveryLocalPaths = new Set<string>()
+  const deliveryPublicPaths = new Set<string>()
+  const sourceDocumentHashes = new Map<string, string>()
 
   for (const record of records) {
     add(issues, record, 'id', record.id.length > 0 && !ids.has(record.id), 'id must be unique')
@@ -230,7 +250,24 @@ export function validateArchiveMediaRecords(
         'NASA image ID must be present and unique',
       )
       nasaImageIds.add(record.nasaImageId)
+      if (record.capturedAt !== undefined) {
+        add(
+          issues,
+          record,
+          'capturedAt',
+          ISO_DATE.test(record.capturedAt),
+          'capturedAt must be YYYY-MM-DD',
+        )
+      }
       validateFile(issues, record, 'raw', record.raw)
+      add(
+        issues,
+        record,
+        'raw.localPath',
+        record.raw.localPath.startsWith('assets/raw/images/'),
+        'historical raw files must use assets/raw/images/',
+      )
+      claimUniquePath(issues, record, 'raw.localPath', record.raw.localPath, rawLocalPaths)
       validateDelivery(issues, record, record.raw)
     } else {
       add(issues, record, 'documentId', record.documentId.length > 0, 'document ID is required')
@@ -242,6 +279,25 @@ export function validateArchiveMediaRecords(
         record.locator.label.length > 0,
         'locator label is required',
       )
+      add(
+        issues,
+        record,
+        'sourceDocument.localPath',
+        record.sourceDocument.localPath.startsWith('assets/raw/'),
+        'source document must use assets/raw/',
+      )
+      const knownSourceDocumentHash = sourceDocumentHashes.get(record.sourceDocument.localPath)
+      add(
+        issues,
+        record,
+        'sourceDocument.localPath',
+        knownSourceDocumentHash === undefined ||
+          knownSourceDocumentHash === record.sourceDocument.sha256,
+        'a repeated source document path must resolve to the same sha256',
+      )
+      if (record.sourceDocument.localPath.length > 0) {
+        sourceDocumentHashes.set(record.sourceDocument.localPath, record.sourceDocument.sha256)
+      }
       add(
         issues,
         record,
@@ -257,8 +313,39 @@ export function validateArchiveMediaRecords(
         'source document bytes must be positive',
       )
       validateFile(issues, record, 'renderedPage', record.renderedPage)
+      add(
+        issues,
+        record,
+        'renderedPage.localPath',
+        record.renderedPage.localPath.startsWith('assets/derived/images/'),
+        'rendered document plates must use assets/derived/images/',
+      )
+      claimUniquePath(
+        issues,
+        record,
+        'renderedPage.localPath',
+        record.renderedPage.localPath,
+        rawLocalPaths,
+      )
       validateDelivery(issues, record, record.renderedPage)
     }
+
+    record.delivery.forEach((variant, index) => {
+      claimUniquePath(
+        issues,
+        record,
+        `delivery.${index}.localPath`,
+        variant.localPath,
+        deliveryLocalPaths,
+      )
+      claimUniquePath(
+        issues,
+        record,
+        `delivery.${index}.publicPath`,
+        variant.publicPath,
+        deliveryPublicPaths,
+      )
+    })
   }
 
   return issues
