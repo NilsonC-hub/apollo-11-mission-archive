@@ -20,6 +20,7 @@
     "test:visual:update": "playwright test tests/browser/phase7-visual.spec.ts --workers=1 --update-snapshots",
     "perf:budget": "playwright test tests/browser/phase7-performance.spec.ts --workers=1",
     "validate:sources": "node --experimental-strip-types scripts/validate-sources.ts",
+    "validate:archive-media": "node --experimental-strip-types scripts/validate-archive-media.ts",
     "validate:mission": "node --experimental-strip-types scripts/validate-mission.ts",
     "validate:models": "node --experimental-strip-types scripts/validate-models.ts",
     "inspect-glb": "node --experimental-strip-types scripts/inspect-glb.ts",

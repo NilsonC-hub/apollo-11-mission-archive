@@ -10,6 +10,13 @@ import {
   missionPack,
   replayEvents,
 } from '../../app/mission.ts'
+import {
+  getDocumentPlateRecord,
+  getHistoricalImageRecord,
+} from '../../missions/apollo11/archiveMedia.ts'
+import assetManifestJson from '../../missions/apollo11/asset-manifest.json' with { type: 'json' }
+import { DocumentPlate, EvidencePair, EvidencePlate } from './ArchiveMedia.tsx'
+import './archiveMedia.css'
 
 const archiveNav = [
   ['index', '00', 'Mission Index'],
@@ -43,6 +50,41 @@ const phase4Components = new Set([
   'lm-descent-stage',
   'launch-escape-system',
 ])
+
+const padContextImage = getHistoricalImageRecord('a11-s69-38660')
+const groundLaunchImage = getHistoricalImageRecord('a11-s69-39525')
+const towerCameraImage = getHistoricalImageRecord('a11-s69-39961')
+const saturnMissionReportPlate = getDocumentPlateRecord('a11-mission-report-p334-a10')
+
+interface ModelAssetRecord {
+  assetId: string
+  sourceIds: string[]
+  truthLabel: string
+  nodeManifest: string
+  thumbnail: string
+  lods: { medium: { path: string } }
+}
+
+const saturnAssetCandidate = assetManifestJson.assets.find(
+  (asset) => asset.assetId === 'apollo11-saturn-v',
+) as Partial<ModelAssetRecord> | undefined
+if (
+  !saturnAssetCandidate ||
+  !Array.isArray(saturnAssetCandidate.sourceIds) ||
+  typeof saturnAssetCandidate.truthLabel !== 'string' ||
+  typeof saturnAssetCandidate.nodeManifest !== 'string' ||
+  typeof saturnAssetCandidate.thumbnail !== 'string' ||
+  typeof saturnAssetCandidate.lods?.medium?.path !== 'string'
+) {
+  throw new TypeError('Saturn V asset manifest record is missing')
+}
+const saturnAsset = saturnAssetCandidate as ModelAssetRecord
+const saturnThumbnail = `/missions/apollo11/plates/${saturnAsset.thumbnail.split('/').at(-1)}`
+const saturnModelSources = saturnAsset.sourceIds.map((sourceId) => {
+  const source = mission.sources.sources.find((candidate) => candidate.id === sourceId)
+  if (!source) throw new TypeError(`Saturn V model source is missing: ${sourceId}`)
+  return source
+})
 
 function FactValue({ id }: { id: string }) {
   const fact = factsById.get(id)
@@ -87,9 +129,19 @@ export function Component() {
   const location = useLocation()
 
   useEffect(() => {
-    const id = location.pathname.split('/').at(-1)
-    if (id && id !== 'archive') document.getElementById(id)?.scrollIntoView()
-  }, [location.pathname])
+    const pathId = location.pathname.split('/').at(-1)
+    let id = pathId
+    if (location.hash) {
+      try {
+        id = decodeURIComponent(location.hash.slice(1))
+      } catch {
+        id = location.hash.slice(1)
+      }
+    }
+    if (id && id !== 'archive') {
+      window.requestAnimationFrame(() => document.getElementById(id)?.scrollIntoView())
+    }
+  }, [location.hash, location.pathname])
 
   const selectedSources = mission.sources.sources
 
@@ -135,18 +187,13 @@ export function Component() {
                 OPEN MISSION CONTROL <span aria-hidden="true">→</span>
               </Link>
             </div>
-            <figure className="hero-plate">
-              <img
-                src="/missions/apollo11/plates/phase3-apollo11-saturn-v.png"
-                alt="Processed side view of the NASA-released Saturn V visualization model"
-                decoding="async"
-                fetchPriority="high"
-              />
-              <figcaption>
-                <span>PLATE 05-A</span>
-                NASA-RELEASED VISUALIZATION MODEL · SEMANTIC SPLIT RECONSTRUCTED · NOT NASA CAD
-              </figcaption>
-            </figure>
+            <EvidencePlate
+              label="MISSION INDEX / PAD CONTEXT"
+              record={padContextImage}
+              priority
+              sizes="(max-width: 900px) calc(100vw - 36px), (max-width: 1100px) calc(100vw - 168px), 44vw"
+              variant="hero"
+            />
           </div>
           <dl className="identity-register">
             <div>
@@ -286,41 +333,137 @@ export function Component() {
         </section>
 
         <section id="saturn" className="archive-section section-rule">
+          <span id="saturn-v" className="archive-anchor-alias" aria-hidden="true" />
           <header className="section-heading">
             <p>05 / SATURN V · AS-506</p>
             <h2>LAUNCH VEHICLE DOSSIER</h2>
             <span lang="zh-Hans">土星五号与 AS-506</span>
           </header>
-          <div className="dossier-grid">
-            <figure className="evidence-plate">
-              <img
-                src="/missions/apollo11/plates/phase3-apollo11-saturn-v.png"
-                alt="Saturn V model processing plate with component bands"
-                decoding="async"
-                loading="lazy"
-              />
-              <figcaption>
-                <span>MODEL RECORD / SATURN V</span>
-                Geometry from a NASA-released visualization model. Stage boundaries are a documented
-                editorial reconstruction for replay control.
-              </figcaption>
-            </figure>
-            <div className="component-ledger">
-              {mission.vehicle.components
-                .filter((component) => phase4Components.has(component.id))
-                .filter(
-                  (component) =>
-                    component.id.startsWith('s-') || component.id === 'instrument-unit',
-                )
-                .map((component) => (
-                  <div key={component.id}>
-                    <span>{component.id.toUpperCase()}</span>
-                    <b>{component.label}</b>
-                    <small>{component.evidence} geometry identity</small>
-                  </div>
-                ))}
-            </div>
+          <div className="archive-media-lead">
+            <p>
+              The historical record and the reconstructed model serve different jobs. Photographs
+              establish pad and launch context; the model provides a manipulable structural view
+              with its reconstruction boundary kept visible.
+            </p>
+            <Link className="archive-inspector-link" to="/control/inspect/saturn-v">
+              OPEN SATURN V INSPECTOR <span aria-hidden="true">→</span>
+            </Link>
           </div>
+
+          <EvidencePair ariaLabel="Launch-tower photograph and Saturn V model evidence">
+            <EvidencePlate
+              label="TOWER-CAMERA PERSPECTIVE"
+              record={towerCameraImage}
+              sizes="(max-width: 900px) calc(100vw - 36px), 40vw"
+            />
+            <div className="archive-model-stack">
+              <figure className="archive-evidence-plate archive-model-plate">
+                <div className="archive-evidence-visual">
+                  <img
+                    src={saturnThumbnail}
+                    alt="Processed side view of the NASA-released Saturn V visualization model"
+                    width="900"
+                    height="1200"
+                    decoding="async"
+                    loading="lazy"
+                  />
+                </div>
+                <figcaption>
+                  <div className="archive-evidence-heading">
+                    <span>MODEL RECORD / SATURN V</span>
+                    <b>{saturnAsset.truthLabel}</b>
+                  </div>
+                  <p>
+                    SOURCES / {saturnAsset.sourceIds.join(' · ')} · NODE RECORD /{' '}
+                    {saturnAsset.nodeManifest}
+                  </p>
+                  <details className="archive-record-details">
+                    <summary>
+                      MODEL RECORD <span aria-hidden="true">+</span>
+                    </summary>
+                    <div className="archive-record-body">
+                      <dl>
+                        <div>
+                          <dt>SOURCE ID</dt>
+                          <dd>{saturnAsset.sourceIds.join(' · ')}</dd>
+                        </div>
+                        <div>
+                          <dt>TRUTH LABEL</dt>
+                          <dd>{saturnAsset.truthLabel}</dd>
+                        </div>
+                        <div>
+                          <dt>NODE MANIFEST</dt>
+                          <dd>
+                            <code>{saturnAsset.nodeManifest}</code>
+                          </dd>
+                        </div>
+                        <div>
+                          <dt>PROCESSING RECIPE</dt>
+                          <dd>
+                            <code>{assetManifestJson.toolchain.models.recipe}</code>
+                          </dd>
+                        </div>
+                        <div>
+                          <dt>RUNTIME RECORD</dt>
+                          <dd>
+                            <code>{saturnAsset.lods.medium.path}</code>
+                          </dd>
+                        </div>
+                      </dl>
+                      <p>
+                        The interactive inspector exposes orbit, zoom, alternate viewpoints, and
+                        stage focus without claiming certified engineering geometry.
+                      </p>
+                      <div className="archive-record-links">
+                        {saturnModelSources.map((source) => (
+                          <a
+                            key={source.id}
+                            href={source.originalUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            {source.id} ↗
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  </details>
+                </figcaption>
+              </figure>
+              <div className="component-ledger saturn-component-ledger">
+                {mission.vehicle.components
+                  .filter((component) => phase4Components.has(component.id))
+                  .filter(
+                    (component) =>
+                      component.id.startsWith('s-') || component.id === 'instrument-unit',
+                  )
+                  .map((component) => (
+                    <div key={component.id}>
+                      <span>{component.id.toUpperCase()}</span>
+                      <b>{component.label}</b>
+                      <small>source-bound component identity · reconstructed model geometry</small>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          </EvidencePair>
+
+          <EvidencePair
+            ariaLabel="Ground launch photograph and Apollo 11 Mission Report document evidence"
+            className="archive-evidence-pair--secondary"
+          >
+            <EvidencePlate
+              label="GROUND LAUNCH PERSPECTIVE"
+              record={groundLaunchImage}
+              sizes="(max-width: 900px) calc(100vw - 36px), 31vw"
+            />
+            <DocumentPlate
+              label="MISSION REPORT / VEHICLE CONFIGURATION"
+              record={saturnMissionReportPlate}
+              sizes="(max-width: 900px) calc(100vw - 36px), 44vw"
+            />
+          </EvidencePair>
+          <ChapterSources chapterId="05" />
         </section>
 
         <section id="spacecraft" className="archive-section section-rule">

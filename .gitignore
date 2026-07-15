@@ -36,6 +36,7 @@ assets/raw/NASA-MODEL-SATV-STL-extracted/
 
 # Screenshots
 *.png
+!assets/derived/images/NASA-A11-MR-p334-A-10.png
 !docs/media/*.png
 !tests/browser/__screenshots__/*.png
 
