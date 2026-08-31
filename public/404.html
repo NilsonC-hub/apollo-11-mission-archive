@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex" />
+    <title>Opening Apollo 11 Mission Archive</title>
+  </head>
+  <body>
+    <p>Opening Apollo 11 Mission Archive…</p>
+    <script>
+      ;(() => {
+        const repository = window.location.pathname.split('/').filter(Boolean)[0]
+        if (!repository) {
+          window.location.replace('/')
+          return
+        }
+
+        const base = `/${repository}/`
+        const route =
+          window.location.pathname.slice(base.length - 1) +
+          window.location.search +
+          window.location.hash
+        window.location.replace(`${base}?__a11_route=${encodeURIComponent(route)}`)
+      })()
+    </script>
+  </body>
+</html>

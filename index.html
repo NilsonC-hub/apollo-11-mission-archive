@@ -16,6 +16,14 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      ;(() => {
+        const route = new URLSearchParams(window.location.search).get('__a11_route')
+        if (!route || !/^\/(?!\/)/.test(route)) return
+        const base = '%BASE_URL%'.replace(/\/+$/, '')
+        window.history.replaceState(window.history.state, '', `${base}${route}`)
+      })()
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

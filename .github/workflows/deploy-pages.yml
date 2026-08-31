@@ -55,9 +55,9 @@ jobs:
           VITE_BASE_PATH: /${{ github.event.repository.name }}/
         run: pnpm build
 
-      - name: Add SPA fallback
+      - name: Add GitHub Pages support files
         run: |
-          cp dist/index.html dist/404.html
+          test -f dist/404.html
           touch dist/.nojekyll
 
       - name: Upload GitHub Pages artifact
