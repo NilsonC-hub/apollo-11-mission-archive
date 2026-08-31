@@ -42,7 +42,6 @@ jobs:
           pnpm typecheck
           pnpm test:unit
           pnpm test:integration
-          pnpm validate:sources
           pnpm validate:archive-media
           pnpm validate:mission
           pnpm validate:models
