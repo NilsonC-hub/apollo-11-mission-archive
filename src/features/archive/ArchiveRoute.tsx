@@ -10,6 +10,7 @@ import {
   missionPack,
   replayEvents,
 } from '../../app/mission.ts'
+import { publicAssetUrl } from '../../app/deploymentPath.ts'
 import {
   getDocumentPlateRecord,
   getHistoricalImageRecord,
@@ -79,7 +80,9 @@ if (
   throw new TypeError('Saturn V asset manifest record is missing')
 }
 const saturnAsset = saturnAssetCandidate as ModelAssetRecord
-const saturnThumbnail = `/missions/apollo11/plates/${saturnAsset.thumbnail.split('/').at(-1)}`
+const saturnThumbnail = publicAssetUrl(
+  `/missions/apollo11/plates/${saturnAsset.thumbnail.split('/').at(-1)}`,
+)
 const saturnModelSources = saturnAsset.sourceIds.map((sourceId) => {
   const source = mission.sources.sources.find((candidate) => candidate.id === sourceId)
   if (!source) throw new TypeError(`Saturn V model source is missing: ${sourceId}`)
@@ -475,7 +478,9 @@ export function Component() {
           <div className="spacecraft-plates">
             <figure className="evidence-plate">
               <img
-                src="/missions/apollo11/plates/phase3-apollo11-command-service-module.png"
+                src={publicAssetUrl(
+                  '/missions/apollo11/plates/phase3-apollo11-command-service-module.png',
+                )}
                 alt="Processed command and service module reconstruction"
                 decoding="async"
                 loading="lazy"
@@ -488,7 +493,7 @@ export function Component() {
             </figure>
             <figure className="evidence-plate">
               <img
-                src="/missions/apollo11/plates/phase3-apollo11-lunar-module.png"
+                src={publicAssetUrl('/missions/apollo11/plates/phase3-apollo11-lunar-module.png')}
                 alt="Processed NASA-released generic Apollo lunar module model"
                 decoding="async"
                 loading="lazy"
@@ -670,7 +675,7 @@ export function Component() {
           <div className="return-grid">
             <figure className="evidence-plate">
               <img
-                src="/missions/apollo11/plates/NASA-A11-MOON-VIEW.jpg"
+                src={publicAssetUrl('/missions/apollo11/plates/NASA-A11-MOON-VIEW.jpg')}
                 alt="Apollo 11 photograph AS11-44-6665 showing the Moon during the return leg"
                 decoding="async"
                 loading="lazy"

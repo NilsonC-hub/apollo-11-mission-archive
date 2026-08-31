@@ -5,6 +5,7 @@ import type {
   DocumentPlateRecord,
   HistoricalImageRecord,
 } from '../../missions/apollo11/mediaSchema.ts'
+import { publicAssetUrl } from '../../app/deploymentPath.ts'
 
 interface ResponsiveArchiveImageProps {
   alt: string
@@ -38,11 +39,13 @@ function ResponsiveArchiveImage({
     <picture>
       <source
         type="image/webp"
-        srcSet={webp.map((variant) => `${variant.publicPath} ${variant.width}w`).join(', ')}
+        srcSet={webp
+          .map((variant) => `${publicAssetUrl(variant.publicPath)} ${variant.width}w`)
+          .join(', ')}
         sizes={sizes}
       />
       <img
-        src={fallback.publicPath}
+        src={publicAssetUrl(fallback.publicPath)}
         alt={alt}
         width={fallback.width}
         height={fallback.height}
@@ -122,7 +125,7 @@ function SourceLinks({ record }: { record: HistoricalImageRecord | DocumentPlate
       <a href={record.source.effectiveDownloadUrl} target="_blank" rel="noreferrer">
         OFFICIAL SOURCE FILE ↗
       </a>
-      <a href={fallback.publicPath} target="_blank" rel="noreferrer">
+      <a href={publicAssetUrl(fallback.publicPath)} target="_blank" rel="noreferrer">
         OPEN LOCAL PLATE ↗
       </a>
     </div>

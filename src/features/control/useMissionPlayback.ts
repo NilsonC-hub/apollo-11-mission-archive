@@ -9,6 +9,7 @@ import { snapshotActiveControlHistoryEntry } from '../../app/controlTraversal.ts
 import { mission } from '../../app/mission.ts'
 import { useMissionStore } from '../../app/missionStore.ts'
 import { metAtStoryTime } from '../../mission-core/index.ts'
+import { applicationPathname, deploymentPath } from '../../app/deploymentPath.ts'
 
 interface NavigationSourceRef {
   current: string | null
@@ -18,11 +19,12 @@ function flushPlaybackUrl(
   navigationSource: NavigationSourceRef,
   persistReloadSnapshot = true,
 ): void {
-  if (!isControlPlaybackPath(window.location.pathname)) return
+  const currentPathname = applicationPathname(window.location.pathname)
+  if (!isControlPlaybackPath(currentPathname)) return
   const state = useMissionStore.getState()
   const met = metAtStoryTime(mission.narrative, state.storyTimeMs)
   if (persistReloadSnapshot) {
-    recordControlPlaybackSnapshot(navigationSource.current ?? window.location.pathname, met, {
+    recordControlPlaybackSnapshot(navigationSource.current ?? currentPathname, met, {
       speed: state.speed,
       visualTimeMs: state.visualTimeMs,
       visualTransitionAnchors: state.visualTransitionAnchors,
@@ -30,7 +32,7 @@ function flushPlaybackUrl(
       guidedCameraRestPose: state.guidedCameraRestPose,
     })
   }
-  window.history.replaceState(window.history.state, '', controlMetPath(met))
+  window.history.replaceState(window.history.state, '', deploymentPath(controlMetPath(met)))
 }
 
 function usePlaybackInterruptionSafety(navigationSource: NavigationSourceRef): void {
@@ -44,13 +46,13 @@ function usePlaybackInterruptionSafety(navigationSource: NavigationSourceRef): v
       if (document.visibilityState === 'hidden') interrupt('visibility')
     }
     const onPageHide = () => {
-      navigationSource.current ??= window.location.pathname
+      navigationSource.current ??= applicationPathname(window.location.pathname)
       flushPlaybackUrl(navigationSource)
       pause('page-hide')
     }
     const onBlur = () => interrupt('focus-loss')
     const onBeforeUnload = () => {
-      navigationSource.current ??= window.location.pathname
+      navigationSource.current ??= applicationPathname(window.location.pathname)
       flushPlaybackUrl(navigationSource)
       // Freeze at the earliest unload boundary. Waiting for pagehide allows a
       // short authored camera/staging transition to advance while the next
@@ -69,7 +71,7 @@ function usePlaybackInterruptionSafety(navigationSource: NavigationSourceRef): v
       if (!anchor || anchor.target === '_blank' || anchor.hasAttribute('download')) return
       const destination = new URL(anchor.href, window.location.href)
       if (destination.origin !== window.location.origin) return
-      if (destination.pathname.startsWith('/control')) {
+      if (applicationPathname(destination.pathname).startsWith('/control')) {
         snapshotActiveControlHistoryEntry()
       } else {
         flushPlaybackUrl(navigationSource, false)

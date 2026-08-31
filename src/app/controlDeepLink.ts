@@ -1,4 +1,5 @@
 import { parseMet } from '../mission-core/index.ts'
+import { applicationPathname } from './deploymentPath.ts'
 import { replayEndStoryTime, replayEvents, replayStartMet } from './mission.ts'
 import {
   GUIDED_CAMERA_REST_POSE_SHOT_IDS,
@@ -27,16 +28,17 @@ function controlMetSemanticallyEqual(left: number, right: number): boolean {
 }
 
 function controlReloadBootPathname(): string | null {
+  const pathname = typeof location === 'undefined' ? '' : applicationPathname(location.pathname)
   if (
     typeof location === 'undefined' ||
     typeof performance === 'undefined' ||
-    !isControlPlaybackPath(location.pathname)
+    !isControlPlaybackPath(pathname)
   ) {
     return null
   }
   const navigation = performance.getEntriesByType('navigation')[0] as
     PerformanceNavigationTiming | undefined
-  return navigation?.type === 'reload' ? location.pathname : null
+  return navigation?.type === 'reload' ? pathname : null
 }
 
 const CONTROL_RELOAD_BOOT_PATHNAME = controlReloadBootPathname()

@@ -20,6 +20,8 @@ import {
   type Object3D,
 } from 'three'
 
+import { publicAssetUrl } from '../../app/deploymentPath.ts'
+
 import { getEvent, mission } from '../../app/mission.ts'
 import {
   useMissionStore,
@@ -52,9 +54,9 @@ import {
   type GuidedCameraPose,
 } from './guidedCameraFraming.ts'
 
-const MODEL_ROOT = '/missions/apollo11/models'
-const DRACO_ROOT = '/missions/apollo11/decoders/three-draco/'
-const BASIS_ROOT = '/missions/apollo11/decoders/three-basis/'
+const MODEL_ROOT = publicAssetUrl('/missions/apollo11/models')
+const DRACO_ROOT = publicAssetUrl('/missions/apollo11/decoders/three-draco/')
+const BASIS_ROOT = publicAssetUrl('/missions/apollo11/decoders/three-basis/')
 const CAMERA_DRAG_THRESHOLD_PX = 4
 
 type Position = [number, number, number]
@@ -400,8 +402,8 @@ function Planet({
   const gl = useThree((state) => state.gl)
   const url =
     kind === 'earth'
-      ? '/missions/apollo11/textures/earth-blue-marble-1k.ktx2'
-      : '/missions/apollo11/textures/moon-lro-color-1k.ktx2'
+      ? publicAssetUrl('/missions/apollo11/textures/earth-blue-marble-1k.ktx2')
+      : publicAssetUrl('/missions/apollo11/textures/moon-lro-color-1k.ktx2')
   const texture = useLoader(KTX2Loader, url, (loader) =>
     loader.setTranscoderPath(BASIS_ROOT).detectSupport(gl),
   )
@@ -1301,7 +1303,7 @@ export function StaticVehicleFallback() {
       role="img"
       aria-label="Static vehicle structure fallback"
     >
-      <img src="/missions/apollo11/fallbacks/vehicle-structure.svg" alt="" />
+      <img src={publicAssetUrl('/missions/apollo11/fallbacks/vehicle-structure.svg')} alt="" />
       <div>
         <b>STATIC VEHICLE STRUCTURE VIEW</b>
         <span>WEBGL OR MODEL DECODER UNAVAILABLE</span>
